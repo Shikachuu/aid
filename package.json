@@ -23,9 +23,12 @@
   "dependencies": {
     "@biomejs/js-api": "*",
     "@biomejs/wasm-nodejs": "*",
+    "@bufbuild/buf": "^1.69.0",
     "@scalar/api-reference": "*",
     "@scalar/openapi-parser": "*",
     "@stoplight/spectral-core": "*",
+    "@stoplight/spectral-parsers": "^1.0.5",
+    "@stoplight/spectral-rulesets": "^1.22.1",
     "@tailwindcss/node": "*",
     "citty": "*",
     "markdownlint-cli2": "*",
