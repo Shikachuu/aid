@@ -1,0 +1,50 @@
+{
+  "name": "aid",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Single-binary documentation generator for markdown, HTML, OpenAPI, and Protobuf — with unified Tailwind theming, cross-format search, and LLM-ready exports.",
+  "type": "module",
+  "bin": {
+    "aid": "./src/cli/index.ts"
+  },
+  "scripts": {
+    "dev": "bun run src/cli/index.ts dev",
+    "build": "bun run scripts/bundle-web.ts",
+    "compile": "bun run scripts/compile.ts",
+    "emit-schema": "bun run scripts/emit-schema.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "fmt": "biome format --write ."
+  },
+  "engines": {
+    "bun": ">=1.2.0"
+  },
+  "dependencies": {
+    "@biomejs/js-api": "*",
+    "@biomejs/wasm-nodejs": "*",
+    "@scalar/api-reference": "*",
+    "@scalar/openapi-parser": "*",
+    "@stoplight/spectral-core": "*",
+    "@tailwindcss/node": "*",
+    "citty": "*",
+    "markdownlint-cli2": "*",
+    "minisearch": "^7",
+    "protobufjs": "*",
+    "rehype-autolink-headings": "*",
+    "rehype-slug": "*",
+    "rehype-stringify": "*",
+    "remark-frontmatter": "*",
+    "remark-gfm": "*",
+    "remark-parse": "*",
+    "remark-rehype": "*",
+    "shiki": "*",
+    "unified": "*",
+    "zod": "*"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "*",
+    "@types/bun": "*",
+    "typescript": "^5"
+  }
+}

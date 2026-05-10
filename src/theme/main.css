@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/*
+ * Default aid theme tokens. Override or extend by writing a `main.css` in
+ * your project root and pointing `aid.yaml` `stylesheet` at it. Tailwind 4
+ * picks these up via @theme — change a token here and every renderer
+ * (markdown, OpenAPI/Scalar, proto) reflects it.
+ */
+
+@theme {
+  --color-aid-bg: oklch(99% 0 0);
+  --color-aid-text: oklch(20% 0 0);
+  --color-aid-muted: oklch(50% 0 0);
+  --color-aid-border: oklch(90% 0 0);
+  --color-aid-accent: oklch(60% 0.15 250);
+
+  --font-aid-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-aid-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/*
+ * Shell. Kept minimal — Tailwind utilities in the components do the heavy
+ * lifting. These rules cover the small set of selectors we want stable for
+ * Scalar / proto-renderer styling.
+ */
+
+.aid-body {
+  background: var(--color-aid-bg);
+  color: var(--color-aid-text);
+  font-family: var(--font-aid-sans);
+  margin: 0;
+}
+
+.aid-shell {
+  display: grid;
+  grid-template-columns: 16rem 1fr;
+  gap: 2rem;
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.aid-header,
+.aid-footer {
+  border-bottom: 1px solid var(--color-aid-border);
+  padding: 1rem;
+}
+
+.aid-footer {
+  border-bottom: 0;
+  border-top: 1px solid var(--color-aid-border);
+}
+
+.aid-page-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/*
+ * Scalar token bridge. Maps the embedded api-reference's CSS vars to ours so
+ * the OpenAPI renderer inherits the same palette without per-page CSS.
+ */
+
+:where(.aid-page-openapi) {
+  --scalar-color-1: var(--color-aid-text);
+  --scalar-color-2: var(--color-aid-muted);
+  --scalar-background-1: var(--color-aid-bg);
+  --scalar-border-color: var(--color-aid-border);
+  --scalar-color-accent: var(--color-aid-accent);
+  --scalar-font: var(--font-aid-sans);
+  --scalar-font-code: var(--font-aid-mono);
+}
+
+/*
+ * Dark-mode block. `theme.dark_mode: "auto"` will overwrite this block at
+ * build time with auto-derived tokens. `theme.dark_mode: "manual"` leaves
+ * the user-defined values untouched.
+ */
+
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-aid-bg: oklch(15% 0 0);
+    --color-aid-text: oklch(95% 0 0);
+    --color-aid-muted: oklch(65% 0 0);
+    --color-aid-border: oklch(30% 0 0);
+    --color-aid-accent: oklch(70% 0.15 250);
+  }
+}

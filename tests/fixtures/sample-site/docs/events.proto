@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package sample.events;
+
+// A trivial event stream used by the proto-renderer fixture tests.
+service EventBus {
+  // Subscribe to the live event stream.
+  rpc Subscribe(SubscribeRequest) returns (stream Event);
+}
+
+message SubscribeRequest {
+  // Optional filter expression applied server-side.
+  string filter = 1;
+}
+
+message Event {
+  string id = 1;
+  // Wall-clock time of the event in RFC3339 format.
+  string timestamp = 2;
+  EventKind kind = 3;
+  string payload = 4;
+}
+
+enum EventKind {
+  EVENT_KIND_UNSPECIFIED = 0;
+  EVENT_KIND_CREATED = 1;
+  EVENT_KIND_UPDATED = 2;
+  EVENT_KIND_DELETED = 3;
+}

@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+@theme {
+  /* fixture override — confirm theme-token plumbing reaches every renderer */
+  --color-aid-accent: oklch(60% 0.18 320);
+}

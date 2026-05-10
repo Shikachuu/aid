@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable", "WebWorker"],
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["bun"],
+
+    "jsx": "react-jsx",
+    "jsxImportSource": "@aid/jsx",
+
+    "baseUrl": ".",
+    "paths": {
+      "@aid/jsx/jsx-runtime": ["./src/jsx-runtime.ts"],
+      "@aid/jsx/jsx-dev-runtime": ["./src/jsx-dev-runtime.ts"]
+    },
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "skipLibCheck": true,
+
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    "noEmit": true
+  },
+  "include": ["src/**/*", "scripts/**/*", "tests/**/*"]
+}

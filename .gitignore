@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.bun/
+.cache/
+coverage/
+
+.DS_Store
+*.log
+*.tsbuildinfo
+
+.env
+.env.local
+.env.*.local
+
+.claude/settings.local.json
+CLAUDE.local.md

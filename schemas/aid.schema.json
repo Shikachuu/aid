@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Project display name. Required."
+    },
+    "description": {
+      "description": "Short site description used in <meta> tags and llms.txt.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Project version string (semver recommended).",
+      "type": "string"
+    },
+    "base_url": {
+      "description": "Absolute base URL of the published site (e.g. https://docs.example.com). Used for canonical links and llms.txt.",
+      "type": "string",
+      "format": "uri"
+    },
+    "base_path": {
+      "default": "/",
+      "description": "URL path prefix for all routes. Default '/'. Use '/docs' to host at example.com/docs/.",
+      "type": "string"
+    },
+    "stylesheet": {
+      "default": "main.css",
+      "description": "Path to the Tailwind CSS entrypoint. Applied uniformly to every page type (markdown, HTML, OpenAPI, proto).",
+      "type": "string"
+    },
+    "dir": {
+      "description": "Project directory configuration.",
+      "type": "object",
+      "properties": {
+        "content": {
+          "default": "docs",
+          "description": "Content root directory. Files here become routes. Default 'docs'.",
+          "type": "string"
+        },
+        "output": {
+          "default": "dist",
+          "description": "Build output directory. Default 'dist'.",
+          "type": "string"
+        },
+        "templates": {
+          "default": "",
+          "description": "Optional directory of named partial overrides. Empty string = use bundled defaults only.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "content",
+        "output",
+        "templates"
+      ],
+      "additionalProperties": false
+    },
+    "theme": {
+      "description": "Theme configuration.",
+      "type": "object",
+      "properties": {
+        "dark_mode": {
+          "default": "auto",
+          "description": "Dark mode strategy. 'auto' derives the dark palette from your light tokens. 'manual' expects explicit dark variants in main.css. 'off' disables dark mode entirely.",
+          "type": "string",
+          "enum": [
+            "auto",
+            "manual",
+            "off"
+          ]
+        }
+      },
+      "required": [
+        "dark_mode"
+      ],
+      "additionalProperties": false
+    },
+    "ai_targets": {
+      "default": [
+        "chatgpt",
+        "claude"
+      ],
+      "description": "LLM chat targets that get an 'Open in AI' button on every page. Empty list disables the buttons.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "chatgpt",
+          "claude",
+          "gemini"
+        ],
+        "description": "Supported LLM chat target for the 'Open in AI' button."
+      }
+    },
+    "search": {
+      "description": "Cross-format search configuration.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "description": "Generate the cross-format search index at build time.",
+          "type": "boolean"
+        },
+        "typo_tolerance": {
+          "default": 0.2,
+          "description": "Fraction of term length allowed as edit distance. 0.2 = up to 1 edit per 5 chars. 0 disables typo tolerance.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "weights": {
+          "type": "object",
+          "properties": {
+            "markdown": {
+              "default": 1,
+              "description": "Search ranking boost for markdown pages.",
+              "type": "number",
+              "minimum": 0
+            },
+            "html": {
+              "default": 1,
+              "description": "Search ranking boost for HTML pages.",
+              "type": "number",
+              "minimum": 0
+            },
+            "openapi": {
+              "default": 2,
+              "description": "Search ranking boost for OpenAPI operations and schemas.",
+              "type": "number",
+              "minimum": 0
+            },
+            "proto": {
+              "default": 1.5,
+              "description": "Search ranking boost for proto messages and RPCs.",
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "markdown",
+            "html",
+            "openapi",
+            "proto"
+          ],
+          "additionalProperties": false,
+          "description": "Per-format search ranking weights, applied via MiniSearch boostDocument."
+        }
+      },
+      "required": [
+        "enabled",
+        "typo_tolerance",
+        "weights"
+      ],
+      "additionalProperties": false
+    },
+    "dev": {
+      "description": "Dev server configuration.",
+      "type": "object",
+      "properties": {
+        "port": {
+          "default": 3000,
+          "description": "Dev server port.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "host": {
+          "default": "localhost",
+          "description": "Dev server host.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "port",
+        "host"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "base_path",
+    "stylesheet",
+    "dir",
+    "theme",
+    "ai_targets",
+    "search",
+    "dev"
+  ],
+  "additionalProperties": false,
+  "description": "aid project configuration. Generated JSON Schema is published at https://aid.tools/schemas/v0/aid.schema.json.",
+  "$id": "https://aid.tools/schemas/v0/aid.schema.json",
+  "title": "aid project configuration"
+}

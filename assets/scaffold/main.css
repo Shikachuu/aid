@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+/*
+ * Override aid's default theme tokens here. Anything you set takes precedence
+ * over the bundled defaults; everything else inherits. Tailwind 4 picks these
+ * up via @theme — change a token and every renderer (markdown, OpenAPI/Scalar,
+ * proto) reflects it automatically.
+ *
+ * Token reference:
+ *   --color-aid-bg, --color-aid-text, --color-aid-muted, --color-aid-border,
+ *   --color-aid-accent, --font-aid-sans, --font-aid-mono
+ */
+
+@theme {
+  /* example: tighten the brand color
+     --color-aid-accent: oklch(55% 0.18 280);
+  */
+}
