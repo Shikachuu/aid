@@ -125,4 +125,36 @@ describe("compileTailwind", () => {
     expect(css).toContain("--color-aid-extra")
     expect(css).toContain(".bg-aid-extra")
   })
+
+  test('inlines bundled theme when user main.css contains @import "aid/theme"', async () => {
+    await Bun.write(path.join(cwd, "main.css"), `@import "tailwindcss";\n@import "aid/theme";\n`)
+    const ctx = await makeCtx()
+    await writeStub(ctx, "aid-body")
+    const { css } = await compileTailwind({ ctx })
+    expect(css).toContain(".aid-body")
+    expect(css).toContain("--color-aid-bg")
+  })
+
+  test("user @theme overrides bundled tokens when imported after", async () => {
+    await Bun.write(
+      path.join(cwd, "main.css"),
+      `@import "tailwindcss";\n@import "aid/theme";\n@theme {\n  --color-aid-accent: oklch(50% 0.2 100);\n}\n`,
+    )
+    const ctx = await makeCtx()
+    await writeStub(ctx, "aid-body")
+    const { css } = await compileTailwind({ ctx })
+    expect(css).toContain("oklch(50% 0.2 100)")
+  })
+
+  test('user main.css without @import "aid/theme" gets no bundled content', async () => {
+    await Bun.write(
+      path.join(cwd, "main.css"),
+      `@import "tailwindcss";\n@theme {\n  --color-aid-custom: oklch(40% 0.1 200);\n}\n`,
+    )
+    const ctx = await makeCtx()
+    await writeStub(ctx, "aid-body")
+    const { css } = await compileTailwind({ ctx })
+    expect(css).not.toMatch(/\.aid-body\s*\{/)
+    expect(css).toContain("--color-aid-custom")
+  })
 })

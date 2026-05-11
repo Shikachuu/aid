@@ -40,13 +40,17 @@ const bundledTailwindcssEntry = Bun.resolveSync("tailwindcss/index.css", import.
  * that aren't statically discoverable (e.g. emitted by embedded UIs at render
  * time). Honours `theme.dark_mode`: `"off"` strips the dark `@media` block,
  * `"manual"` passes through unchanged. When dark_mode is `"auto"`, light @theme
- * oklch tokens are inverted to produce the dark palette automatically.
+ * oklch tokens are inverted to produce the dark palette automatically. Users can
+ * opt into the bundled aid theme (defaults, components, Scalar bridge) by writing
+ * `@import "aid/theme";` in their main.css; the bundled content is inlined into
+ * the source before compile.
  */
 export async function compileTailwind(args: CompileTailwindArgs): Promise<CompileTailwindResult> {
   const { ctx, safelist } = args
   const entry = await resolveEntry(ctx)
   const sourceTargets = collectSourceTargets(ctx)
-  const darkApplied = applyDarkModeFlag(entry.css, ctx.config.theme.dark_mode)
+  const inlined = inlineAidImports(entry.css)
+  const darkApplied = applyDarkModeFlag(inlined, ctx.config.theme.dark_mode)
   const source = buildSourcePrelude(sourceTargets) + darkApplied
 
   const dependencies: string[] = []
@@ -124,6 +128,17 @@ function formatSourcePath(p: string): string {
   // Tailwind's @source value is a glob string; normalise to POSIX separators so
   // a Windows host doesn't produce `C:\foo\bar` (backslashes are glob escapes).
   return p.replaceAll("\\", "/").replaceAll('"', '\\"')
+}
+
+const AID_THEME_IMPORT_RE = /@import\s+(?:url\(\s*)?["']aid\/theme["'](?:\s*\))?\s*;?/g
+
+// Replace `@import "aid/theme";` directives in the user's CSS with the bundled
+// theme content. The bundled CSS is embedded into the binary at build time, so
+// this works without a filesystem dependency — important for the eventual
+// `bun build --compile` distribution where bundled resources aren't real files
+// on disk.
+function inlineAidImports(css: string): string {
+  return css.replaceAll(AID_THEME_IMPORT_RE, bundledMainCss)
 }
 
 function applyDarkModeFlag(css: string, mode: "auto" | "manual" | "off"): string {
