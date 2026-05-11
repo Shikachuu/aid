@@ -1,5 +1,10 @@
-import { dirname, resolve as resolvePath } from "node:path"
-import { fileURLToPath } from "node:url"
+import { chmod, mkdtemp } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import bufDarwinArm64 from "@bufbuild/buf-darwin-arm64/bin/buf" with { type: "file" }
+import bufDarwinX64 from "@bufbuild/buf-darwin-x64/bin/buf" with { type: "file" }
+import bufLinuxArm64 from "@bufbuild/buf-linux-aarch64/bin/buf" with { type: "file" }
+import bufLinuxX64 from "@bufbuild/buf-linux-x64/bin/buf" with { type: "file" }
 import { findUserConfig } from "./config-resolve"
 import { bufDefault } from "./configs/buf.default"
 import type { Diagnostic, ToolResult } from "./diagnostics"
@@ -8,22 +13,38 @@ const USER_CONFIGS = ["buf.yaml", "buf.yml"] as const
 
 let cachedBin: string | null | undefined
 
+const pickEmbeddedBuf = (): string | null => {
+  if (process.platform === "darwin") {
+    return process.arch === "arm64" ? bufDarwinArm64 : bufDarwinX64
+  }
+  if (process.platform === "linux") {
+    return process.arch === "arm64" ? bufLinuxArm64 : bufLinuxX64
+  }
+  return null
+}
+
+// bunfs paths can be read but not exec'd by posix_spawn; extract to real FS.
+const extractEmbeddedBuf = async (embedded: string): Promise<string> => {
+  const dir = await mkdtemp(join(tmpdir(), "aid-buf-"))
+  const dst = join(dir, "buf")
+  await Bun.write(dst, Bun.file(embedded))
+  await chmod(dst, 0o755)
+  return dst
+}
+
 /**
- * Locate the `buf` binary. Tries the @bufbuild/buf npm package first, then
- * falls back to `$PATH`. Returns `null` if buf isn't available.
+ * Locate the `buf` binary. In compiled binaries the per-platform buf is
+ * embedded via `with { type: "file" }` and extracted to a temp path on first
+ * call (bunfs paths can't be exec'd directly). In dev runs the embedded path
+ * resolves to a real node_modules file. Falls back to `$PATH` when neither is
+ * available.
  */
 export const resolveBufBinary = async (): Promise<string | null> => {
   if (cachedBin !== undefined) return cachedBin
-  try {
-    const pkgUrl = import.meta.resolve("@bufbuild/buf/package.json")
-    const pkgPath = pkgUrl.startsWith("file://") ? fileURLToPath(pkgUrl) : pkgUrl
-    const binPath = resolvePath(dirname(pkgPath), "bin", "buf")
-    if (await Bun.file(binPath).exists()) {
-      cachedBin = binPath
-      return binPath
-    }
-  } catch {
-    // fall through
+  const embedded = pickEmbeddedBuf()
+  if (embedded !== null && (await Bun.file(embedded).exists())) {
+    cachedBin = embedded.startsWith("/$bunfs/") ? await extractEmbeddedBuf(embedded) : embedded
+    return cachedBin
   }
   cachedBin = Bun.which("buf")
   return cachedBin

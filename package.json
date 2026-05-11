@@ -8,9 +8,7 @@
     "aid": "./src/cli/index.ts"
   },
   "scripts": {
-    "dev": "bun run src/cli/index.ts dev",
-    "build": "bun run scripts/bundle-web.ts",
-    "compile": "bun run scripts/compile.ts",
+    "build": "bun run scripts/compile.ts",
     "emit-schema": "bun run scripts/emit-schema.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
