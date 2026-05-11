@@ -33,7 +33,7 @@ export function Layout(props: LayoutProps) {
           <aside class="aid-sidebar">
             <Nav tree={nav} />
           </aside>
-          <main class="aid-main">
+          <main class="aid-main block">
             <RawHtml html={bodyHtml} />
           </main>
         </div>

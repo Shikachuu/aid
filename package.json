@@ -30,6 +30,7 @@
     "@stoplight/spectral-parsers": "^1.0.5",
     "@stoplight/spectral-rulesets": "^1.22.1",
     "@tailwindcss/node": "*",
+    "@tailwindcss/oxide": "^4.3.0",
     "citty": "*",
     "markdownlint-cli2": "*",
     "minisearch": "^7",
