@@ -1,0 +1,56 @@
+import { afterEach, beforeEach, expect, test } from "bun:test"
+import { mkdtemp, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import path from "node:path"
+import { AidConfigSchema } from "../../src/core/config"
+import { build } from "../../src/core/pipeline"
+import type { BuildContext } from "../../src/core/types"
+
+let cwd: string
+
+beforeEach(async () => {
+  cwd = await mkdtemp(path.join(tmpdir(), "aid-security-"))
+})
+
+afterEach(async () => {
+  await rm(cwd, { recursive: true, force: true })
+})
+
+async function makeCtx(): Promise<BuildContext> {
+  const config = AidConfigSchema.parse({ name: "test" })
+  const ctx: BuildContext = {
+    config,
+    cwd,
+    contentDir: path.join(cwd, config.dir.content),
+    outputDir: path.join(cwd, config.dir.output),
+    templatesDir: null,
+    staticDir: path.join(cwd, config.dir.static),
+  }
+  await Bun.write(path.join(cwd, "main.css"), `@import "tailwindcss";\n@import "aid/theme";\n`)
+  return ctx
+}
+
+test("blocks colocated <img src> that escapes contentDir", async () => {
+  const ctx = await makeCtx()
+  // A 'secret' sibling outside contentDir.
+  await Bun.write(path.join(cwd, "secret.txt"), "TOP SECRET")
+  await Bun.write(path.join(ctx.contentDir, "index.md"), "# Attack\n\n![](../secret.txt)\n")
+  await expect(build(ctx)).rejects.toThrow(/escapes contentDir/)
+  // Crucially, the secret was NOT copied into the output.
+  expect(await Bun.file(path.join(ctx.outputDir, "secret.txt")).exists()).toBe(false)
+})
+
+test("hard-errors when static/ and a colocated asset target the same path", async () => {
+  const ctx = await makeCtx()
+  await Bun.write(path.join(ctx.staticDir, "hero.svg"), "<svg>static</svg>")
+  await Bun.write(path.join(ctx.contentDir, "hero.svg"), "<svg>colocated</svg>")
+  await Bun.write(path.join(ctx.contentDir, "index.md"), "# Collide\n\n![](./hero.svg)\n")
+  await expect(build(ctx)).rejects.toThrow(/asset collision/)
+})
+
+test("hard-errors when two routes collide", async () => {
+  const ctx = await makeCtx()
+  await Bun.write(path.join(ctx.contentDir, "products.md"), "# A\n")
+  await Bun.write(path.join(ctx.contentDir, "products", "index.md"), "# B\n")
+  await expect(build(ctx)).rejects.toThrow(/route collision/)
+})

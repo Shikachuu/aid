@@ -12,11 +12,22 @@ export type LayoutProps = {
   nav: NavNode[]
   stylesheetHref: string
   webBundleHref: string
+  /** Per-page; injected only when the page contains at least one mermaid diagram. */
+  mermaidBundleHref?: string | null
   bodyHtml: string
 }
 
 export function Layout(props: LayoutProps) {
-  const { config, title, description, nav, stylesheetHref, webBundleHref, bodyHtml } = props
+  const {
+    config,
+    title,
+    description,
+    nav,
+    stylesheetHref,
+    webBundleHref,
+    mermaidBundleHref,
+    bodyHtml,
+  } = props
   return (
     <html lang="en">
       <head>
@@ -40,6 +51,7 @@ export function Layout(props: LayoutProps) {
         </div>
         <Footer config={config} />
         <script type="module" src={webBundleHref} defer />
+        {mermaidBundleHref ? <script type="module" src={mermaidBundleHref} defer /> : null}
       </body>
     </html>
   )

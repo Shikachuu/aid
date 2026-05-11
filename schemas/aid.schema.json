@@ -48,12 +48,18 @@
           "default": "",
           "description": "Optional directory of named partial overrides. Empty string = use bundled defaults only.",
           "type": "string"
+        },
+        "static": {
+          "default": "static",
+          "description": "Directory copied verbatim into the build output. Use for images, fonts, favicon, robots.txt. Default 'static'.",
+          "type": "string"
         }
       },
       "required": [
         "content",
         "output",
-        "templates"
+        "templates",
+        "static"
       ],
       "additionalProperties": false
     },

@@ -5,6 +5,8 @@ description: Fixture for aid's integration tests.
 
 # Sample Site
 
+![Sample hero](./hero.svg)
+
 This is a small fixture exercising every page kind aid supports in v0.1:
 
 - This page (markdown).

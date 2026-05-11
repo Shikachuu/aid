@@ -14,6 +14,12 @@ export type CompileTailwindArgs = {
    * of @source scan results.
    */
   safelist?: Iterable<string>
+  /**
+   * In-memory HTML strings to scan for utility-class candidates. Pass the
+   * rendered page HTML here so Tailwind picks up classes that haven't been
+   * written to disk yet — avoiding a temp-write/round-trip pass.
+   */
+  htmlContents?: readonly string[]
 }
 
 export type CompileTailwindResult = {
@@ -46,7 +52,7 @@ const bundledTailwindcssEntry = Bun.resolveSync("tailwindcss/index.css", import.
  * the source before compile.
  */
 export async function compileTailwind(args: CompileTailwindArgs): Promise<CompileTailwindResult> {
-  const { ctx, safelist } = args
+  const { ctx, safelist, htmlContents } = args
   const entry = await resolveEntry(ctx)
   const sourceTargets = collectSourceTargets(ctx)
   const inlined = inlineAidImports(entry.css)
@@ -69,7 +75,13 @@ export async function compileTailwind(args: CompileTailwindArgs): Promise<Compil
     },
   })
   const scanner = new Scanner({ sources: compiled.sources })
-  const candidates = [...scanner.scan(), ...(safelist ?? [])]
+  const candidates = [...scanner.scan()]
+  if (htmlContents && htmlContents.length > 0) {
+    candidates.push(
+      ...scanner.scanFiles(htmlContents.map((content) => ({ content, extension: "html" }))),
+    )
+  }
+  if (safelist) candidates.push(...safelist)
   const css = compiled.build(candidates)
   return { css, dependencies }
 }
@@ -103,6 +115,9 @@ type SourceTarget = {
 }
 
 function collectSourceTargets(ctx: BuildContext): SourceTarget[] {
+  // Rendered HTML is passed to compileTailwind in memory via `htmlContents`;
+  // we no longer @source-scan `dist/**/*.html`. That avoids a temp-write pass
+  // and lets us emit each HTML file exactly once.
   const targets: SourceTarget[] = [
     { base: aidProjectRoot, pattern: "src/theme/components/**/*.{tsx,ts}" },
     { base: aidProjectRoot, pattern: "src/theme/**/*.{tsx,ts}" },
@@ -114,7 +129,6 @@ function collectSourceTargets(ctx: BuildContext): SourceTarget[] {
       pattern: "**/*.{tsx,ts,html}",
     })
   }
-  targets.push({ base: ctx.outputDir, pattern: "**/*.html" })
   return targets
 }
 

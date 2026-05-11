@@ -10,12 +10,23 @@ import remarkRehype from "remark-rehype"
 import { unified } from "unified"
 import { visit } from "unist-util-visit"
 import type { RenderedPage, Route, SearchTokens } from "../../core/types"
+import { type CopyAsset, colocatedAssetsPlugin } from "./colocated-assets"
 import { extractFrontmatter, type Frontmatter } from "./frontmatter"
-import { mermaidPlugin } from "./mermaid"
+import { HAS_MERMAID_FLAG, mermaidPlugin } from "./mermaid"
 import { SHIKI_OPTIONS } from "./shiki"
 
-/** Arguments for {@link renderMarkdown}: the route metadata and the absolute source-file path. */
-export type RenderMarkdownArgs = { route: Route; sourcePath: string }
+/** Arguments for {@link renderMarkdown}. */
+export type RenderMarkdownArgs = {
+  route: Route
+  /** Absolute path of the source `.md` file on disk. */
+  sourcePath: string
+  /**
+   * Optional callback invoked once per relative `<img src>` encountered. The
+   * pipeline supplies one that copies assets into the route's output dir;
+   * omit during unit tests for a pure render with no side effects.
+   */
+  copyAsset?: CopyAsset
+}
 
 /**
  * Parse a markdown file into a RenderedPage. Frontmatter is YAML, validated by
@@ -33,7 +44,7 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
   const titleSink = { value: frontmatter?.title ?? filenameTitle }
   const headings: string[] = []
 
-  const file = await unified()
+  let processor = unified()
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkRehype, { allowDangerousHtml: true })
@@ -56,8 +67,15 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
     })
     .use(mermaidPlugin)
     .use(rehypeShiki, SHIKI_OPTIONS)
-    .use(rehypeStringify, { allowDangerousHtml: true })
-    .process(body)
+
+  if (args.copyAsset) {
+    processor = processor.use(colocatedAssetsPlugin, {
+      sourceDir: path.dirname(args.sourcePath),
+      copyAsset: args.copyAsset,
+    })
+  }
+
+  const file = await processor.use(rehypeStringify, { allowDangerousHtml: true }).process(body)
 
   const html = String(file)
   const searchTokens: SearchTokens = {
@@ -72,6 +90,7 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
     html,
     searchTokens,
     exports: [],
+    hasMermaid: file.data[HAS_MERMAID_FLAG] === true,
   }
 }
 

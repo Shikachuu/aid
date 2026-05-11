@@ -67,6 +67,12 @@ export const AidConfigSchema = z
           .describe(
             "Optional directory of named partial overrides. Empty string = use bundled defaults only.",
           ),
+        static: z
+          .string()
+          .default("static")
+          .describe(
+            "Directory copied verbatim into the build output. Use for images, fonts, favicon, robots.txt. Default 'static'.",
+          ),
       })
       .prefault({})
       .describe("Project directory configuration."),

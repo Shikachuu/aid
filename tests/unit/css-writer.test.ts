@@ -28,6 +28,7 @@ function makeCtx(overrides: { base_path?: string } = {}): BuildContext {
     contentDir: path.join(cwd, config.dir.content),
     outputDir,
     templatesDir: null,
+    staticDir: path.join(cwd, config.dir.static),
   }
 }
 

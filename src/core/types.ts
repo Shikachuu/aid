@@ -24,6 +24,8 @@ export type RenderedPage = {
   searchTokens: SearchTokens
   /** Side-channel exports (`.md` / `.json`). */
   exports: SideChannelExport[]
+  /** True iff the rendered body contains at least one mermaid diagram. Drives lazy <script> injection. */
+  hasMermaid: boolean
 }
 
 export type SearchTokens = {
@@ -59,4 +61,6 @@ export type BuildContext = {
   outputDir: string
   /** Optional override templates directory (cwd + config.dir.templates). */
   templatesDir: string | null
+  /** Resolved static-asset root (cwd + config.dir.static). Copied verbatim to outputDir. */
+  staticDir: string
 }

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import type { Route } from "../../../src/core/types"
@@ -17,7 +17,7 @@ afterEach(async () => {
 
 async function renderFixture(name: string, source: string) {
   const sourcePath = path.join(dir, name)
-  await writeFile(sourcePath, source)
+  await Bun.write(sourcePath, source)
   const route: Route = { source: sourcePath, path: "/page", kind: "markdown" }
   return renderMarkdown({ route, sourcePath })
 }
@@ -101,6 +101,22 @@ describe("renderMarkdown", () => {
     expect(page.route.frontmatter?.tags).toEqual(["docs", "intro"])
   })
 
+  test("CRLF frontmatter delimiters are recognised and stripped", async () => {
+    const page = await renderFixture(
+      "page.md",
+      `---\r\ntitle: Win Line Endings\r\n---\r\n\r\n# Body\r\n`,
+    )
+    expect(page.route.frontmatter?.title).toBe("Win Line Endings")
+    expect(page.searchTokens.title).toBe("Win Line Endings")
+    expect(page.html).toContain("Body")
+    // The body must not include the frontmatter delimiters as literal text.
+    expect(page.html).not.toContain("---")
+  })
+
+  test("scalar frontmatter (non-mapping) throws", async () => {
+    await expect(renderFixture("page.md", `---\njust-a-string\n---\n\n# T\n`)).rejects.toThrow()
+  })
+
   test("shiki dual-theme highlights ts fences with --shiki-light/--shiki-dark", async () => {
     const page = await renderFixture("page.md", "# T\n\n```ts\nconst answer: number = 42\n```\n")
     expect(page.html).toContain('class="shiki')
@@ -146,5 +162,60 @@ describe("renderMarkdown", () => {
     expect(page.html).toContain('<pre class="mermaid">')
     expect(page.html).toContain('class="shiki')
     expect(page.html).toContain("language-ts")
+  })
+
+  test("relative <img src> is rewritten via copyAsset and the callback is invoked", async () => {
+    const sourcePath = path.join(dir, "page.md")
+    await Bun.write(sourcePath, "# T\n\n![alt](./hero.png)\n")
+    await Bun.write(path.join(dir, "hero.png"), "binary")
+    const route: Route = { source: sourcePath, path: "/page", kind: "markdown" }
+    const calls: string[] = []
+    const copyAsset = async (absSrc: string) => {
+      calls.push(absSrc)
+      return "/page/hero.png"
+    }
+    const page = await renderMarkdown({ route, sourcePath, copyAsset })
+    expect(calls).toEqual([path.join(dir, "hero.png")])
+    expect(page.html).toContain('src="/page/hero.png"')
+    expect(page.html).not.toContain("./hero.png")
+  })
+
+  test("missing relative <img src> leaves src untouched and surfaces a warning", async () => {
+    const sourcePath = path.join(dir, "page.md")
+    await Bun.write(sourcePath, "# T\n\n![alt](./missing.png)\n")
+    const route: Route = { source: sourcePath, path: "/page", kind: "markdown" }
+    const copyAsset = async (_absSrc: string) => null
+    const page = await renderMarkdown({ route, sourcePath, copyAsset })
+    expect(page.html).toContain('src="./missing.png"')
+  })
+
+  test("absolute and URL <img src> are not routed through copyAsset", async () => {
+    const sourcePath = path.join(dir, "page.md")
+    await Bun.write(
+      sourcePath,
+      "# T\n\n![](https://example.com/x.png)\n\n![](/already-absolute.png)\n",
+    )
+    const route: Route = { source: sourcePath, path: "/page", kind: "markdown" }
+    const calls: string[] = []
+    const copyAsset = async (absSrc: string) => {
+      calls.push(absSrc)
+      return "/should-not-be-called"
+    }
+    const page = await renderMarkdown({ route, sourcePath, copyAsset })
+    expect(calls).toEqual([])
+    expect(page.html).toContain("https://example.com/x.png")
+    expect(page.html).toContain("/already-absolute.png")
+  })
+
+  test("copyAsset throwing propagates out of the renderer", async () => {
+    const sourcePath = path.join(dir, "page.md")
+    await Bun.write(sourcePath, "# T\n\n![](./escape.png)\n")
+    const route: Route = { source: sourcePath, path: "/page", kind: "markdown" }
+    const copyAsset = async () => {
+      throw new Error("boundary violation")
+    }
+    await expect(renderMarkdown({ route, sourcePath, copyAsset })).rejects.toThrow(
+      /boundary violation/,
+    )
   })
 })

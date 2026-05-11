@@ -19,64 +19,8 @@
 }
 
 /*
- * Shell. Kept minimal — Tailwind utilities in the components do the heavy
- * lifting. These rules cover the small set of selectors we want stable for
- * Scalar / proto-renderer styling.
- */
-
-.aid-body {
-  background: var(--color-aid-bg);
-  color: var(--color-aid-text);
-  font-family: var(--font-aid-sans);
-  margin: 0;
-}
-
-.aid-shell {
-  display: grid;
-  grid-template-columns: 16rem 1fr;
-  gap: 2rem;
-  max-width: 80rem;
-  margin: 0 auto;
-  padding: 2rem 1rem;
-}
-
-.aid-header,
-.aid-footer {
-  border-bottom: 1px solid var(--color-aid-border);
-  padding: 1rem;
-}
-
-.aid-footer {
-  border-bottom: 0;
-  border-top: 1px solid var(--color-aid-border);
-}
-
-.aid-page-toolbar {
-  display: flex;
-  justify-content: flex-end;
-}
-
-/*
- * Scalar token bridge. Maps the embedded api-reference's CSS vars to ours so
- * the OpenAPI renderer inherits the same palette without per-page CSS.
- */
-
-:where(.aid-page-openapi) {
-  --scalar-color-1: var(--color-aid-text);
-  --scalar-color-2: var(--color-aid-muted);
-  --scalar-background-1: var(--color-aid-bg);
-  --scalar-border-color: var(--color-aid-border);
-  --scalar-color-accent: var(--color-aid-accent);
-  --scalar-font: var(--font-aid-sans);
-  --scalar-font-code: var(--font-aid-mono);
-}
-
-/*
- * Shiki dual-theme bridge. `@shikijs/rehype` with `themes: { light, dark }`
- * emits inline `style="--shiki-light:#…;--shiki-dark:#…"` on every span. By
- * default each span uses `color: var(--shiki-light)`. Under
- * `prefers-color-scheme: dark` we rewrite the variable so spans pick up the
- * dark colour without a re-highlight on the client.
+ * Base. Document-level concerns only — color-scheme so form controls/scrollbars
+ * pick up the OS preference. Visual styling lives in `@layer components`.
  */
 
 @layer base {
@@ -90,7 +34,63 @@
   }
 }
 
+/*
+ * Components. Everything else is a Tailwind-utility composition via @apply or
+ * a CSS-variable bridge for a third-party renderer that consumes our tokens.
+ */
+
 @layer components {
+  .aid-body {
+    @apply m-0;
+    background: var(--color-aid-bg);
+    color: var(--color-aid-text);
+    font-family: var(--font-aid-sans);
+  }
+
+  .aid-shell {
+    @apply mx-auto grid max-w-5xl gap-8 px-4 py-8;
+    grid-template-columns: 16rem 1fr;
+  }
+
+  .aid-header,
+  .aid-footer {
+    @apply p-4;
+    border-bottom: 1px solid var(--color-aid-border);
+  }
+
+  .aid-footer {
+    border-bottom: 0;
+    border-top: 1px solid var(--color-aid-border);
+  }
+
+  .aid-page-toolbar {
+    @apply flex justify-end;
+  }
+
+  /*
+   * Scalar token bridge. Maps the embedded api-reference's CSS vars to ours so
+   * the OpenAPI renderer inherits the same palette without per-page CSS. These
+   * are var declarations on a host selector — no utility equivalent in Tailwind,
+   * so they stay raw inside the components layer.
+   */
+
+  :where(.aid-page-openapi) {
+    --scalar-color-1: var(--color-aid-text);
+    --scalar-color-2: var(--color-aid-muted);
+    --scalar-background-1: var(--color-aid-bg);
+    --scalar-border-color: var(--color-aid-border);
+    --scalar-color-accent: var(--color-aid-accent);
+    --scalar-font: var(--font-aid-sans);
+    --scalar-font-code: var(--font-aid-mono);
+  }
+
+  /*
+   * Shiki dual-theme bridge. `@shikijs/rehype` with `themes: { light, dark }`
+   * emits inline `style="--shiki-light:#…;--shiki-dark:#…"` on every span. We
+   * pick the light variable by default and flip to `--shiki-dark` under
+   * `prefers-color-scheme: dark`, so dark mode works without a re-highlight.
+   */
+
   .shiki,
   .shiki span {
     color: var(--shiki-light);
@@ -106,30 +106,23 @@
   }
 
   /*
-   * Prose. Tailwind utilities still do most layout; these rules cover the
-   * markdown-specific selectors (headings, anchors, code blocks) and keep them
-   * coherent with the theme tokens.
+   * Prose. Tailwind utilities do the visual work; CSS-variable references
+   * pick up the theme tokens so user overrides flow through.
    */
 
   .aid-page-markdown pre {
-    @apply overflow-x-auto rounded-lg p-4;
+    @apply overflow-x-auto rounded-lg p-4 text-sm leading-relaxed;
     font-family: var(--font-aid-mono);
-    font-size: 0.875rem;
-    line-height: 1.6;
   }
 
   .aid-page-markdown :not(pre) > code {
-    @apply rounded;
+    @apply rounded px-1 py-0.5 text-[0.875em];
     font-family: var(--font-aid-mono);
-    font-size: 0.875em;
-    padding: 0.125rem 0.25rem;
     background: color-mix(in oklch, var(--color-aid-muted) 12%, transparent);
   }
 
   .aid-heading-link {
-    @apply opacity-0 transition-opacity;
-    margin-left: 0.35em;
-    text-decoration: none;
+    @apply ml-1.5 no-underline opacity-0 transition-opacity;
   }
 
   .aid-page-markdown :is(h1, h2, h3, h4, h5, h6):hover .aid-heading-link,

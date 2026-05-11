@@ -1,4 +1,3 @@
-import { mkdir } from "node:fs/promises"
 import path from "node:path"
 import type { BuildContext } from "./types"
 
@@ -27,7 +26,7 @@ export async function writeCss(args: WriteCssArgs): Promise<WriteCssResult> {
   const hash = Bun.hash.xxHash64(args.css).toString(16).padStart(16, "0").slice(0, 8)
   const filename = `main.${hash}.css`
   const filePath = path.join(args.ctx.outputDir, filename)
-  await mkdir(args.ctx.outputDir, { recursive: true })
+  // Bun.write auto-creates parent dirs; no explicit mkdir needed.
   await Bun.write(filePath, args.css)
   const href = path.posix.join(args.ctx.config.base_path, filename)
   return { path: filePath, href }

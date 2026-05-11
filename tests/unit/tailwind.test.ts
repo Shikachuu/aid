@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { mkdir, mkdtemp, rm } from "node:fs/promises"
+import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { AidConfigSchema } from "../../src/core/config"
@@ -24,27 +24,28 @@ async function makeCtx(
     stylesheet: overrides.stylesheet ?? "main.css",
     theme: { dark_mode: overrides.dark_mode ?? "auto" },
   })
-  const outputDir = path.join(cwd, config.dir.output)
-  await mkdir(outputDir, { recursive: true })
   const ctx: BuildContext = {
     config,
     cwd,
     contentDir: path.join(cwd, config.dir.content),
-    outputDir,
+    outputDir: path.join(cwd, config.dir.output),
     templatesDir: null,
+    staticDir: path.join(cwd, config.dir.static),
   }
   return ctx
 }
 
-async function writeStub(ctx: BuildContext, classes: string): Promise<void> {
-  await Bun.write(path.join(ctx.outputDir, "stub.html"), `<div class="${classes}">x</div>`)
+function stubHtml(classes: string): string {
+  return `<div class="${classes}">x</div>`
 }
 
 describe("compileTailwind", () => {
   test("compiles bundled defaults when no user main.css exists", async () => {
     const ctx = await makeCtx()
-    await writeStub(ctx, "bg-aid-bg text-aid-text")
-    const { css } = await compileTailwind({ ctx })
+    const { css } = await compileTailwind({
+      ctx,
+      htmlContents: [stubHtml("bg-aid-bg text-aid-text")],
+    })
     expect(css.length).toBeGreaterThan(0)
     expect(css).toContain("--color-aid-bg")
     expect(css).toContain(".bg-aid-bg")
@@ -57,8 +58,7 @@ describe("compileTailwind", () => {
       `@import "tailwindcss";\n@theme {\n  --color-aid-bg: oklch(99% 0 0);\n}\n@media (prefers-color-scheme: dark) {\n  :root {\n    --color-test-marker: oklch(42% 0 0);\n  }\n}\n`,
     )
     const ctx = await makeCtx({ dark_mode: "off" })
-    await writeStub(ctx, "bg-aid-bg")
-    const { css } = await compileTailwind({ ctx })
+    const { css } = await compileTailwind({ ctx, htmlContents: [stubHtml("bg-aid-bg")] })
     expect(css).not.toContain("oklch(42% 0 0)")
   })
 
@@ -68,15 +68,13 @@ describe("compileTailwind", () => {
       `@import "tailwindcss";\n@theme {\n  --color-aid-bg: oklch(99% 0 0);\n}\n@media (prefers-color-scheme: dark) {\n  :root {\n    --color-test-marker: oklch(42% 0 0);\n  }\n}\n`,
     )
     const ctx = await makeCtx({ dark_mode: "manual" })
-    await writeStub(ctx, "bg-aid-bg")
-    const { css } = await compileTailwind({ ctx })
+    const { css } = await compileTailwind({ ctx, htmlContents: [stubHtml("bg-aid-bg")] })
     expect(css).toContain("oklch(42% 0 0)")
   })
 
   test("auto-derives dark tokens from light @theme", async () => {
     const ctx = await makeCtx({ dark_mode: "auto" })
-    await writeStub(ctx, "bg-aid-bg")
-    const { css } = await compileTailwind({ ctx })
+    const { css } = await compileTailwind({ ctx, htmlContents: [stubHtml("bg-aid-bg")] })
     expect(css).toContain("oklch(1% 0 0)")
   })
 
@@ -86,8 +84,7 @@ describe("compileTailwind", () => {
       `@import "tailwindcss";\n@theme {\n  --color-aid-custom: oklch(50% 0.2 10);\n}\n`,
     )
     const ctx = await makeCtx()
-    await writeStub(ctx, "bg-aid-custom")
-    const { css } = await compileTailwind({ ctx })
+    const { css } = await compileTailwind({ ctx, htmlContents: [stubHtml("bg-aid-custom")] })
     expect(css).toContain("--color-aid-custom")
     expect(css).toContain(".bg-aid-custom")
     // Bundled-only token must not appear.
@@ -96,8 +93,7 @@ describe("compileTailwind", () => {
 
   test("returns dependencies as string array", async () => {
     const ctx = await makeCtx()
-    await writeStub(ctx, "bg-aid-bg")
-    const { dependencies } = await compileTailwind({ ctx })
+    const { dependencies } = await compileTailwind({ ctx, htmlContents: [stubHtml("bg-aid-bg")] })
     expect(Array.isArray(dependencies)).toBe(true)
   })
 
@@ -120,8 +116,7 @@ describe("compileTailwind", () => {
       `@theme {\n  --color-aid-extra: oklch(50% 0.2 100);\n}\n`,
     )
     await Bun.write(path.join(cwd, "main.css"), `@import "tailwindcss";\n@import "./extra.css";\n`)
-    await writeStub(ctx, "bg-aid-extra")
-    const { css } = await compileTailwind({ ctx })
+    const { css } = await compileTailwind({ ctx, htmlContents: [stubHtml("bg-aid-extra")] })
     expect(css).toContain("--color-aid-extra")
     expect(css).toContain(".bg-aid-extra")
   })
@@ -129,8 +124,7 @@ describe("compileTailwind", () => {
   test('inlines bundled theme when user main.css contains @import "aid/theme"', async () => {
     await Bun.write(path.join(cwd, "main.css"), `@import "tailwindcss";\n@import "aid/theme";\n`)
     const ctx = await makeCtx()
-    await writeStub(ctx, "aid-body")
-    const { css } = await compileTailwind({ ctx })
+    const { css } = await compileTailwind({ ctx, htmlContents: [stubHtml("aid-body")] })
     expect(css).toContain(".aid-body")
     expect(css).toContain("--color-aid-bg")
   })
@@ -141,8 +135,7 @@ describe("compileTailwind", () => {
       `@import "tailwindcss";\n@import "aid/theme";\n@theme {\n  --color-aid-accent: oklch(50% 0.2 100);\n}\n`,
     )
     const ctx = await makeCtx()
-    await writeStub(ctx, "aid-body")
-    const { css } = await compileTailwind({ ctx })
+    const { css } = await compileTailwind({ ctx, htmlContents: [stubHtml("aid-body")] })
     expect(css).toContain("oklch(50% 0.2 100)")
   })
 
@@ -152,8 +145,7 @@ describe("compileTailwind", () => {
       `@import "tailwindcss";\n@theme {\n  --color-aid-custom: oklch(40% 0.1 200);\n}\n`,
     )
     const ctx = await makeCtx()
-    await writeStub(ctx, "aid-body")
-    const { css } = await compileTailwind({ ctx })
+    const { css } = await compileTailwind({ ctx, htmlContents: [stubHtml("aid-body")] })
     expect(css).not.toMatch(/\.aid-body\s*\{/)
     expect(css).toContain("--color-aid-custom")
   })

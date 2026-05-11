@@ -10,17 +10,21 @@ import type { BuildContext, Route } from "./types"
 export async function buildRoutes(ctx: BuildContext): Promise<Route[]> {
   // TODO(other-renderers): wire .html/.yaml/.proto renderers in subsequent milestones.
   const glob = new Bun.Glob("**/*.md")
-  const routes: Route[] = []
+  const byPath = new Map<string, Route>()
   for await (const relative of glob.scan({ cwd: ctx.contentDir, onlyFiles: true })) {
     const segments = relative.split(path.sep)
     if (segments.some((seg) => seg.startsWith("_"))) continue
+    const source = path.join(ctx.contentDir, relative)
     const routePath = toRoutePath(relative)
-    routes.push({
-      source: path.join(ctx.contentDir, relative),
-      path: routePath,
-      kind: "markdown",
-    })
+    const existing = byPath.get(routePath)
+    if (existing) {
+      throw new Error(
+        `aid: route collision — both "${existing.source}" and "${source}" resolve to ${routePath}. Rename one (e.g. drop the index.md, or move the bare .md into a subdirectory).`,
+      )
+    }
+    byPath.set(routePath, { source, path: routePath, kind: "markdown" })
   }
+  const routes = [...byPath.values()]
   routes.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
   return routes
 }

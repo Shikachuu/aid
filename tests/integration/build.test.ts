@@ -27,6 +27,7 @@ test("produces dist/index.html linking a hashed main CSS for the sample fixture"
     contentDir: path.join(cwd, config.dir.content),
     outputDir: path.join(cwd, config.dir.output),
     templatesDir: config.dir.templates === "" ? null : path.join(cwd, config.dir.templates),
+    staticDir: path.join(cwd, config.dir.static),
   }
 
   await build(ctx)
@@ -58,11 +59,25 @@ test("produces dist/index.html linking a hashed main CSS for the sample fixture"
   // Mermaid fence rewritten to <pre class="mermaid">; shiki didn't touch it.
   expect(html).toContain('<pre class="mermaid">')
   expect(html).toContain("graph LR")
-  // Web bundle is emitted with a hashed filename and a <script> tag links it.
+  // Base web bundle is emitted with a hashed filename and linked on every page.
   const webMatches = entries.filter((e) => /^aid-web\.[a-z0-9]+\.js$/.test(e))
   expect(webMatches.length).toBe(1)
   const webFilename = webMatches[0] as string
   expect(html).toContain(`<script type="module" src="/${webFilename}" defer>`)
+  // Mermaid bundle is emitted only because the fixture has a mermaid block,
+  // and the script tag for it is injected only on the pages that use it.
+  const mermaidEntries = entries.filter((e) => /^aid-mermaid\.[a-z0-9]+\.js$/.test(e))
+  expect(mermaidEntries.length).toBe(1)
+  const mermaidFilename = mermaidEntries[0] as string
+  expect(html).toContain(`<script type="module" src="/${mermaidFilename}" defer>`)
+
+  // Top-level static/ is copied verbatim into the output root.
+  expect(await Bun.file(path.join(ctx.outputDir, "logo.svg")).exists()).toBe(true)
+  // Colocated images next to the markdown source land beside the rendered page
+  // and the <img src> is rewritten to point at the absolute output path.
+  expect(await Bun.file(path.join(ctx.outputDir, "hero.svg")).exists()).toBe(true)
+  expect(html).toContain('src="/hero.svg"')
+  expect(html).not.toContain("./hero.svg")
 
   const css = await Bun.file(path.join(ctx.outputDir, cssFilename)).text()
   // The fixture's main.css overrides --color-aid-accent via @theme; proves the

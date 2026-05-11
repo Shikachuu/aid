@@ -1,53 +1,108 @@
-import { mkdir } from "node:fs/promises"
 import path from "node:path"
+import { aidMermaidJs, aidWebJs } from "../web/_bundled"
 import type { BuildContext } from "./types"
 
 /** Inputs for {@link buildWebBundle}. */
 export type BuildWebBundleArgs = {
   ctx: BuildContext
+  /**
+   * When `true`, the mermaid runtime bundle is emitted alongside the base one.
+   * When `false` (the default), only the base bundle is produced — pages with
+   * no diagrams never pay for the mermaid library.
+   */
+  includeMermaid?: boolean
 }
 
-/** Result of writing the compiled web bundle to disk. */
+/** Result of writing the compiled web bundle(s) to disk. */
 export type BuildWebBundleResult = {
-  /** Absolute filesystem path the bundle was written to. */
-  path: string
-  /** Public URL path for use in `<script src>`. Joined against `config.base_path`. */
-  href: string
+  /** Public href for the base bundle. Always present; safe to inject on every page. */
+  baseHref: string
+  /** Public href for the mermaid bundle, or `null` when `includeMermaid` is false. */
+  mermaidHref: string | null
 }
 
 const aidProjectRoot = path.join(import.meta.dir, "../..")
-const webEntry = path.join(aidProjectRoot, "src/web/index.ts")
+const baseEntry = path.join(aidProjectRoot, "src/web/index.ts")
+const mermaidEntry = path.join(aidProjectRoot, "src/web/mermaid-entry.ts")
 
 /**
- * Bundle `src/web/index.ts` for the browser via `Bun.build`, hash the output
- * with xxh64 (mirroring `writeCss`), and write it to `<outputDir>/aid-web.<hash>.js`.
- * Returns the public href to drop into `<script src>`. The bundle is small —
- * heavyweight runtimes like `mermaid` are pulled in via `await import(…)` and
- * code-split into separate chunks that the browser only fetches on demand.
+ * Materialise the browser-side runtime into `outputDir`. There are two
+ * entrypoints: the always-on base bundle (dark-mode toggle, search, AI
+ * buttons) and an optional mermaid bundle that lazy-imports the diagram
+ * library on `DOMContentLoaded`. We split them so prose-only pages never
+ * fetch the mermaid library (or its diagram-type chunks) at all.
+ *
+ * Two source-resolution modes:
+ *
+ * - **Dev mode** (the repo is on disk): each entry is compiled via
+ *   `Bun.build` with `splitting: true`. Mermaid's internal `await import(…)`
+ *   calls produce a constellation of small chunks the browser only fetches
+ *   when a `<pre class="mermaid">` actually appears.
+ * - **Compiled binary** (`bun build --compile` output): there is no source
+ *   tree, so we read pre-bundled bytes embedded at compile time via
+ *   `src/web/_bundled.ts`, which `scripts/bundle-web.ts` populates.
+ *
+ * Either way the output is hashed via xxh64 (mirroring {@link writeCss}) so
+ * filenames are content-addressable for cache-busting.
  */
 export async function buildWebBundle(args: BuildWebBundleArgs): Promise<BuildWebBundleResult> {
-  const { ctx } = args
-  await mkdir(ctx.outputDir, { recursive: true })
+  const { ctx, includeMermaid = false } = args
+
+  // Prefer the source tree when it is available on disk: in dev mode that's
+  // always the case, and `Bun.build` with splitting produces the smaller
+  // chunked output. Inside a `bun build --compile` binary the source tree is
+  // gone, so we fall back to the bytes embedded at compile time.
+  const useSource = await Bun.file(baseEntry).exists()
+
+  const baseHref = useSource
+    ? await buildAndWrite(ctx, "aid-web", baseEntry)
+    : await writeEmbedded(ctx, "aid-web", requireEmbedded("aid-web", aidWebJs))
+
+  const mermaidHref = includeMermaid
+    ? useSource
+      ? await buildAndWrite(ctx, "aid-mermaid", mermaidEntry)
+      : await writeEmbedded(ctx, "aid-mermaid", requireEmbedded("aid-mermaid", aidMermaidJs))
+    : null
+
+  return { baseHref, mermaidHref }
+}
+
+function requireEmbedded(name: string, bytes: string): string {
+  if (bytes.length === 0) {
+    throw new Error(
+      `buildWebBundle: ${name} has no embedded bytes and no source tree on disk. Run \`bun scripts/bundle-web.ts\` before \`bun run compile\`.`,
+    )
+  }
+  return bytes
+}
+
+async function writeEmbedded(ctx: BuildContext, name: string, source: string): Promise<string> {
+  const hash = Bun.hash.xxHash64(source).toString(16).padStart(16, "0").slice(0, 8)
+  const filename = `${name}.${hash}.js`
+  await Bun.write(path.join(ctx.outputDir, filename), source)
+  return path.posix.join(ctx.config.base_path, filename)
+}
+
+async function buildAndWrite(ctx: BuildContext, name: string, entry: string): Promise<string> {
   const result = await Bun.build({
-    entrypoints: [webEntry],
+    entrypoints: [entry],
     outdir: ctx.outputDir,
     target: "browser",
     format: "esm",
     minify: true,
     splitting: true,
     naming: {
-      entry: "aid-web.[hash].js",
-      chunk: "aid-web.[name].[hash].js",
-      asset: "aid-web.[name].[hash][ext]",
+      entry: `${name}.[hash].js`,
+      chunk: `${name}.[name].[hash].js`,
+      asset: `${name}.[name].[hash][ext]`,
     },
   })
   if (!result.success) {
     for (const log of result.logs) console.error(log)
-    throw new Error("buildWebBundle: bundle failed")
+    throw new Error(`buildWebBundle: ${name} bundle failed`)
   }
-  const entry = result.outputs.find((o) => o.kind === "entry-point")
-  if (!entry) throw new Error("buildWebBundle: no entry-point output")
-  const filename = path.basename(entry.path)
-  const href = path.posix.join(ctx.config.base_path, filename)
-  return { path: entry.path, href }
+  const entryOutput = result.outputs.find((o) => o.kind === "entry-point")
+  if (!entryOutput) throw new Error(`buildWebBundle: no entry-point output for ${name}`)
+  const filename = path.basename(entryOutput.path)
+  return path.posix.join(ctx.config.base_path, filename)
 }
