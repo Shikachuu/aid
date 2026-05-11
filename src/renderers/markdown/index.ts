@@ -11,6 +11,7 @@ import { unified } from "unified"
 import { visit } from "unist-util-visit"
 import type { RenderedPage, Route, SearchTokens } from "../../core/types"
 import { extractFrontmatter, type Frontmatter } from "./frontmatter"
+import { mermaidPlugin } from "./mermaid"
 import { SHIKI_OPTIONS } from "./shiki"
 
 /** Arguments for {@link renderMarkdown}: the route metadata and the absolute source-file path. */
@@ -53,6 +54,7 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
         children: [{ type: "text", value: "#" }],
       },
     })
+    .use(mermaidPlugin)
     .use(rehypeShiki, SHIKI_OPTIONS)
     .use(rehypeStringify, { allowDangerousHtml: true })
     .process(body)

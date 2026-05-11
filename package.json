@@ -32,6 +32,7 @@
     "@tailwindcss/oxide": "^4.3.0",
     "citty": "^0.2.2",
     "markdownlint-cli2": "^0.22.1",
+    "mermaid": "^11.14.0",
     "minisearch": "^7",
     "protobufjs": "^8.2.0",
     "rehype-autolink-headings": "^7.1.0",

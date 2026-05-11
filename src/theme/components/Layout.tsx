@@ -11,11 +11,12 @@ export type LayoutProps = {
   description?: string
   nav: NavNode[]
   stylesheetHref: string
+  webBundleHref: string
   bodyHtml: string
 }
 
 export function Layout(props: LayoutProps) {
-  const { config, title, description, nav, stylesheetHref, bodyHtml } = props
+  const { config, title, description, nav, stylesheetHref, webBundleHref, bodyHtml } = props
   return (
     <html lang="en">
       <head>
@@ -38,6 +39,7 @@ export function Layout(props: LayoutProps) {
           </main>
         </div>
         <Footer config={config} />
+        <script type="module" src={webBundleHref} defer />
       </body>
     </html>
   )

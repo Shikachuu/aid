@@ -55,6 +55,14 @@ test("produces dist/index.html linking a hashed main CSS for the sample fixture"
   expect(html).toContain("language-ts")
   expect(html).toContain("--shiki-light:")
   expect(html).toContain("--shiki-dark:")
+  // Mermaid fence rewritten to <pre class="mermaid">; shiki didn't touch it.
+  expect(html).toContain('<pre class="mermaid">')
+  expect(html).toContain("graph LR")
+  // Web bundle is emitted with a hashed filename and a <script> tag links it.
+  const webMatches = entries.filter((e) => /^aid-web\.[a-z0-9]+\.js$/.test(e))
+  expect(webMatches.length).toBe(1)
+  const webFilename = webMatches[0] as string
+  expect(html).toContain(`<script type="module" src="/${webFilename}" defer>`)
 
   const css = await Bun.file(path.join(ctx.outputDir, cssFilename)).text()
   // The fixture's main.css overrides --color-aid-accent via @theme; proves the

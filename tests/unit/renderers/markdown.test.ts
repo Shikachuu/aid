@@ -120,4 +120,31 @@ describe("renderMarkdown", () => {
     expect(page.html).toMatch(/<h1 id="has-code">/)
     expect(page.html).toContain('class="aid-heading-anchor"')
   })
+
+  test('mermaid fence is rewritten to <pre class="mermaid"> with raw source', async () => {
+    const page = await renderFixture("page.md", "# T\n\n```mermaid\ngraph LR\n  A --> B\n```\n")
+    expect(page.html).toContain('<pre class="mermaid">')
+    expect(page.html).toContain("graph LR")
+    // The arrow text is preserved verbatim; HTML escaping is fine.
+    expect(page.html).toMatch(/A --(&gt;|>) B/)
+    // No <code> wrapping after the rewrite.
+    expect(page.html).not.toMatch(/<pre class="mermaid">\s*<code/)
+  })
+
+  test("mermaid blocks are not picked up by shiki", async () => {
+    const page = await renderFixture("page.md", "# T\n\n```mermaid\ngraph LR\n  A --> B\n```\n")
+    expect(page.html).not.toContain('class="shiki')
+    expect(page.html).not.toContain("--shiki-light:")
+    expect(page.html).not.toContain("language-mermaid")
+  })
+
+  test("non-mermaid fences still get shiki-highlighted alongside a mermaid block", async () => {
+    const page = await renderFixture(
+      "page.md",
+      "# T\n\n```mermaid\ngraph LR\n  A --> B\n```\n\n```ts\nconst x = 1\n```\n",
+    )
+    expect(page.html).toContain('<pre class="mermaid">')
+    expect(page.html).toContain('class="shiki')
+    expect(page.html).toContain("language-ts")
+  })
 })

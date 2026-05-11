@@ -7,17 +7,20 @@ import { writeCss } from "./css-writer"
 import { buildRoutes } from "./router"
 import { compileTailwind } from "./tailwind"
 import type { BuildContext, RenderedPage, Route } from "./types"
+import { buildWebBundle } from "./web-bundle"
 
 const STYLESHEET_PLACEHOLDER = "__AID_STYLESHEET_HREF__"
 
 /**
- * Top-level build orchestrator. Renders every route, writes initial HTML to
- * outputDir (with a placeholder stylesheet href so Tailwind can @source-scan
- * the rendered output), compiles Tailwind, writes the hashed CSS, then
- * substitutes the placeholder with the final href and re-writes the HTML.
+ * Top-level build orchestrator. Bundles the browser-side runtime, renders
+ * every route into HTML with a placeholder stylesheet href (so Tailwind can
+ * @source-scan the rendered output), compiles Tailwind, writes the hashed
+ * CSS, then substitutes the placeholder with the final href and re-writes
+ * the HTML.
  */
 export async function build(ctx: BuildContext): Promise<void> {
-  const routes = await buildRoutes(ctx)
+  const [routes, web] = await Promise.all([buildRoutes(ctx), buildWebBundle({ ctx })])
+
   const rendered: RenderedPage[] = []
   for (const route of routes) {
     rendered.push(await dispatchRenderer(route))
@@ -25,7 +28,7 @@ export async function build(ctx: BuildContext): Promise<void> {
 
   const docs: { fsPath: string; html: string }[] = []
   for (const page of rendered) {
-    const html = wrapInLayout(page, ctx, STYLESHEET_PLACEHOLDER)
+    const html = wrapInLayout(page, ctx, STYLESHEET_PLACEHOLDER, web.href)
     const fsPath = outputPathForRoute(page.route, ctx)
     await Bun.write(fsPath, html)
     docs.push({ fsPath, html })
@@ -48,7 +51,12 @@ async function dispatchRenderer(route: Route): Promise<RenderedPage> {
   }
 }
 
-function wrapInLayout(page: RenderedPage, ctx: BuildContext, stylesheetHref: string): string {
+function wrapInLayout(
+  page: RenderedPage,
+  ctx: BuildContext,
+  stylesheetHref: string,
+  webBundleHref: string,
+): string {
   const fm = page.route.frontmatter
   const title =
     typeof fm?.title === "string" && fm.title.length > 0 ? fm.title : page.searchTokens.title
@@ -61,6 +69,7 @@ function wrapInLayout(page: RenderedPage, ctx: BuildContext, stylesheetHref: str
       description,
       nav: [],
       stylesheetHref,
+      webBundleHref,
       bodyHtml: pageHtml,
     }) as never,
   )
