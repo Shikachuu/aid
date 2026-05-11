@@ -25,6 +25,7 @@ export type CompileTailwindResult = {
 
 const aidProjectRoot = path.join(import.meta.dir, "../..")
 const bundledMainCssPath = path.join(aidProjectRoot, "src/theme/main.css")
+const bundledTailwindcssEntry = Bun.resolveSync("tailwindcss/index.css", import.meta.dir)
 
 /**
  * Run `@tailwindcss/node` against the resolved entry stylesheet, driving class
@@ -33,11 +34,13 @@ const bundledMainCssPath = path.join(aidProjectRoot, "src/theme/main.css")
  * bundled `src/theme/main.css` is used. The prelude points Tailwind at the
  * bundled theme components, the user templates directory (if configured), and
  * the rendered HTML output, so utilities used in any of those become candidates.
- * The optional `safelist` adds class names that aren't statically discoverable
- * (e.g. emitted by embedded UIs at render time). Honours `theme.dark_mode`:
- * `"off"` strips the dark `@media` block, `"manual"` passes through unchanged.
- * When dark_mode is `"auto"`, light @theme oklch tokens are inverted to produce
- * the dark palette automatically.
+ * A custom CSS resolver intercepts the `tailwindcss` import so the compile works
+ * without `tailwindcss` being installed in the user's project — required for the
+ * compiled-binary distribution model. The optional `safelist` adds class names
+ * that aren't statically discoverable (e.g. emitted by embedded UIs at render
+ * time). Honours `theme.dark_mode`: `"off"` strips the dark `@media` block,
+ * `"manual"` passes through unchanged. When dark_mode is `"auto"`, light @theme
+ * oklch tokens are inverted to produce the dark palette automatically.
  */
 export async function compileTailwind(args: CompileTailwindArgs): Promise<CompileTailwindResult> {
   const { ctx, safelist } = args
@@ -52,6 +55,13 @@ export async function compileTailwind(args: CompileTailwindArgs): Promise<Compil
     from: entry.from,
     onDependency: (p) => {
       dependencies.push(p)
+    },
+    customCssResolver: async (id) => {
+      if (id === "tailwindcss") return bundledTailwindcssEntry
+      if (id.startsWith("tailwindcss/")) {
+        return Bun.resolveSync(id, import.meta.dir)
+      }
+      return undefined
     },
   })
   const scanner = new Scanner({ sources: compiled.sources })
@@ -72,13 +82,13 @@ async function resolveEntry(ctx: BuildContext): Promise<ResolvedEntry> {
   if (await userFile.exists()) {
     return {
       css: await userFile.text(),
-      base: aidProjectRoot,
+      base: path.dirname(userPath),
       from: userPath,
     }
   }
   return {
     css: bundledMainCss,
-    base: aidProjectRoot,
+    base: path.dirname(bundledMainCssPath),
     from: bundledMainCssPath,
   }
 }

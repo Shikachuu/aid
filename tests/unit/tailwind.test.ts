@@ -112,4 +112,17 @@ describe("compileTailwind", () => {
     const { css } = await compileTailwind({ ctx })
     expect(css).toMatch(/\.block\s*\{[^}]*display:\s*block/)
   })
+
+  test("resolves user @import relative to the user main.css", async () => {
+    const ctx = await makeCtx()
+    await Bun.write(
+      path.join(cwd, "extra.css"),
+      `@theme {\n  --color-aid-extra: oklch(50% 0.2 100);\n}\n`,
+    )
+    await Bun.write(path.join(cwd, "main.css"), `@import "tailwindcss";\n@import "./extra.css";\n`)
+    await writeStub(ctx, "bg-aid-extra")
+    const { css } = await compileTailwind({ ctx })
+    expect(css).toContain("--color-aid-extra")
+    expect(css).toContain(".bg-aid-extra")
+  })
 })
