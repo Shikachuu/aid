@@ -16,6 +16,12 @@ export type LayoutProps = {
   mermaidBundleHref?: string | null
   /** Per-page; injected only when the page is an OpenAPI reference. */
   openapiBundleHref?: string | null
+  /**
+   * Scalar's bundled stylesheet, linked only on OpenAPI pages. Without it
+   * Scalar's UI renders with no chrome — icons appear at intrinsic size,
+   * spacing collapses, and the search/sidebar are unstyled.
+   */
+  openapiStylesheetHref?: string | null
   bodyHtml: string
 }
 
@@ -29,6 +35,7 @@ export function Layout(props: LayoutProps) {
     webBundleHref,
     mermaidBundleHref,
     openapiBundleHref,
+    openapiStylesheetHref,
     bodyHtml,
   } = props
   return (
@@ -41,6 +48,7 @@ export function Layout(props: LayoutProps) {
         </title>
         {description ? <meta name="description" content={description} /> : null}
         <link rel="stylesheet" href={stylesheetHref} />
+        {openapiStylesheetHref ? <link rel="stylesheet" href={openapiStylesheetHref} /> : null}
       </head>
       <body class="aid-body">
         <Header config={config} />
@@ -48,7 +56,7 @@ export function Layout(props: LayoutProps) {
           <aside class="aid-sidebar">
             <Nav tree={nav} />
           </aside>
-          <main class="aid-main block">
+          <main class="aid-main">
             <RawHtml html={bodyHtml} />
           </main>
         </div>

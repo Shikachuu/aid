@@ -112,7 +112,12 @@ function wrapInLayout(
   page: RenderedPage,
   ctx: BuildContext,
   stylesheetHref: string,
-  web: { baseHref: string; mermaidHref: string | null; openapiHref: string | null },
+  web: {
+    baseHref: string
+    mermaidHref: string | null
+    openapiHref: string | null
+    openapiCssHref: string | null
+  },
 ): string {
   const fm = page.route.frontmatter
   const title =
@@ -134,6 +139,7 @@ function wrapInLayout(
       webBundleHref: web.baseHref,
       mermaidBundleHref: page.hasMermaid ? web.mermaidHref : null,
       openapiBundleHref: page.hasOpenApi ? web.openapiHref : null,
+      openapiStylesheetHref: page.hasOpenApi ? web.openapiCssHref : null,
       bodyHtml: pageHtml,
     }) as never,
   )

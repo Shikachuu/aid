@@ -1,6 +1,14 @@
 import path from "node:path"
-import { aidMermaidJs, aidOpenapiJs, aidWebJs } from "../web/_bundled"
+import { aidMermaidJs, aidOpenapiCss, aidOpenapiJs, aidWebJs } from "../web/_bundled"
 import type { BuildContext } from "./types"
+
+/**
+ * Subpath of Scalar's stylesheet inside `node_modules`. Resolved lazily —
+ * inside a `bun build --compile` binary there is no node_modules to resolve
+ * against, and we take the embedded-bytes path instead, so eager resolution
+ * at module load would throw before we ever reach the branch decision.
+ */
+const SCALAR_CSS_SPECIFIER = "@scalar/api-reference/style.css"
 
 /** Inputs for {@link buildWebBundle}. */
 export type BuildWebBundleArgs = {
@@ -27,6 +35,13 @@ export type BuildWebBundleResult = {
   mermaidHref: string | null
   /** Public href for the Scalar bundle, or `null` when `includeOpenApi` is false. */
   openapiHref: string | null
+  /**
+   * Public href for Scalar's bundled stylesheet, or `null` when `includeOpenApi`
+   * is false. Linked from the layout only on OpenAPI pages so prose pages stay
+   * lean. Scalar's UI is entirely styled by this file — without it, every icon
+   * renders at intrinsic size and the chrome is unstyled.
+   */
+  openapiCssHref: string | null
 }
 
 const aidProjectRoot = path.join(import.meta.dir, "../..")
@@ -79,7 +94,17 @@ export async function buildWebBundle(args: BuildWebBundleArgs): Promise<BuildWeb
       : await writeEmbedded(ctx, "aid-openapi", requireEmbedded("aid-openapi", aidOpenapiJs))
     : null
 
-  return { baseHref, mermaidHref, openapiHref }
+  const openapiCssHref = includeOpenApi
+    ? useSource
+      ? await copyScalarCss(ctx)
+      : await writeEmbeddedCss(
+          ctx,
+          "aid-openapi",
+          requireEmbedded("aid-openapi.css", aidOpenapiCss),
+        )
+    : null
+
+  return { baseHref, mermaidHref, openapiHref, openapiCssHref }
 }
 
 function requireEmbedded(name: string, bytes: string): string {
@@ -96,6 +121,19 @@ async function writeEmbedded(ctx: BuildContext, name: string, source: string): P
   const filename = `${name}.${hash}.js`
   await Bun.write(path.join(ctx.outputDir, filename), source)
   return path.posix.join(ctx.config.base_path, filename)
+}
+
+async function writeEmbeddedCss(ctx: BuildContext, name: string, source: string): Promise<string> {
+  const hash = Bun.hash.xxHash64(source).toString(16).padStart(16, "0").slice(0, 8)
+  const filename = `${name}.${hash}.css`
+  await Bun.write(path.join(ctx.outputDir, filename), source)
+  return path.posix.join(ctx.config.base_path, filename)
+}
+
+async function copyScalarCss(ctx: BuildContext): Promise<string> {
+  const scalarCssEntry = Bun.resolveSync(SCALAR_CSS_SPECIFIER, import.meta.dir)
+  const source = await Bun.file(scalarCssEntry).text()
+  return writeEmbeddedCss(ctx, "aid-openapi", source)
 }
 
 async function buildAndWrite(ctx: BuildContext, name: string, entry: string): Promise<string> {

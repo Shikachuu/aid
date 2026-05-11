@@ -20,6 +20,8 @@ document.addEventListener("DOMContentLoaded", () => {
   createApiReference(mount, {
     content,
     hideDarkModeToggle: true,
+    agent: { disabled: true },
+    hideSearch: true,
     layout: "modern",
   })
 })

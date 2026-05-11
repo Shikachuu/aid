@@ -12,7 +12,13 @@ const fixtureDir = path.join(import.meta.dir, "../fixtures/sample-site")
 
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "aid-build-"))
-  await cp(fixtureDir, cwd, { recursive: true })
+  // Skip the fixture's `dist/` — it's a gitignored artefact from prior local
+  // builds, and if its hashed filenames differ from this run's the assertions
+  // see two `main.*.css` entries instead of one.
+  await cp(fixtureDir, cwd, {
+    recursive: true,
+    filter: (src) => path.basename(src) !== "dist",
+  })
 })
 
 afterEach(async () => {
@@ -83,7 +89,23 @@ test("produces dist/index.html linking a hashed main CSS for the sample fixture"
   // The fixture's main.css overrides --color-aid-accent via @theme; proves the
   // user stylesheet drives the compile.
   expect(css).toContain("--color-aid-accent")
-  // The rendered HTML uses `block` in the main element; proves @source scanning
-  // of bundled components/rendered HTML picked up utilities.
-  expect(css).toMatch(/\.block\s*\{/)
+  // The fixture opts into the aid theme via `@import "aid/theme"`; the bundled
+  // component layer must reach the compiled CSS, otherwise the default Layout
+  // renders unstyled even though Tailwind ran.
+  expect(css).toMatch(/\.aid-shell\s*\{/)
+  expect(css).toMatch(/\.aid-page-markdown\s+pre\s*\{/)
+  // Base @theme tokens from the bundled aid theme (not just the user override)
+  // make it through too.
+  expect(css).toContain("--color-aid-bg")
+
+  // The OpenAPI page in the fixture should pull in Scalar's bundled stylesheet
+  // alongside the JS runtime — without it Scalar renders unstyled (icons at
+  // intrinsic size, no chrome). The link is gated to OpenAPI pages only.
+  const openapiHtml = await Bun.file(path.join(ctx.outputDir, "api", "index.html")).text()
+  const openapiCssMatches = entries.filter((e) => /^aid-openapi\.[0-9a-f]{8}\.css$/.test(e))
+  expect(openapiCssMatches.length).toBe(1)
+  const openapiCssFilename = openapiCssMatches[0] as string
+  expect(openapiHtml).toContain(`<link rel="stylesheet" href="/${openapiCssFilename}">`)
+  // Prose-only pages don't pay for it.
+  expect(html).not.toContain(openapiCssFilename)
 })

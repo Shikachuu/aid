@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "aid/theme";
 
 @theme {
   /* fixture override — confirm theme-token plumbing reaches every renderer */

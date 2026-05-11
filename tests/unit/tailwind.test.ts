@@ -103,12 +103,6 @@ describe("compileTailwind", () => {
     expect(css).toContain(".bg-aid-bg")
   })
 
-  test("discovers a Tailwind utility from a bundled component TSX", async () => {
-    const ctx = await makeCtx()
-    const { css } = await compileTailwind({ ctx })
-    expect(css).toMatch(/\.block\s*\{[^}]*display:\s*block/)
-  })
-
   test("resolves user @import relative to the user main.css", async () => {
     const ctx = await makeCtx()
     await Bun.write(

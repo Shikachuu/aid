@@ -48,7 +48,7 @@
   }
 
   .aid-shell {
-    @apply mx-auto grid max-w-5xl gap-8 px-4 py-8;
+    @apply mx-auto grid;
     grid-template-columns: 16rem 1fr;
   }
 
@@ -65,6 +65,16 @@
 
   .aid-page-toolbar {
     @apply flex justify-end;
+  }
+
+  /*
+   * Markdown article. `max-w-prose` caps the line length at Tailwind's prose
+   * measure (~65ch) for readability, and `mx-auto` centers the column within
+   * whatever the surrounding layout gives it — so prose pages look the same
+   * whether the sidebar is populated, empty, or hidden.
+   */
+  .aid-page-markdown {
+    @apply mx-auto w-full max-w-prose;
   }
 
   /*
