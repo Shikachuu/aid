@@ -70,19 +70,3 @@
   --scalar-font: var(--font-aid-sans);
   --scalar-font-code: var(--font-aid-mono);
 }
-
-/*
- * Dark-mode block. `theme.dark_mode: "auto"` will overwrite this block at
- * build time with auto-derived tokens. `theme.dark_mode: "manual"` leaves
- * the user-defined values untouched.
- */
-
-@media (prefers-color-scheme: dark) {
-  @theme {
-    --color-aid-bg: oklch(15% 0 0);
-    --color-aid-text: oklch(95% 0 0);
-    --color-aid-muted: oklch(65% 0 0);
-    --color-aid-border: oklch(30% 0 0);
-    --color-aid-accent: oklch(70% 0.15 250);
-  }
-}

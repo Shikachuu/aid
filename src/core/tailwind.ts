@@ -2,6 +2,8 @@ import path from "node:path"
 import { compile } from "@tailwindcss/node"
 import { Scanner } from "@tailwindcss/oxide"
 import bundledMainCss from "../theme/main.css" with { type: "text" }
+import { deriveDarkPalette } from "./dark-mode"
+import { findMatchingBrace } from "./internal/css-scan"
 import type { BuildContext } from "./types"
 
 export type CompileTailwindArgs = {
@@ -33,8 +35,9 @@ const bundledMainCssPath = path.join(aidProjectRoot, "src/theme/main.css")
  * the rendered HTML output, so utilities used in any of those become candidates.
  * The optional `safelist` adds class names that aren't statically discoverable
  * (e.g. emitted by embedded UIs at render time). Honours `theme.dark_mode`:
- * `"off"` strips the dark `@media` block, `"manual"` and `"auto"` pass through.
- * Auto-derivation of dark tokens from light tokens is a follow-up PR.
+ * `"off"` strips the dark `@media` block, `"manual"` passes through unchanged.
+ * When dark_mode is `"auto"`, light @theme oklch tokens are inverted to produce
+ * the dark palette automatically.
  */
 export async function compileTailwind(args: CompileTailwindArgs): Promise<CompileTailwindResult> {
   const { ctx, safelist } = args
@@ -114,14 +117,14 @@ function formatSourcePath(p: string): string {
 }
 
 function applyDarkModeFlag(css: string, mode: "auto" | "manual" | "off"): string {
-  if (mode !== "off") {
-    // TODO(dark-mode-derivation): when mode === "auto", parse @theme light tokens
-    // and inject a derived `@media (prefers-color-scheme: dark) @theme { ... }`
-    // block (oklch lightness inversion) before compile. Until then, `auto` and
-    // `manual` are equivalent — both pass through whatever the entry CSS ships.
-    return css
+  if (mode === "off") return stripPrefersDarkBlocks(css)
+  if (mode === "manual") return css
+  const result = deriveDarkPalette(css)
+  for (const warning of result.warnings) {
+    console.warn(warning)
   }
-  return stripPrefersDarkBlocks(css)
+  if (result.darkBlock === "") return css
+  return `${css}\n${result.darkBlock}`
 }
 
 const PREFERS_DARK_RE = /@media\s*\(\s*prefers-color-scheme\s*:\s*dark\s*\)\s*\{/g
@@ -143,17 +146,4 @@ function stripPrefersDarkBlocks(css: string): string {
   }
   out += css.slice(cursor)
   return out
-}
-
-function findMatchingBrace(css: string, openIdx: number): number {
-  let depth = 0
-  for (let i = openIdx; i < css.length; i++) {
-    const c = css[i]
-    if (c === "{") depth++
-    else if (c === "}") {
-      depth--
-      if (depth === 0) return i
-    }
-  }
-  return -1
 }

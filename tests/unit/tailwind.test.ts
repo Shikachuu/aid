@@ -52,19 +52,32 @@ describe("compileTailwind", () => {
   })
 
   test("strips dark @media block from source when dark_mode is off", async () => {
+    await Bun.write(
+      path.join(cwd, "main.css"),
+      `@import "tailwindcss";\n@theme {\n  --color-aid-bg: oklch(99% 0 0);\n}\n@media (prefers-color-scheme: dark) {\n  :root {\n    --color-test-marker: oklch(42% 0 0);\n  }\n}\n`,
+    )
     const ctx = await makeCtx({ dark_mode: "off" })
     await writeStub(ctx, "bg-aid-bg")
     const { css } = await compileTailwind({ ctx })
-    // Bundled dark token value must not survive; it lives only in the @media block we stripped.
-    expect(css).not.toContain("oklch(15% 0 0)")
+    expect(css).not.toContain("oklch(42% 0 0)")
   })
 
   test("keeps dark tokens in source when dark_mode is manual", async () => {
+    await Bun.write(
+      path.join(cwd, "main.css"),
+      `@import "tailwindcss";\n@theme {\n  --color-aid-bg: oklch(99% 0 0);\n}\n@media (prefers-color-scheme: dark) {\n  :root {\n    --color-test-marker: oklch(42% 0 0);\n  }\n}\n`,
+    )
     const ctx = await makeCtx({ dark_mode: "manual" })
     await writeStub(ctx, "bg-aid-bg")
     const { css } = await compileTailwind({ ctx })
-    // Bundled dark token value flows through compilation.
-    expect(css).toContain("oklch(15% 0 0)")
+    expect(css).toContain("oklch(42% 0 0)")
+  })
+
+  test("auto-derives dark tokens from light @theme", async () => {
+    const ctx = await makeCtx({ dark_mode: "auto" })
+    await writeStub(ctx, "bg-aid-bg")
+    const { css } = await compileTailwind({ ctx })
+    expect(css).toContain("oklch(1% 0 0)")
   })
 
   test("user main.css replaces bundled when present", async () => {
