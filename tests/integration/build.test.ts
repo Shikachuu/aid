@@ -1,0 +1,56 @@
+import { afterEach, beforeEach, expect, test } from "bun:test"
+import { cp, mkdtemp, readdir, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import path from "node:path"
+import { loadConfig } from "../../src/core/config"
+import { build } from "../../src/core/pipeline"
+import type { BuildContext } from "../../src/core/types"
+
+let cwd: string
+
+const fixtureDir = path.join(import.meta.dir, "../fixtures/sample-site")
+
+beforeEach(async () => {
+  cwd = await mkdtemp(path.join(tmpdir(), "aid-build-"))
+  await cp(fixtureDir, cwd, { recursive: true })
+})
+
+afterEach(async () => {
+  await rm(cwd, { recursive: true, force: true })
+})
+
+test("produces dist/index.html linking a hashed main CSS for the sample fixture", async () => {
+  const config = await loadConfig(path.join(cwd, "aid.yaml"))
+  const ctx: BuildContext = {
+    config,
+    cwd,
+    contentDir: path.join(cwd, config.dir.content),
+    outputDir: path.join(cwd, config.dir.output),
+    templatesDir: config.dir.templates === "" ? null : path.join(cwd, config.dir.templates),
+  }
+
+  await build(ctx)
+
+  const indexPath = path.join(ctx.outputDir, "index.html")
+  expect(await Bun.file(indexPath).exists()).toBe(true)
+
+  const entries = await readdir(ctx.outputDir)
+  const cssMatches = entries.filter((e) => /^main\.[0-9a-f]{8}\.css$/.test(e))
+  expect(cssMatches.length).toBe(1)
+  const cssFilename = cssMatches[0] as string
+
+  const html = await Bun.file(indexPath).text()
+  expect(html).toContain(`<link rel="stylesheet" href="/${cssFilename}">`)
+  expect(html).not.toContain("__AID_STYLESHEET_HREF__")
+  // Markdown body content reaches the rendered HTML.
+  expect(html).toContain("Sample Site")
+  expect(html).toContain("small fixture")
+
+  const css = await Bun.file(path.join(ctx.outputDir, cssFilename)).text()
+  // The fixture's main.css overrides --color-aid-accent via @theme; proves the
+  // user stylesheet drives the compile.
+  expect(css).toContain("--color-aid-accent")
+  // The rendered HTML uses `block` in the main element; proves @source scanning
+  // of bundled components/rendered HTML picked up utilities.
+  expect(css).toMatch(/\.block\s*\{/)
+})
