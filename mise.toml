@@ -1,2 +1,8 @@
 [tools]
 bun = "1.3.13"
+
+[settings]
+experimental = true
+
+[hooks]
+postinstall = "bun install --cpu='*' --os='*'"

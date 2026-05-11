@@ -1,0 +1,487 @@
+diff --git a/lib/esm/impl/edit.js b/lib/esm/impl/edit.js
+index 4114d525b7fa2db6824ee4c3351c58aa4c6a4876..3a838e73b5ed288791ccc6eb35eeec18f02ece80 100644
+--- a/lib/esm/impl/edit.js
++++ b/lib/esm/impl/edit.js
+@@ -3,8 +3,8 @@
+  *  Licensed under the MIT License. See License.txt in the project root for license information.
+  *--------------------------------------------------------------------------------------------*/
+ 'use strict';
+-import { format, isEOL } from './format';
+-import { parseTree, findNodeAtLocation } from './parser';
++import { format, isEOL } from './format.js';
++import { parseTree, findNodeAtLocation } from './parser.js';
+ export function removeProperty(text, path, options) {
+     return setProperty(text, path, void 0, options);
+ }
+diff --git a/lib/esm/impl/format.js b/lib/esm/impl/format.js
+index 8663a1f385b08ddb8d2cc32bd3fc793b6751737c..67580b7dc5db25f60882285bfb7106cef633f90c 100644
+--- a/lib/esm/impl/format.js
++++ b/lib/esm/impl/format.js
+@@ -3,8 +3,8 @@
+  *  Licensed under the MIT License. See License.txt in the project root for license information.
+  *--------------------------------------------------------------------------------------------*/
+ 'use strict';
+-import { createScanner } from './scanner';
+-import { cachedSpaces, cachedBreakLinesWithSpaces, supportedEols } from './string-intern';
++import { createScanner } from './scanner.js';
++import { cachedSpaces, cachedBreakLinesWithSpaces, supportedEols } from './string-intern.js';
+ export function format(documentText, range, options) {
+     let initialIndentLevel;
+     let formatText;
+diff --git a/lib/esm/impl/parser.js b/lib/esm/impl/parser.js
+index 6ebb947f32bcf5da4bd55ff140be75fb52bbe429..a533a973aeeb5f1a0262b8ef7fb31afe04615c3c 100644
+--- a/lib/esm/impl/parser.js
++++ b/lib/esm/impl/parser.js
+@@ -3,7 +3,7 @@
+  *  Licensed under the MIT License. See License.txt in the project root for license information.
+  *--------------------------------------------------------------------------------------------*/
+ 'use strict';
+-import { createScanner } from './scanner';
++import { createScanner } from './scanner.js';
+ var ParseOptions;
+ (function (ParseOptions) {
+     ParseOptions.DEFAULT = {
+diff --git a/lib/esm/main.js b/lib/esm/main.js
+index 18e3cb7168b5cc4401a25bcace1f8af379c408d5..f3926c6b859faf78f8f2063187eedf45d65abfa6 100644
+--- a/lib/esm/main.js
++++ b/lib/esm/main.js
+@@ -3,10 +3,10 @@
+  *  Licensed under the MIT License. See License.txt in the project root for license information.
+  *--------------------------------------------------------------------------------------------*/
+ 'use strict';
+-import * as formatter from './impl/format';
+-import * as edit from './impl/edit';
+-import * as scanner from './impl/scanner';
+-import * as parser from './impl/parser';
++import * as formatter from './impl/format.js';
++import * as edit from './impl/edit.js';
++import * as scanner from './impl/scanner.js';
++import * as parser from './impl/parser.js';
+ /**
+  * Creates a JSON scanner on the given text.
+  * If ignoreTrivia is set, whitespaces or comments are ignored.
+diff --git a/lib/umd/impl/edit.js b/lib/umd/impl/edit.js
+index f9aeefef667d8a725dba6954d5831bdc5ff145f8..51fedcb8596a9e7ffd7e37ceda5267a4b503073c 100644
+--- a/lib/umd/impl/edit.js
++++ b/lib/umd/impl/edit.js
+@@ -1,12 +1,3 @@
+-(function (factory) {
+-    if (typeof module === "object" && typeof module.exports === "object") {
+-        var v = factory(require, exports);
+-        if (v !== undefined) module.exports = v;
+-    }
+-    else if (typeof define === "function" && define.amd) {
+-        define(["require", "exports", "./format", "./parser"], factory);
+-    }
+-})(function (require, exports) {
+     /*---------------------------------------------------------------------------------------------
+      *  Copyright (c) Microsoft Corporation. All rights reserved.
+      *  Licensed under the MIT License. See License.txt in the project root for license information.
+@@ -14,8 +5,8 @@
+     'use strict';
+     Object.defineProperty(exports, "__esModule", { value: true });
+     exports.isWS = exports.applyEdit = exports.setProperty = exports.removeProperty = void 0;
+-    const format_1 = require("./format");
+-    const parser_1 = require("./parser");
++    const format_1 = require("./format.js");
++    const parser_1 = require("./parser.js");
+     function removeProperty(text, path, options) {
+         return setProperty(text, path, void 0, options);
+     }
+@@ -198,4 +189,3 @@
+         return '\r\n \t'.indexOf(text.charAt(offset)) !== -1;
+     }
+     exports.isWS = isWS;
+-});
+diff --git a/lib/umd/impl/format.js b/lib/umd/impl/format.js
+index 2b9f2bc54a9ad4ad38a99bbaab4da57f89d40f3d..407427f49c1f1c02c12a2c8c87e687d1ef8734eb 100644
+--- a/lib/umd/impl/format.js
++++ b/lib/umd/impl/format.js
+@@ -1,12 +1,3 @@
+-(function (factory) {
+-    if (typeof module === "object" && typeof module.exports === "object") {
+-        var v = factory(require, exports);
+-        if (v !== undefined) module.exports = v;
+-    }
+-    else if (typeof define === "function" && define.amd) {
+-        define(["require", "exports", "./scanner", "./string-intern"], factory);
+-    }
+-})(function (require, exports) {
+     /*---------------------------------------------------------------------------------------------
+      *  Copyright (c) Microsoft Corporation. All rights reserved.
+      *  Licensed under the MIT License. See License.txt in the project root for license information.
+@@ -14,8 +5,8 @@
+     'use strict';
+     Object.defineProperty(exports, "__esModule", { value: true });
+     exports.isEOL = exports.format = void 0;
+-    const scanner_1 = require("./scanner");
+-    const string_intern_1 = require("./string-intern");
++    const scanner_1 = require("./scanner.js");
++    const string_intern_1 = require("./string-intern.js");
+     function format(documentText, range, options) {
+         let initialIndentLevel;
+         let formatText;
+@@ -272,4 +263,3 @@
+         return '\r\n'.indexOf(text.charAt(offset)) !== -1;
+     }
+     exports.isEOL = isEOL;
+-});
+diff --git a/lib/umd/impl/parser.js b/lib/umd/impl/parser.js
+index b30bb9364def1b1a14d297a73e5f2e93ae49dac3..9a31ebc81317301c762b64d90a6872f104d227bf 100644
+--- a/lib/umd/impl/parser.js
++++ b/lib/umd/impl/parser.js
+@@ -1,12 +1,3 @@
+-(function (factory) {
+-    if (typeof module === "object" && typeof module.exports === "object") {
+-        var v = factory(require, exports);
+-        if (v !== undefined) module.exports = v;
+-    }
+-    else if (typeof define === "function" && define.amd) {
+-        define(["require", "exports", "./scanner"], factory);
+-    }
+-})(function (require, exports) {
+     /*---------------------------------------------------------------------------------------------
+      *  Copyright (c) Microsoft Corporation. All rights reserved.
+      *  Licensed under the MIT License. See License.txt in the project root for license information.
+@@ -14,7 +5,7 @@
+     'use strict';
+     Object.defineProperty(exports, "__esModule", { value: true });
+     exports.getNodeType = exports.stripComments = exports.visit = exports.findNodeAtOffset = exports.contains = exports.getNodeValue = exports.getNodePath = exports.findNodeAtLocation = exports.parseTree = exports.parse = exports.getLocation = void 0;
+-    const scanner_1 = require("./scanner");
++    const scanner_1 = require("./scanner.js");
+     var ParseOptions;
+     (function (ParseOptions) {
+         ParseOptions.DEFAULT = {
+@@ -679,4 +670,3 @@
+         }
+     }
+     exports.getNodeType = getNodeType;
+-});
+diff --git a/lib/umd/impl/scanner.js b/lib/umd/impl/scanner.js
+index ebca65f49cc2507b2ca0f8cd784dfdf414896dd7..9ead7c90730ecc060af7f03f56418944530260aa 100644
+--- a/lib/umd/impl/scanner.js
++++ b/lib/umd/impl/scanner.js
+@@ -1,12 +1,3 @@
+-(function (factory) {
+-    if (typeof module === "object" && typeof module.exports === "object") {
+-        var v = factory(require, exports);
+-        if (v !== undefined) module.exports = v;
+-    }
+-    else if (typeof define === "function" && define.amd) {
+-        define(["require", "exports"], factory);
+-    }
+-})(function (require, exports) {
+     /*---------------------------------------------------------------------------------------------
+      *  Copyright (c) Microsoft Corporation. All rights reserved.
+      *  Licensed under the MIT License. See License.txt in the project root for license information.
+@@ -453,4 +444,3 @@
+         CharacterCodes[CharacterCodes["formFeed"] = 12] = "formFeed";
+         CharacterCodes[CharacterCodes["tab"] = 9] = "tab";
+     })(CharacterCodes || (CharacterCodes = {}));
+-});
+diff --git a/lib/umd/impl/string-intern.js b/lib/umd/impl/string-intern.js
+index 177f2d72734a7fdad28df179e9d00e32bf17657c..cf30fcc4265841c4b579ffa1855f095a82204b92 100644
+--- a/lib/umd/impl/string-intern.js
++++ b/lib/umd/impl/string-intern.js
+@@ -1,12 +1,3 @@
+-(function (factory) {
+-    if (typeof module === "object" && typeof module.exports === "object") {
+-        var v = factory(require, exports);
+-        if (v !== undefined) module.exports = v;
+-    }
+-    else if (typeof define === "function" && define.amd) {
+-        define(["require", "exports"], factory);
+-    }
+-})(function (require, exports) {
+     "use strict";
+     Object.defineProperty(exports, "__esModule", { value: true });
+     exports.supportedEols = exports.cachedBreakLinesWithSpaces = exports.cachedSpaces = void 0;
+@@ -39,4 +30,3 @@
+         }
+     };
+     exports.supportedEols = ['\n', '\r', '\r\n'];
+-});
+diff --git a/lib/umd/main.js b/lib/umd/main.js
+index 2ed744665430578caebcb12053150fbf4d7e76da..59277c97574c3e4419ad2f62456960011d49e86b 100644
+--- a/lib/umd/main.js
++++ b/lib/umd/main.js
+@@ -1,194 +1,86 @@
+-(function (factory) {
+-    if (typeof module === "object" && typeof module.exports === "object") {
+-        var v = factory(require, exports);
+-        if (v !== undefined) module.exports = v;
++/*---------------------------------------------------------------------------------------------
++ *  Copyright (c) Microsoft Corporation. All rights reserved.
++ *  Licensed under the MIT License. See License.txt in the project root for license information.
++ *--------------------------------------------------------------------------------------------*/
++'use strict';
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.applyEdits = exports.modify = exports.format = exports.printParseErrorCode = exports.ParseErrorCode = exports.stripComments = exports.visit = exports.getNodeValue = exports.getNodePath = exports.findNodeAtOffset = exports.findNodeAtLocation = exports.parseTree = exports.parse = exports.getLocation = exports.SyntaxKind = exports.ScanError = exports.createScanner = void 0;
++const formatter = require("./impl/format.js");
++const edit = require("./impl/edit.js");
++const scanner = require("./impl/scanner.js");
++const parser = require("./impl/parser.js");
++/**
++ * Creates a JSON scanner on the given text.
++ * If ignoreTrivia is set, whitespaces or comments are ignored.
++ */
++exports.createScanner = scanner.createScanner;
++var ScanError;
++(function (ScanError) {
++    ScanError[ScanError["None"] = 0] = "None";
++    ScanError[ScanError["UnexpectedEndOfComment"] = 1] = "UnexpectedEndOfComment";
++    ScanError[ScanError["UnexpectedEndOfString"] = 2] = "UnexpectedEndOfString";
++    ScanError[ScanError["UnexpectedEndOfNumber"] = 3] = "UnexpectedEndOfNumber";
++    ScanError[ScanError["InvalidUnicode"] = 4] = "InvalidUnicode";
++    ScanError[ScanError["InvalidEscapeCharacter"] = 5] = "InvalidEscapeCharacter";
++    ScanError[ScanError["InvalidCharacter"] = 6] = "InvalidCharacter";
++})(ScanError = exports.ScanError || (exports.ScanError = {}));
++var SyntaxKind;
++(function (SyntaxKind) {
++    SyntaxKind[SyntaxKind["OpenBraceToken"] = 1] = "OpenBraceToken";
++    SyntaxKind[SyntaxKind["CloseBraceToken"] = 2] = "CloseBraceToken";
++    SyntaxKind[SyntaxKind["OpenBracketToken"] = 3] = "OpenBracketToken";
++    SyntaxKind[SyntaxKind["CloseBracketToken"] = 4] = "CloseBracketToken";
++    SyntaxKind[SyntaxKind["CommaToken"] = 5] = "CommaToken";
++    SyntaxKind[SyntaxKind["ColonToken"] = 6] = "ColonToken";
++    SyntaxKind[SyntaxKind["NullKeyword"] = 7] = "NullKeyword";
++    SyntaxKind[SyntaxKind["TrueKeyword"] = 8] = "TrueKeyword";
++    SyntaxKind[SyntaxKind["FalseKeyword"] = 9] = "FalseKeyword";
++    SyntaxKind[SyntaxKind["StringLiteral"] = 10] = "StringLiteral";
++    SyntaxKind[SyntaxKind["NumericLiteral"] = 11] = "NumericLiteral";
++    SyntaxKind[SyntaxKind["LineCommentTrivia"] = 12] = "LineCommentTrivia";
++    SyntaxKind[SyntaxKind["BlockCommentTrivia"] = 13] = "BlockCommentTrivia";
++    SyntaxKind[SyntaxKind["LineBreakTrivia"] = 14] = "LineBreakTrivia";
++    SyntaxKind[SyntaxKind["Trivia"] = 15] = "Trivia";
++    SyntaxKind[SyntaxKind["Unknown"] = 16] = "Unknown";
++    SyntaxKind[SyntaxKind["EOF"] = 17] = "EOF";
++})(SyntaxKind = exports.SyntaxKind || (exports.SyntaxKind = {}));
++exports.getLocation = parser.getLocation;
++exports.parse = parser.parse;
++exports.parseTree = parser.parseTree;
++exports.findNodeAtLocation = parser.findNodeAtLocation;
++exports.findNodeAtOffset = parser.findNodeAtOffset;
++exports.getNodePath = parser.getNodePath;
++exports.getNodeValue = parser.getNodeValue;
++exports.visit = parser.visit;
++exports.stripComments = parser.stripComments;
++function printParseErrorCode(code) {
++    switch (code) {
++        case 1: return 'InvalidSymbol';
++        case 2: return 'InvalidNumberFormat';
++        case 3: return 'PropertyNameExpected';
++        case 4: return 'ValueExpected';
++        case 5: return 'ColonExpected';
++        case 6: return 'CommaExpected';
++        case 7: return 'CloseBraceExpected';
++        case 8: return 'CloseBracketExpected';
++        case 9: return 'EndOfFileExpected';
++        case 10: return 'InvalidCommentToken';
++        case 11: return 'InvalidEscapeCharacter';
++        case 12: return 'InvalidUnicode';
++        case 13: return 'InvalidCharacter';
+     }
+-    else if (typeof define === "function" && define.amd) {
+-        define(["require", "exports", "./impl/format", "./impl/edit", "./impl/scanner", "./impl/parser"], factory);
+-    }
+-})(function (require, exports) {
+-    /*---------------------------------------------------------------------------------------------
+-     *  Copyright (c) Microsoft Corporation. All rights reserved.
+-     *  Licensed under the MIT License. See License.txt in the project root for license information.
+-     *--------------------------------------------------------------------------------------------*/
+-    'use strict';
+-    Object.defineProperty(exports, "__esModule", { value: true });
+-    exports.applyEdits = exports.modify = exports.format = exports.printParseErrorCode = exports.ParseErrorCode = exports.stripComments = exports.visit = exports.getNodeValue = exports.getNodePath = exports.findNodeAtOffset = exports.findNodeAtLocation = exports.parseTree = exports.parse = exports.getLocation = exports.SyntaxKind = exports.ScanError = exports.createScanner = void 0;
+-    const formatter = require("./impl/format");
+-    const edit = require("./impl/edit");
+-    const scanner = require("./impl/scanner");
+-    const parser = require("./impl/parser");
+-    /**
+-     * Creates a JSON scanner on the given text.
+-     * If ignoreTrivia is set, whitespaces or comments are ignored.
+-     */
+-    exports.createScanner = scanner.createScanner;
+-    var ScanError;
+-    (function (ScanError) {
+-        ScanError[ScanError["None"] = 0] = "None";
+-        ScanError[ScanError["UnexpectedEndOfComment"] = 1] = "UnexpectedEndOfComment";
+-        ScanError[ScanError["UnexpectedEndOfString"] = 2] = "UnexpectedEndOfString";
+-        ScanError[ScanError["UnexpectedEndOfNumber"] = 3] = "UnexpectedEndOfNumber";
+-        ScanError[ScanError["InvalidUnicode"] = 4] = "InvalidUnicode";
+-        ScanError[ScanError["InvalidEscapeCharacter"] = 5] = "InvalidEscapeCharacter";
+-        ScanError[ScanError["InvalidCharacter"] = 6] = "InvalidCharacter";
+-    })(ScanError || (exports.ScanError = ScanError = {}));
+-    var SyntaxKind;
+-    (function (SyntaxKind) {
+-        SyntaxKind[SyntaxKind["OpenBraceToken"] = 1] = "OpenBraceToken";
+-        SyntaxKind[SyntaxKind["CloseBraceToken"] = 2] = "CloseBraceToken";
+-        SyntaxKind[SyntaxKind["OpenBracketToken"] = 3] = "OpenBracketToken";
+-        SyntaxKind[SyntaxKind["CloseBracketToken"] = 4] = "CloseBracketToken";
+-        SyntaxKind[SyntaxKind["CommaToken"] = 5] = "CommaToken";
+-        SyntaxKind[SyntaxKind["ColonToken"] = 6] = "ColonToken";
+-        SyntaxKind[SyntaxKind["NullKeyword"] = 7] = "NullKeyword";
+-        SyntaxKind[SyntaxKind["TrueKeyword"] = 8] = "TrueKeyword";
+-        SyntaxKind[SyntaxKind["FalseKeyword"] = 9] = "FalseKeyword";
+-        SyntaxKind[SyntaxKind["StringLiteral"] = 10] = "StringLiteral";
+-        SyntaxKind[SyntaxKind["NumericLiteral"] = 11] = "NumericLiteral";
+-        SyntaxKind[SyntaxKind["LineCommentTrivia"] = 12] = "LineCommentTrivia";
+-        SyntaxKind[SyntaxKind["BlockCommentTrivia"] = 13] = "BlockCommentTrivia";
+-        SyntaxKind[SyntaxKind["LineBreakTrivia"] = 14] = "LineBreakTrivia";
+-        SyntaxKind[SyntaxKind["Trivia"] = 15] = "Trivia";
+-        SyntaxKind[SyntaxKind["Unknown"] = 16] = "Unknown";
+-        SyntaxKind[SyntaxKind["EOF"] = 17] = "EOF";
+-    })(SyntaxKind || (exports.SyntaxKind = SyntaxKind = {}));
+-    /**
+-     * For a given offset, evaluate the location in the JSON document. Each segment in the location path is either a property name or an array index.
+-     */
+-    exports.getLocation = parser.getLocation;
+-    /**
+-     * Parses the given text and returns the object the JSON content represents. On invalid input, the parser tries to be as fault tolerant as possible, but still return a result.
+-     * Therefore, always check the errors list to find out if the input was valid.
+-     */
+-    exports.parse = parser.parse;
+-    /**
+-     * Parses the given text and returns a tree representation the JSON content. On invalid input, the parser tries to be as fault tolerant as possible, but still return a result.
+-     */
+-    exports.parseTree = parser.parseTree;
+-    /**
+-     * Finds the node at the given path in a JSON DOM.
+-     */
+-    exports.findNodeAtLocation = parser.findNodeAtLocation;
+-    /**
+-     * Finds the innermost node at the given offset. If includeRightBound is set, also finds nodes that end at the given offset.
+-     */
+-    exports.findNodeAtOffset = parser.findNodeAtOffset;
+-    /**
+-     * Gets the JSON path of the given JSON DOM node
+-     */
+-    exports.getNodePath = parser.getNodePath;
+-    /**
+-     * Evaluates the JavaScript object of the given JSON DOM node
+-     */
+-    exports.getNodeValue = parser.getNodeValue;
+-    /**
+-     * Parses the given text and invokes the visitor functions for each object, array and literal reached.
+-     */
+-    exports.visit = parser.visit;
+-    /**
+-     * Takes JSON with JavaScript-style comments and remove
+-     * them. Optionally replaces every none-newline character
+-     * of comments with a replaceCharacter
+-     */
+-    exports.stripComments = parser.stripComments;
+-    var ParseErrorCode;
+-    (function (ParseErrorCode) {
+-        ParseErrorCode[ParseErrorCode["InvalidSymbol"] = 1] = "InvalidSymbol";
+-        ParseErrorCode[ParseErrorCode["InvalidNumberFormat"] = 2] = "InvalidNumberFormat";
+-        ParseErrorCode[ParseErrorCode["PropertyNameExpected"] = 3] = "PropertyNameExpected";
+-        ParseErrorCode[ParseErrorCode["ValueExpected"] = 4] = "ValueExpected";
+-        ParseErrorCode[ParseErrorCode["ColonExpected"] = 5] = "ColonExpected";
+-        ParseErrorCode[ParseErrorCode["CommaExpected"] = 6] = "CommaExpected";
+-        ParseErrorCode[ParseErrorCode["CloseBraceExpected"] = 7] = "CloseBraceExpected";
+-        ParseErrorCode[ParseErrorCode["CloseBracketExpected"] = 8] = "CloseBracketExpected";
+-        ParseErrorCode[ParseErrorCode["EndOfFileExpected"] = 9] = "EndOfFileExpected";
+-        ParseErrorCode[ParseErrorCode["InvalidCommentToken"] = 10] = "InvalidCommentToken";
+-        ParseErrorCode[ParseErrorCode["UnexpectedEndOfComment"] = 11] = "UnexpectedEndOfComment";
+-        ParseErrorCode[ParseErrorCode["UnexpectedEndOfString"] = 12] = "UnexpectedEndOfString";
+-        ParseErrorCode[ParseErrorCode["UnexpectedEndOfNumber"] = 13] = "UnexpectedEndOfNumber";
+-        ParseErrorCode[ParseErrorCode["InvalidUnicode"] = 14] = "InvalidUnicode";
+-        ParseErrorCode[ParseErrorCode["InvalidEscapeCharacter"] = 15] = "InvalidEscapeCharacter";
+-        ParseErrorCode[ParseErrorCode["InvalidCharacter"] = 16] = "InvalidCharacter";
+-    })(ParseErrorCode || (exports.ParseErrorCode = ParseErrorCode = {}));
+-    function printParseErrorCode(code) {
+-        switch (code) {
+-            case 1 /* ParseErrorCode.InvalidSymbol */: return 'InvalidSymbol';
+-            case 2 /* ParseErrorCode.InvalidNumberFormat */: return 'InvalidNumberFormat';
+-            case 3 /* ParseErrorCode.PropertyNameExpected */: return 'PropertyNameExpected';
+-            case 4 /* ParseErrorCode.ValueExpected */: return 'ValueExpected';
+-            case 5 /* ParseErrorCode.ColonExpected */: return 'ColonExpected';
+-            case 6 /* ParseErrorCode.CommaExpected */: return 'CommaExpected';
+-            case 7 /* ParseErrorCode.CloseBraceExpected */: return 'CloseBraceExpected';
+-            case 8 /* ParseErrorCode.CloseBracketExpected */: return 'CloseBracketExpected';
+-            case 9 /* ParseErrorCode.EndOfFileExpected */: return 'EndOfFileExpected';
+-            case 10 /* ParseErrorCode.InvalidCommentToken */: return 'InvalidCommentToken';
+-            case 11 /* ParseErrorCode.UnexpectedEndOfComment */: return 'UnexpectedEndOfComment';
+-            case 12 /* ParseErrorCode.UnexpectedEndOfString */: return 'UnexpectedEndOfString';
+-            case 13 /* ParseErrorCode.UnexpectedEndOfNumber */: return 'UnexpectedEndOfNumber';
+-            case 14 /* ParseErrorCode.InvalidUnicode */: return 'InvalidUnicode';
+-            case 15 /* ParseErrorCode.InvalidEscapeCharacter */: return 'InvalidEscapeCharacter';
+-            case 16 /* ParseErrorCode.InvalidCharacter */: return 'InvalidCharacter';
+-        }
+-        return '<unknown ParseErrorCode>';
+-    }
+-    exports.printParseErrorCode = printParseErrorCode;
+-    /**
+-     * Computes the edit operations needed to format a JSON document.
+-     *
+-     * @param documentText The input text
+-     * @param range The range to format or `undefined` to format the full content
+-     * @param options The formatting options
+-     * @returns The edit operations describing the formatting changes to the original document following the format described in {@linkcode EditResult}.
+-     * To apply the edit operations to the input, use {@linkcode applyEdits}.
+-     */
+-    function format(documentText, range, options) {
+-        return formatter.format(documentText, range, options);
+-    }
+-    exports.format = format;
+-    /**
+-     * Computes the edit operations needed to modify a value in the JSON document.
+-     *
+-     * @param documentText The input text
+-     * @param path The path of the value to change. The path represents either to the document root, a property or an array item.
+-     * If the path points to an non-existing property or item, it will be created.
+-     * @param value The new value for the specified property or item. If the value is undefined,
+-     * the property or item will be removed.
+-     * @param options Options
+-     * @returns The edit operations describing the changes to the original document, following the format described in {@linkcode EditResult}.
+-     * To apply the edit operations to the input, use {@linkcode applyEdits}.
+-     */
+-    function modify(text, path, value, options) {
+-        return edit.setProperty(text, path, value, options);
+-    }
+-    exports.modify = modify;
+-    /**
+-     * Applies edits to an input string.
+-     * @param text The input text
+-     * @param edits Edit operations following the format described in {@linkcode EditResult}.
+-     * @returns The text with the applied edits.
+-     * @throws An error if the edit operations are not well-formed as described in {@linkcode EditResult}.
+-     */
+-    function applyEdits(text, edits) {
+-        let sortedEdits = edits.slice(0).sort((a, b) => {
+-            const diff = a.offset - b.offset;
+-            if (diff === 0) {
+-                return a.length - b.length;
+-            }
+-            return diff;
+-        });
+-        let lastModifiedOffset = text.length;
+-        for (let i = sortedEdits.length - 1; i >= 0; i--) {
+-            let e = sortedEdits[i];
+-            if (e.offset + e.length <= lastModifiedOffset) {
+-                text = edit.applyEdit(text, e);
+-            }
+-            else {
+-                throw new Error('Overlapping edit');
+-            }
+-            lastModifiedOffset = e.offset;
+-        }
+-        return text;
+-    }
+-    exports.applyEdits = applyEdits;
+-});
++    return '<unknown ParseErrorCode>';
++}
++exports.printParseErrorCode = printParseErrorCode;
++function format(documentText, range, options) {
++    return formatter.format(documentText, range, options);
++}
++exports.format = format;
++function modify(text, path, value, options) {
++    return edit.setProperty(text, path, value, options);
++}
++exports.modify = modify;
++function applyEdits(text, edits) {
++    return edit.applyEdit(text, edits);
++}
++exports.applyEdits = applyEdits;
