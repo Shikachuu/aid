@@ -41,17 +41,15 @@ export async function build(ctx: BuildContext): Promise<void> {
     html: wrapInLayout(page, ctx, STYLESHEET_PLACEHOLDER, web),
   }))
 
-  // Side-channel `.md` exports — one per markdown page. The OpenAPI `.json`
-  // export already lives in page.exports[] but writing it is out of scope here,
-  // so the suffix filter keeps this strictly the markdown sidechain.
-  const mdExports = rendered.flatMap((page) =>
-    page.exports
-      .filter((e) => e.suffix === ".md")
-      .map((e) => ({
-        fsPath: outputPathForExport(page.route, e.suffix, ctx),
-        body: e.body,
-        source: page.route.source,
-      })),
+  // Side-channel exports — sibling `.md` for markdown/HTML pages and `.json`
+  // for OpenAPI/proto pages. Each renderer produces these on `page.exports[]`;
+  // the pipeline just writes them next to the HTML at `<route>.<suffix>`.
+  const sideExports = rendered.flatMap((page) =>
+    page.exports.map((e) => ({
+      fsPath: outputPathForExport(page.route, e.suffix, ctx),
+      body: e.body,
+      source: page.route.source,
+    })),
   )
 
   const { css } = await compileTailwind({ ctx, htmlContents: docs.map((d) => d.html) })
@@ -62,7 +60,7 @@ export async function build(ctx: BuildContext): Promise<void> {
       registry.register(doc.fsPath, `<rendered:${doc.fsPath}>`)
       await Bun.write(doc.fsPath, doc.html.replaceAll(STYLESHEET_PLACEHOLDER, href))
     }),
-    ...mdExports.map(async (exp) => {
+    ...sideExports.map(async (exp) => {
       registry.register(exp.fsPath, `<export:${exp.source}>`)
       await Bun.write(exp.fsPath, exp.body)
     }),

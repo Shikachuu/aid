@@ -119,7 +119,17 @@ test("produces dist/index.html linking a hashed main CSS for the sample fixture"
   expect(md).toMatch(/^# Sample Site/)
   expect(md).toContain("/hero.svg")
   expect(md).not.toContain("./hero.svg")
-  // OpenAPI `.json` sidechain is intentionally out of scope for now — its
-  // body lives in page.exports[] but the pipeline filters writes to `.md`.
-  expect(await Bun.file(path.join(ctx.outputDir, "api.json")).exists()).toBe(false)
+  // OpenAPI `.json` sidechain: every OpenAPI route emits a sibling `.json`
+  // file carrying the normalized spec, so LLMs and tooling can fetch it
+  // alongside the rendered reference UI.
+  const jsonPath = path.join(ctx.outputDir, "api.json")
+  expect(await Bun.file(jsonPath).exists()).toBe(true)
+  const spec = (await Bun.file(jsonPath).json()) as {
+    openapi?: string
+    info?: { title?: string }
+    paths?: Record<string, unknown>
+  }
+  expect(spec.openapi).toMatch(/^3\./)
+  expect(spec.info?.title).toBe("Sample API")
+  expect(spec.paths?.["/pets"]).toBeDefined()
 })
