@@ -45,6 +45,11 @@ test("produces dist/index.html linking a hashed main CSS for the sample fixture"
   // Markdown body content reaches the rendered HTML.
   expect(html).toContain("Sample Site")
   expect(html).toContain("small fixture")
+  // Exactly one <h1> per page — no duplicate from PageMarkdown chrome.
+  expect((html.match(/<h1\b/g) ?? []).length).toBe(1)
+  // Headings get slugged ids and an appended # anchor span.
+  expect(html).toMatch(/<h1 id="sample-site">/)
+  expect(html).toContain('class="aid-heading-anchor"')
 
   const css = await Bun.file(path.join(ctx.outputDir, cssFilename)).text()
   // The fixture's main.css overrides --color-aid-accent via @theme; proves the

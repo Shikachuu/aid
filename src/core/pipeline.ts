@@ -1,9 +1,9 @@
 import path from "node:path"
 import { render, renderDocument } from "../jsx-runtime"
+import { renderMarkdown } from "../renderers/markdown"
 import { Layout } from "../theme/components/Layout"
 import { PageMarkdown } from "../theme/components/PageMarkdown"
 import { writeCss } from "./css-writer"
-import { renderMarkdown } from "./renderers/markdown"
 import { buildRoutes } from "./router"
 import { compileTailwind } from "./tailwind"
 import type { BuildContext, RenderedPage, Route } from "./types"
@@ -53,7 +53,7 @@ function wrapInLayout(page: RenderedPage, ctx: BuildContext, stylesheetHref: str
   const title =
     typeof fm?.title === "string" && fm.title.length > 0 ? fm.title : page.searchTokens.title
   const description = typeof fm?.description === "string" ? fm.description : undefined
-  const pageHtml = render(PageMarkdown({ title, bodyHtml: page.html, machineUrl: "" }) as never)
+  const pageHtml = render(PageMarkdown({ bodyHtml: page.html, machineUrl: "" }) as never)
   return renderDocument(
     Layout({
       config: ctx.config,
