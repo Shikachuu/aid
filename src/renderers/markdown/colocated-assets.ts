@@ -55,7 +55,7 @@ const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i
  * `true` for paths the plugin should rewrite: not absolute, not URL-like, not a
  * fragment. Matches `./foo.png`, `../bar/baz.svg`, and bare `foo.png` alike.
  */
-function isRelative(src: string): boolean {
+export function isRelative(src: string): boolean {
   if (src.length === 0) return false
   if (src.startsWith("/")) return false
   if (src.startsWith("#")) return false

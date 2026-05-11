@@ -45,6 +45,13 @@ test("nested route's colocated image lands under the route dir with the right hr
   ).toBe(true)
   const html = await Bun.file(path.join(ctx.outputDir, "products", "stocks", "index.html")).text()
   expect(html).toContain('src="/products/stocks/diagram.svg"')
+
+  // Sidechain `.md` is a sibling of the route folder, not nested inside it.
+  const mdPath = path.join(ctx.outputDir, "products", "stocks.md")
+  expect(await Bun.file(mdPath).exists()).toBe(true)
+  const md = await Bun.file(mdPath).text()
+  expect(md).toContain("/products/stocks/diagram.svg")
+  expect(md).not.toContain("./diagram.svg")
 })
 
 test("base_path is honored in the rewritten src", async () => {
@@ -55,6 +62,10 @@ test("base_path is honored in the rewritten src", async () => {
 
   const html = await Bun.file(path.join(ctx.outputDir, "index.html")).text()
   expect(html).toContain('src="/docs/hero.svg"')
+
+  // `.md` sidechain picks up the same base_path-prefixed href.
+  const md = await Bun.file(path.join(ctx.outputDir, "index.md")).text()
+  expect(md).toContain("/docs/hero.svg")
 })
 
 test("colocated image one level up from the route still resolves correctly", async () => {

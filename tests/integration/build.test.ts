@@ -108,4 +108,18 @@ test("produces dist/index.html linking a hashed main CSS for the sample fixture"
   expect(openapiHtml).toContain(`<link rel="stylesheet" href="/${openapiCssFilename}">`)
   // Prose-only pages don't pay for it.
   expect(html).not.toContain(openapiCssFilename)
+
+  // Markdown sidechain: every markdown route emits a sibling `.md` file with
+  // the same public href for colocated images as the HTML. Root `/` → index.md.
+  const mdPath = path.join(ctx.outputDir, "index.md")
+  expect(await Bun.file(mdPath).exists()).toBe(true)
+  const md = await Bun.file(mdPath).text()
+  expect(md.startsWith("---")).toBe(false)
+  expect(md).not.toContain("title: Sample Site")
+  expect(md).toMatch(/^# Sample Site/)
+  expect(md).toContain("/hero.svg")
+  expect(md).not.toContain("./hero.svg")
+  // OpenAPI `.json` sidechain is intentionally out of scope for now — its
+  // body lives in page.exports[] but the pipeline filters writes to `.md`.
+  expect(await Bun.file(path.join(ctx.outputDir, "api.json")).exists()).toBe(false)
 })

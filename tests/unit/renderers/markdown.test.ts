@@ -218,4 +218,39 @@ describe("renderMarkdown", () => {
       /boundary violation/,
     )
   })
+
+  test("exports a .md sidechain with content type and frontmatter stripped", async () => {
+    const page = await renderFixture(
+      "page.md",
+      `---\ntitle: Hidden\n---\n\n# Body Heading\n\nProse.\n`,
+    )
+    expect(page.exports).toHaveLength(1)
+    const [md] = page.exports
+    expect(md?.suffix).toBe(".md")
+    expect(md?.contentType).toMatch(/^text\/markdown/)
+    expect(md?.body).not.toContain("---")
+    expect(md?.body).not.toContain("title: Hidden")
+    expect(md?.body).toMatch(/^# Body Heading/)
+    expect(md?.body).toContain("Prose.")
+  })
+
+  test(".md export rewrites relative image URLs through copyAsset", async () => {
+    const sourcePath = path.join(dir, "page.md")
+    await Bun.write(sourcePath, "# T\n\n![alt](./hero.png)\n")
+    await Bun.write(path.join(dir, "hero.png"), "binary")
+    const route: Route = { source: sourcePath, path: "/page", kind: "markdown" }
+    const copyAsset = async () => "/page/hero.png"
+    const page = await renderMarkdown({ route, sourcePath, copyAsset })
+    const [md] = page.exports
+    expect(md?.body).toContain("/page/hero.png")
+    expect(md?.body).not.toContain("./hero.png")
+    // HTML branch sees the same rewritten URL — single source of truth.
+    expect(page.html).toContain('src="/page/hero.png"')
+  })
+
+  test(".md export preserves relative URLs when copyAsset is absent", async () => {
+    const page = await renderFixture("page.md", "# T\n\n![alt](./hero.png)\n")
+    const [md] = page.exports
+    expect(md?.body).toContain("./hero.png")
+  })
 })

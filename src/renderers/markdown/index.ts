@@ -1,16 +1,20 @@
 import path from "node:path"
 import rehypeShiki from "@shikijs/rehype"
 import type { ElementContent, Element as HastElement, Root as HastRoot } from "hast"
+import type { Root as MdastRoot } from "mdast"
 import rehypeAutolinkHeadings from "rehype-autolink-headings"
 import rehypeSlug from "rehype-slug"
 import rehypeStringify from "rehype-stringify"
 import remarkGfm from "remark-gfm"
 import remarkParse from "remark-parse"
 import remarkRehype from "remark-rehype"
+import remarkStringify from "remark-stringify"
 import { unified } from "unified"
 import { visit } from "unist-util-visit"
+import { VFile } from "vfile"
 import type { RenderedPage, Route, SearchTokens } from "../../core/types"
-import { type CopyAsset, colocatedAssetsPlugin } from "./colocated-assets"
+import type { CopyAsset } from "./colocated-assets"
+import { colocatedAssetsMdastPlugin } from "./colocated-assets-mdast"
 import { extractFrontmatter, type Frontmatter } from "./frontmatter"
 import { HAS_MERMAID_FLAG, mermaidPlugin } from "./mermaid"
 import { SHIKI_OPTIONS } from "./shiki"
@@ -33,8 +37,10 @@ export type RenderMarkdownArgs = {
  * a Zod schema; GFM is enabled; headings get slugged ids and an appended `#`
  * anchor link. The body's first H1 is the page heading — if absent, the
  * renderer prepends one using the frontmatter title or filename so the page
- * chrome is consistent. The returned `html` is body content only; Layout +
- * PageMarkdown wrapping happens in the pipeline.
+ * chrome is consistent. Returned `html` is body content only; Layout +
+ * PageMarkdown wrapping happens in the pipeline. The `.md` sidechain export
+ * (frontmatter-stripped, with relative image URLs rewritten to the same public
+ * hrefs the HTML uses) is appended to `exports`.
  */
 export async function renderMarkdown(args: RenderMarkdownArgs): Promise<RenderedPage> {
   const source = await Bun.file(args.sourcePath).text()
@@ -44,9 +50,23 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
   const titleSink = { value: frontmatter?.title ?? filenameTitle }
   const headings: string[] = []
 
-  let processor = unified()
-    .use(remarkParse)
-    .use(remarkGfm)
+  // Shared mdast: parse + GFM + (optional) image URL rewrite. Forking after
+  // this point means HTML and .md outputs see the same public hrefs and the
+  // copyAsset side effects fire exactly once.
+  let mdastProcessor = unified().use(remarkParse).use(remarkGfm)
+  if (args.copyAsset) {
+    mdastProcessor = mdastProcessor.use(colocatedAssetsMdastPlugin, {
+      sourceDir: path.dirname(args.sourcePath),
+      copyAsset: args.copyAsset,
+    })
+  }
+
+  const file = new VFile({ value: body })
+  const mdast = (await mdastProcessor.run(mdastProcessor.parse(file), file)) as MdastRoot
+
+  // HTML branch: preserves the existing plugin order so the rendered body
+  // stays byte-equivalent with the pre-fork output.
+  const htmlProcessor = unified()
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(resolveAndEnsureLeadingH1, {
       frontmatterTitle: frontmatter?.title,
@@ -67,17 +87,18 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
     })
     .use(mermaidPlugin)
     .use(rehypeShiki, SHIKI_OPTIONS)
+    .use(rehypeStringify, { allowDangerousHtml: true })
 
-  if (args.copyAsset) {
-    processor = processor.use(colocatedAssetsPlugin, {
-      sourceDir: path.dirname(args.sourcePath),
-      copyAsset: args.copyAsset,
-    })
-  }
+  // Clone the mdast for the HTML branch — remark-rehype and friends mutate it
+  // and the MD branch still needs the original.
+  const htmlTree = await htmlProcessor.run(structuredClone(mdast), file)
+  const html = htmlProcessor.stringify(htmlTree as HastRoot, file)
 
-  const file = await processor.use(rehypeStringify, { allowDangerousHtml: true }).process(body)
+  // MD branch: serialize the rewritten mdast back to markdown. `remark-gfm`
+  // is included so the stringifier knows how to emit table/strikethrough nodes
+  // that `remark-gfm` introduces during parsing.
+  const mdBody = unified().use(remarkGfm).use(remarkStringify).stringify(mdast)
 
-  const html = String(file)
   const searchTokens: SearchTokens = {
     title: titleSink.value,
     body,
@@ -89,7 +110,13 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
     route: { ...args.route, frontmatter },
     html,
     searchTokens,
-    exports: [],
+    exports: [
+      {
+        suffix: ".md",
+        contentType: "text/markdown; charset=utf-8",
+        body: mdBody,
+      },
+    ],
     hasMermaid: file.data[HAS_MERMAID_FLAG] === true,
     hasOpenApi: false,
   }

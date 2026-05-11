@@ -41,15 +41,32 @@ export async function build(ctx: BuildContext): Promise<void> {
     html: wrapInLayout(page, ctx, STYLESHEET_PLACEHOLDER, web),
   }))
 
+  // Side-channel `.md` exports — one per markdown page. The OpenAPI `.json`
+  // export already lives in page.exports[] but writing it is out of scope here,
+  // so the suffix filter keeps this strictly the markdown sidechain.
+  const mdExports = rendered.flatMap((page) =>
+    page.exports
+      .filter((e) => e.suffix === ".md")
+      .map((e) => ({
+        fsPath: outputPathForExport(page.route, e.suffix, ctx),
+        body: e.body,
+        source: page.route.source,
+      })),
+  )
+
   const { css } = await compileTailwind({ ctx, htmlContents: docs.map((d) => d.html) })
   const { href } = await writeCss({ ctx, css })
 
-  await Promise.all(
-    docs.map(async (doc) => {
+  await Promise.all([
+    ...docs.map(async (doc) => {
       registry.register(doc.fsPath, `<rendered:${doc.fsPath}>`)
       await Bun.write(doc.fsPath, doc.html.replaceAll(STYLESHEET_PLACEHOLDER, href))
     }),
-  )
+    ...mdExports.map(async (exp) => {
+      registry.register(exp.fsPath, `<export:${exp.source}>`)
+      await Bun.write(exp.fsPath, exp.body)
+    }),
+  ])
 }
 
 async function dispatchRenderer(
@@ -145,8 +162,22 @@ function wrapInLayout(
   )
 }
 
-function outputPathForRoute(route: Route, ctx: BuildContext): string {
+/** Disk path for a route's rendered HTML, e.g. `/foo` → `<outputDir>/foo/index.html`. */
+export function outputPathForRoute(route: Route, ctx: BuildContext): string {
   if (route.path === "/") return path.join(ctx.outputDir, "index.html")
   const segments = route.path.replace(/^\//, "").split("/")
   return path.join(ctx.outputDir, ...segments, "index.html")
+}
+
+/**
+ * Disk path for a side-channel export at a given suffix. Sibling to the
+ * route's folder rather than nested inside it, so the URL `/foo` + `.md` →
+ * file `<outputDir>/foo.md`. Root `/` collapses to `<outputDir>/index<suffix>`.
+ */
+export function outputPathForExport(route: Route, suffix: string, ctx: BuildContext): string {
+  if (route.path === "/") return path.join(ctx.outputDir, `index${suffix}`)
+  const segments = route.path.replace(/^\//, "").split("/")
+  const last = segments.pop()
+  if (last === undefined) return path.join(ctx.outputDir, `index${suffix}`)
+  return path.join(ctx.outputDir, ...segments, `${last}${suffix}`)
 }
