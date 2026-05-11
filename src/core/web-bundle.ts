@@ -1,5 +1,5 @@
 import path from "node:path"
-import { aidMermaidJs, aidWebJs } from "../web/_bundled"
+import { aidMermaidJs, aidOpenapiJs, aidWebJs } from "../web/_bundled"
 import type { BuildContext } from "./types"
 
 /** Inputs for {@link buildWebBundle}. */
@@ -11,6 +11,12 @@ export type BuildWebBundleArgs = {
    * no diagrams never pay for the mermaid library.
    */
   includeMermaid?: boolean
+  /**
+   * When `true`, the Scalar `api-reference` runtime bundle is emitted alongside
+   * the base one. When `false` (the default), only the base bundle is produced —
+   * sites with no OpenAPI pages never pay for the Scalar runtime.
+   */
+  includeOpenApi?: boolean
 }
 
 /** Result of writing the compiled web bundle(s) to disk. */
@@ -19,11 +25,14 @@ export type BuildWebBundleResult = {
   baseHref: string
   /** Public href for the mermaid bundle, or `null` when `includeMermaid` is false. */
   mermaidHref: string | null
+  /** Public href for the Scalar bundle, or `null` when `includeOpenApi` is false. */
+  openapiHref: string | null
 }
 
 const aidProjectRoot = path.join(import.meta.dir, "../..")
 const baseEntry = path.join(aidProjectRoot, "src/web/index.ts")
 const mermaidEntry = path.join(aidProjectRoot, "src/web/mermaid-entry.ts")
+const openapiEntry = path.join(aidProjectRoot, "src/web/openapi-entry.ts")
 
 /**
  * Materialise the browser-side runtime into `outputDir`. There are two
@@ -46,7 +55,7 @@ const mermaidEntry = path.join(aidProjectRoot, "src/web/mermaid-entry.ts")
  * filenames are content-addressable for cache-busting.
  */
 export async function buildWebBundle(args: BuildWebBundleArgs): Promise<BuildWebBundleResult> {
-  const { ctx, includeMermaid = false } = args
+  const { ctx, includeMermaid = false, includeOpenApi = false } = args
 
   // Prefer the source tree when it is available on disk: in dev mode that's
   // always the case, and `Bun.build` with splitting produces the smaller
@@ -64,7 +73,13 @@ export async function buildWebBundle(args: BuildWebBundleArgs): Promise<BuildWeb
       : await writeEmbedded(ctx, "aid-mermaid", requireEmbedded("aid-mermaid", aidMermaidJs))
     : null
 
-  return { baseHref, mermaidHref }
+  const openapiHref = includeOpenApi
+    ? useSource
+      ? await buildAndWrite(ctx, "aid-openapi", openapiEntry)
+      : await writeEmbedded(ctx, "aid-openapi", requireEmbedded("aid-openapi", aidOpenapiJs))
+    : null
+
+  return { baseHref, mermaidHref, openapiHref }
 }
 
 function requireEmbedded(name: string, bytes: string): string {

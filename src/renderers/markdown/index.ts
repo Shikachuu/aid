@@ -91,6 +91,7 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
     searchTokens,
     exports: [],
     hasMermaid: file.data[HAS_MERMAID_FLAG] === true,
+    hasOpenApi: false,
   }
 }
 

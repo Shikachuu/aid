@@ -60,4 +60,36 @@ describe("buildRoutes", () => {
     await expect(buildRoutes(ctx)).rejects.toThrow(/route collision/)
     await expect(buildRoutes(ctx)).rejects.toThrow(/products/)
   })
+
+  test("emits an openapi route for a yaml file with a top-level openapi key", async () => {
+    const ctx = makeCtx()
+    await Bun.write(
+      path.join(ctx.contentDir, "api.yaml"),
+      `openapi: "3.1.0"\ninfo:\n  title: T\n  version: "1"\npaths: {}\n`,
+    )
+    const routes = await buildRoutes(ctx)
+    expect(routes.map((r) => ({ path: r.path, kind: r.kind }))).toEqual([
+      { path: "/api", kind: "openapi" },
+    ])
+  })
+
+  test("silently skips yaml and json files that aren't OpenAPI specs", async () => {
+    const ctx = makeCtx()
+    await writeMd(ctx, "index.md")
+    await Bun.write(path.join(ctx.contentDir, "data.yaml"), `name: foo\nversion: 1\n`)
+    await Bun.write(path.join(ctx.contentDir, "config.json"), `{"products": [{"id": 1}]}`)
+    const routes = await buildRoutes(ctx)
+    expect(routes.map((r) => r.path)).toEqual(["/"])
+  })
+
+  test("throws on collision between api.md and api.yaml", async () => {
+    const ctx = makeCtx()
+    await writeMd(ctx, "api.md")
+    await Bun.write(
+      path.join(ctx.contentDir, "api.yaml"),
+      `openapi: "3.1.0"\ninfo:\n  title: T\n  version: "1"\npaths: {}\n`,
+    )
+    await expect(buildRoutes(ctx)).rejects.toThrow(/route collision/)
+    await expect(buildRoutes(ctx)).rejects.toThrow(/api/)
+  })
 })

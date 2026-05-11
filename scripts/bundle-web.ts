@@ -1,9 +1,10 @@
 #!/usr/bin/env bun
 /**
- * Bundle the browser-side glue. Two entrypoints get bundled:
+ * Bundle the browser-side glue. Three entrypoints get bundled:
  *
  *   - `src/web/index.ts`         → `dist/web/aid-web.js`     (`aidWebJs`)
  *   - `src/web/mermaid-entry.ts` → `dist/web/aid-mermaid.js` (`aidMermaidJs`)
+ *   - `src/web/openapi-entry.ts` → `dist/web/aid-openapi.js` (`aidOpenapiJs`)
  *
  * The minified ESM for each entry is written to **two** places:
  *
@@ -25,7 +26,7 @@ const BUNDLED_TS = resolve(ROOT, "src", "web", "_bundled.ts")
 
 type Entry = {
   /** Identifier used for the `aid…Js` export name and the dist filename. */
-  name: "aid-web" | "aid-mermaid"
+  name: "aid-web" | "aid-mermaid" | "aid-openapi"
   /** TS source path bundle, relative to project root. */
   source: string
   /** Property name on `src/web/_bundled.ts`. */
@@ -35,6 +36,7 @@ type Entry = {
 const ENTRIES: readonly Entry[] = [
   { name: "aid-web", source: "src/web/index.ts", exportName: "aidWebJs" },
   { name: "aid-mermaid", source: "src/web/mermaid-entry.ts", exportName: "aidMermaidJs" },
+  { name: "aid-openapi", source: "src/web/openapi-entry.ts", exportName: "aidOpenapiJs" },
 ]
 
 const fmtBytes = (n: number): string => {

@@ -14,6 +14,8 @@ export type LayoutProps = {
   webBundleHref: string
   /** Per-page; injected only when the page contains at least one mermaid diagram. */
   mermaidBundleHref?: string | null
+  /** Per-page; injected only when the page is an OpenAPI reference. */
+  openapiBundleHref?: string | null
   bodyHtml: string
 }
 
@@ -26,6 +28,7 @@ export function Layout(props: LayoutProps) {
     stylesheetHref,
     webBundleHref,
     mermaidBundleHref,
+    openapiBundleHref,
     bodyHtml,
   } = props
   return (
@@ -52,6 +55,7 @@ export function Layout(props: LayoutProps) {
         <Footer config={config} />
         <script type="module" src={webBundleHref} defer />
         {mermaidBundleHref ? <script type="module" src={mermaidBundleHref} defer /> : null}
+        {openapiBundleHref ? <script type="module" src={openapiBundleHref} defer /> : null}
       </body>
     </html>
   )

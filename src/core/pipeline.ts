@@ -2,6 +2,7 @@ import path from "node:path"
 import { render, renderDocument } from "../jsx-runtime"
 import { renderMarkdown } from "../renderers/markdown"
 import type { CopyAsset } from "../renderers/markdown/colocated-assets"
+import { renderOpenApi } from "../renderers/openapi"
 import { Layout } from "../theme/components/Layout"
 import { PageMarkdown } from "../theme/components/PageMarkdown"
 import { AssetRegistry } from "./assets"
@@ -28,7 +29,12 @@ export async function build(ctx: BuildContext): Promise<void> {
   const rendered = await Promise.all(routes.map((route) => dispatchRenderer(route, ctx, registry)))
 
   const siteHasMermaid = rendered.some((p) => p.hasMermaid)
-  const web = await buildWebBundle({ ctx, includeMermaid: siteHasMermaid })
+  const siteHasOpenApi = rendered.some((p) => p.hasOpenApi)
+  const web = await buildWebBundle({
+    ctx,
+    includeMermaid: siteHasMermaid,
+    includeOpenApi: siteHasOpenApi,
+  })
 
   const docs = rendered.map((page) => ({
     fsPath: outputPathForRoute(page.route, ctx),
@@ -58,6 +64,8 @@ async function dispatchRenderer(
         sourcePath: route.source,
         copyAsset: makeCopyAsset(route, ctx, registry),
       })
+    case "openapi":
+      return renderOpenApi({ route, sourcePath: route.source })
     default:
       throw new Error(`renderer not implemented: ${route.kind}`)
   }
@@ -104,13 +112,18 @@ function wrapInLayout(
   page: RenderedPage,
   ctx: BuildContext,
   stylesheetHref: string,
-  web: { baseHref: string; mermaidHref: string | null },
+  web: { baseHref: string; mermaidHref: string | null; openapiHref: string | null },
 ): string {
   const fm = page.route.frontmatter
   const title =
     typeof fm?.title === "string" && fm.title.length > 0 ? fm.title : page.searchTokens.title
   const description = typeof fm?.description === "string" ? fm.description : undefined
-  const pageHtml = render(PageMarkdown({ bodyHtml: page.html, machineUrl: "" }) as never)
+  // The OpenAPI renderer already produces a fully-wrapped PageOpenAPI body;
+  // markdown still needs the PageMarkdown chrome added at layout time.
+  const pageHtml =
+    page.route.kind === "openapi"
+      ? page.html
+      : render(PageMarkdown({ bodyHtml: page.html, machineUrl: "" }) as never)
   return renderDocument(
     Layout({
       config: ctx.config,
@@ -120,6 +133,7 @@ function wrapInLayout(
       stylesheetHref,
       webBundleHref: web.baseHref,
       mermaidBundleHref: page.hasMermaid ? web.mermaidHref : null,
+      openapiBundleHref: page.hasOpenApi ? web.openapiHref : null,
       bodyHtml: pageHtml,
     }) as never,
   )

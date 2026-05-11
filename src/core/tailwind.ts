@@ -1,9 +1,8 @@
 import path from "node:path"
-import { compile } from "@tailwindcss/node"
-import { Scanner } from "@tailwindcss/oxide"
 import bundledMainCss from "../theme/main.css" with { type: "text" }
 import { deriveDarkPalette } from "./dark-mode"
 import { findMatchingBrace } from "./internal/css-scan"
+import { installLightningcssShim } from "./internal/lightningcss-native"
 import type { BuildContext } from "./types"
 
 export type CompileTailwindArgs = {
@@ -52,6 +51,16 @@ const bundledTailwindcssEntry = Bun.resolveSync("tailwindcss/index.css", import.
  * the source before compile.
  */
 export async function compileTailwind(args: CompileTailwindArgs): Promise<CompileTailwindResult> {
+  // @tailwindcss/node minifies via lightningcss, whose native binding loader
+  // (`require(\`lightningcss-${platform}\`)`) isn't followed by `bun build
+  // --compile`. The shim must run BEFORE @tailwindcss/node is loaded — its
+  // own top-level `import { transform } from "lightningcss"` triggers
+  // lightningcss/node/index.js to resolve the binding at module-load time.
+  // We dynamically import both Tailwind packages here so the shim's
+  // `Module.prototype.require` hook is in place first.
+  await installLightningcssShim()
+  const { compile } = await import("@tailwindcss/node")
+  const { Scanner } = await import("@tailwindcss/oxide")
   const { ctx, safelist, htmlContents } = args
   const entry = await resolveEntry(ctx)
   const sourceTargets = collectSourceTargets(ctx)

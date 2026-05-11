@@ -26,6 +26,8 @@ export type RenderedPage = {
   exports: SideChannelExport[]
   /** True iff the rendered body contains at least one mermaid diagram. Drives lazy <script> injection. */
   hasMermaid: boolean
+  /** True iff the page is an OpenAPI reference. Drives lazy Scalar runtime injection. */
+  hasOpenApi: boolean
 }
 
 export type SearchTokens = {

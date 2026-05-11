@@ -17,8 +17,10 @@ type Target = {
   triple: string
   /** Output suffix appended to `aid-`. */
   outSuffix: string
-  /** Subpackage path embedded in the binary (matches a `with { type: "file" }` import). */
+  /** `@bufbuild/buf` subpackage embedded in the binary (matches a `with { type: "file" }` import). */
   bufSubpkg: string
+  /** `lightningcss-*` subpackage whose `.node` is embedded for this target. */
+  lcssSubpkg: string
   /** Values bun injects for build-time constant folding. */
   platform: "darwin" | "linux"
   arch: "arm64" | "x64"
@@ -29,6 +31,7 @@ const TARGETS: readonly Target[] = [
     triple: "bun-darwin-arm64",
     outSuffix: "darwin-arm64",
     bufSubpkg: "@bufbuild/buf-darwin-arm64",
+    lcssSubpkg: "lightningcss-darwin-arm64",
     platform: "darwin",
     arch: "arm64",
   },
@@ -36,6 +39,7 @@ const TARGETS: readonly Target[] = [
     triple: "bun-darwin-x64",
     outSuffix: "darwin-x64",
     bufSubpkg: "@bufbuild/buf-darwin-x64",
+    lcssSubpkg: "lightningcss-darwin-x64",
     platform: "darwin",
     arch: "x64",
   },
@@ -43,6 +47,7 @@ const TARGETS: readonly Target[] = [
     triple: "bun-linux-arm64",
     outSuffix: "linux-arm64",
     bufSubpkg: "@bufbuild/buf-linux-aarch64",
+    lcssSubpkg: "lightningcss-linux-arm64-gnu",
     platform: "linux",
     arch: "arm64",
   },
@@ -50,6 +55,7 @@ const TARGETS: readonly Target[] = [
     triple: "bun-linux-x64",
     outSuffix: "linux-x64",
     bufSubpkg: "@bufbuild/buf-linux-x64",
+    lcssSubpkg: "lightningcss-linux-x64-gnu",
     platform: "linux",
     arch: "x64",
   },
@@ -58,6 +64,7 @@ const TARGETS: readonly Target[] = [
 ]
 
 const BUF_SUBPKGS = TARGETS.map((t) => t.bufSubpkg)
+const LCSS_SUBPKGS = TARGETS.map((t) => t.lcssSubpkg)
 
 const fmtBytes = (n: number): string => {
   const units = ["B", "KB", "MB", "GB"]
@@ -101,14 +108,20 @@ await run(["bun", "scripts/bundle-web.ts"], "bundle-web")
 //
 // `with { type: "file" }` imports are NOT eliminated by dead-code analysis —
 // without help, every target embeds all four `@bufbuild/buf-*/bin/buf` files
-// (4× ~50 MB bloat). The `--external` flag below excludes every non-matching
-// platform's buf path so each binary only carries its own. `--define` is added
-// for symmetry / future runtime branches; the externals do the heavy lifting.
+// (4× ~50 MB bloat) and all four `lightningcss-*/lightningcss.*.node` bindings
+// (~24 MB bloat). The `--external` flags below exclude every non-matching
+// platform's buf and lightningcss paths so each binary only carries its own.
+// `--define` is added for symmetry / future runtime branches; the externals do
+// the heavy lifting.
 for (const target of TARGETS) {
   const outfile = resolve(DIST, "bin", `aid-${target.outSuffix}`)
-  const externals = BUF_SUBPKGS.filter((pkg) => pkg !== target.bufSubpkg).flatMap((pkg) => [
+  const bufExternals = BUF_SUBPKGS.filter((pkg) => pkg !== target.bufSubpkg).flatMap((pkg) => [
     "--external",
     `${pkg}/bin/buf`,
+  ])
+  const lcssExternals = LCSS_SUBPKGS.filter((pkg) => pkg !== target.lcssSubpkg).flatMap((pkg) => [
+    "--external",
+    `${pkg}/*`,
   ])
   await run(
     [
@@ -116,7 +129,8 @@ for (const target of TARGETS) {
       "build",
       "--compile",
       `--target=${target.triple}`,
-      ...externals,
+      ...bufExternals,
+      ...lcssExternals,
       "--define",
       `process.platform="${target.platform}"`,
       "--define",
