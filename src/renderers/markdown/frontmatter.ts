@@ -9,6 +9,10 @@ export const FrontmatterSchema = z
   .object({
     title: z.string().min(1).optional().describe("Page title — feeds <title> and <meta>."),
     description: z.string().optional().describe('Short summary — feeds <meta name="description">.'),
+    llms: z
+      .literal("optional")
+      .optional()
+      .describe("Move this page to the `## Optional` section of llms.txt."),
   })
   .catchall(z.unknown())
 

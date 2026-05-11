@@ -119,6 +119,7 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
     ],
     hasMermaid: file.data[HAS_MERMAID_FLAG] === true,
     hasOpenApi: false,
+    description: frontmatter?.description,
   }
 }
 

@@ -28,6 +28,8 @@ export type RenderedPage = {
   hasMermaid: boolean
   /** True iff the page is an OpenAPI reference. Drives lazy Scalar runtime injection. */
   hasOpenApi: boolean
+  /** One-line summary used in llms.txt bullets and (later) <meta description>. */
+  description?: string
 }
 
 export type SearchTokens = {

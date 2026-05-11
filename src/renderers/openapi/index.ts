@@ -28,6 +28,7 @@ export async function renderOpenApi(args: RenderOpenApiArgs): Promise<RenderedPa
   const info = (doc.info ?? {}) as { title?: unknown; description?: unknown }
   const fallbackTitle = path.basename(args.sourcePath, path.extname(args.sourcePath))
   const title = typeof info.title === "string" && info.title.length > 0 ? info.title : fallbackTitle
+  const description = typeof info.description === "string" ? info.description : undefined
 
   const specJson = JSON.stringify(doc)
   const html = render(PageOpenAPI({ title, specJson, machineUrl: "" }) as never)
@@ -45,5 +46,6 @@ export async function renderOpenApi(args: RenderOpenApiArgs): Promise<RenderedPa
     ],
     hasMermaid: false,
     hasOpenApi: true,
+    description,
   }
 }

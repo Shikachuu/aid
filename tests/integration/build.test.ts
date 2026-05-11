@@ -132,4 +132,18 @@ test("produces dist/index.html linking a hashed main CSS for the sample fixture"
   expect(spec.openapi).toMatch(/^3\./)
   expect(spec.info?.title).toBe("Sample API")
   expect(spec.paths?.["/pets"]).toBeDefined()
+
+  // llms.txt: the bundled default template fires (the fixture has no
+  // templates/llms.txt override), so the file ships with the site name, the
+  // description blockquote, and a `## Docs` section listing every page by its
+  // machine-readable URL.
+  const llmsTxtPath = path.join(ctx.outputDir, "llms.txt")
+  expect(await Bun.file(llmsTxtPath).exists()).toBe(true)
+  const llmsTxt = await Bun.file(llmsTxtPath).text()
+  expect(llmsTxt).toMatch(/^# Sample Site/m)
+  expect(llmsTxt).toContain("> Fixture used by aid's integration tests.")
+  expect(llmsTxt).toContain("## Docs")
+  expect(llmsTxt).toContain("[Sample Site](/index.md)")
+  expect(llmsTxt).toContain("[Sample API](/api.json)")
+  expect(llmsTxt).not.toContain("{{")
 })

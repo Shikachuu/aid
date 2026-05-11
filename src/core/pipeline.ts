@@ -7,6 +7,7 @@ import { Layout } from "../theme/components/Layout"
 import { PageMarkdown } from "../theme/components/PageMarkdown"
 import { AssetRegistry } from "./assets"
 import { writeCss } from "./css-writer"
+import { buildLlmsTxt } from "./llms-txt"
 import { buildRoutes } from "./router"
 import { copyStaticAssets } from "./static"
 import { compileTailwind } from "./tailwind"
@@ -52,6 +53,10 @@ export async function build(ctx: BuildContext): Promise<void> {
     })),
   )
 
+  const llmsTxt = await buildLlmsTxt(ctx, rendered)
+  const llmsTxtPath = path.join(ctx.outputDir, "llms.txt")
+  registry.register(llmsTxtPath, "<generated:llms.txt>")
+
   const { css } = await compileTailwind({ ctx, htmlContents: docs.map((d) => d.html) })
   const { href } = await writeCss({ ctx, css })
 
@@ -64,6 +69,7 @@ export async function build(ctx: BuildContext): Promise<void> {
       registry.register(exp.fsPath, `<export:${exp.source}>`)
       await Bun.write(exp.fsPath, exp.body)
     }),
+    Bun.write(llmsTxtPath, llmsTxt),
   ])
 }
 
