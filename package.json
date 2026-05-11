@@ -24,6 +24,7 @@
     "@bufbuild/buf": "^1.69.0",
     "@scalar/api-reference": "^1.55.3",
     "@scalar/openapi-parser": "^0.28.2",
+    "@shikijs/rehype": "^4.0.2",
     "@stoplight/spectral-core": "^1.22.0",
     "@stoplight/spectral-parsers": "^1.0.5",
     "@stoplight/spectral-rulesets": "^1.22.1",

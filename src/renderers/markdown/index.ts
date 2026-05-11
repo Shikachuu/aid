@@ -1,4 +1,5 @@
 import path from "node:path"
+import rehypeShiki from "@shikijs/rehype"
 import type { ElementContent, Element as HastElement, Root as HastRoot } from "hast"
 import rehypeAutolinkHeadings from "rehype-autolink-headings"
 import rehypeSlug from "rehype-slug"
@@ -10,6 +11,7 @@ import { unified } from "unified"
 import { visit } from "unist-util-visit"
 import type { RenderedPage, Route, SearchTokens } from "../../core/types"
 import { extractFrontmatter, type Frontmatter } from "./frontmatter"
+import { SHIKI_OPTIONS } from "./shiki"
 
 /** Arguments for {@link renderMarkdown}: the route metadata and the absolute source-file path. */
 export type RenderMarkdownArgs = { route: Route; sourcePath: string }
@@ -51,6 +53,7 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
         children: [{ type: "text", value: "#" }],
       },
     })
+    .use(rehypeShiki, SHIKI_OPTIONS)
     .use(rehypeStringify, { allowDangerousHtml: true })
     .process(body)
 

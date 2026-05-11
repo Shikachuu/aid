@@ -50,6 +50,11 @@ test("produces dist/index.html linking a hashed main CSS for the sample fixture"
   // Headings get slugged ids and an appended # anchor span.
   expect(html).toMatch(/<h1 id="sample-site">/)
   expect(html).toContain('class="aid-heading-anchor"')
+  // Shiki dual-theme highlighting reaches the rendered HTML.
+  expect(html).toContain('class="shiki')
+  expect(html).toContain("language-ts")
+  expect(html).toContain("--shiki-light:")
+  expect(html).toContain("--shiki-dark:")
 
   const css = await Bun.file(path.join(ctx.outputDir, cssFilename)).text()
   // The fixture's main.css overrides --color-aid-accent via @theme; proves the

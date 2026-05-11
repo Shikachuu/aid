@@ -70,3 +70,74 @@
   --scalar-font: var(--font-aid-sans);
   --scalar-font-code: var(--font-aid-mono);
 }
+
+/*
+ * Shiki dual-theme bridge. `@shikijs/rehype` with `themes: { light, dark }`
+ * emits inline `style="--shiki-light:#…;--shiki-dark:#…"` on every span. By
+ * default each span uses `color: var(--shiki-light)`. Under
+ * `prefers-color-scheme: dark` we rewrite the variable so spans pick up the
+ * dark colour without a re-highlight on the client.
+ */
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+    }
+  }
+}
+
+@layer components {
+  .shiki,
+  .shiki span {
+    color: var(--shiki-light);
+    background-color: var(--shiki-light-bg);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .shiki,
+    .shiki span {
+      color: var(--shiki-dark);
+      background-color: var(--shiki-dark-bg);
+    }
+  }
+
+  /*
+   * Prose. Tailwind utilities still do most layout; these rules cover the
+   * markdown-specific selectors (headings, anchors, code blocks) and keep them
+   * coherent with the theme tokens.
+   */
+
+  .aid-page-markdown pre {
+    @apply overflow-x-auto rounded-lg p-4;
+    font-family: var(--font-aid-mono);
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+
+  .aid-page-markdown :not(pre) > code {
+    @apply rounded;
+    font-family: var(--font-aid-mono);
+    font-size: 0.875em;
+    padding: 0.125rem 0.25rem;
+    background: color-mix(in oklch, var(--color-aid-muted) 12%, transparent);
+  }
+
+  .aid-heading-link {
+    @apply opacity-0 transition-opacity;
+    margin-left: 0.35em;
+    text-decoration: none;
+  }
+
+  .aid-page-markdown :is(h1, h2, h3, h4, h5, h6):hover .aid-heading-link,
+  .aid-heading-link:focus-visible {
+    @apply opacity-100;
+  }
+
+  .aid-heading-anchor {
+    color: var(--color-aid-muted);
+  }
+}

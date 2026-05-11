@@ -100,4 +100,24 @@ describe("renderMarkdown", () => {
     const page = await renderFixture("page.md", `---\ntitle: T\ntags: [docs, intro]\n---\n\n# T\n`)
     expect(page.route.frontmatter?.tags).toEqual(["docs", "intro"])
   })
+
+  test("shiki dual-theme highlights ts fences with --shiki-light/--shiki-dark", async () => {
+    const page = await renderFixture("page.md", "# T\n\n```ts\nconst answer: number = 42\n```\n")
+    expect(page.html).toContain('class="shiki')
+    expect(page.html).toContain("language-ts")
+    expect(page.html).toContain("--shiki-light:")
+    expect(page.html).toContain("--shiki-dark:")
+  })
+
+  test("shiki falls back gracefully for unknown languages", async () => {
+    const page = await renderFixture("page.md", "# T\n\n```not-a-real-lang\nhello\n```\n")
+    expect(page.html).toContain("hello")
+    expect(page.html).not.toContain("undefined")
+  })
+
+  test("shiki preserves heading anchor markup downstream", async () => {
+    const page = await renderFixture("page.md", "# Has Code\n\n```js\nconsole.log(1)\n```\n")
+    expect(page.html).toMatch(/<h1 id="has-code">/)
+    expect(page.html).toContain('class="aid-heading-anchor"')
+  })
 })
