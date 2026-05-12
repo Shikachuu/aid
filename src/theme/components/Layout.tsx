@@ -4,6 +4,7 @@ import { RawHtml } from "../../jsx-runtime"
 import { Footer } from "./Footer"
 import { Header } from "./Header"
 import { Nav } from "./Nav"
+import type { SearchBoxProps } from "./SearchBox"
 
 export type LayoutProps = {
   config: AidConfig
@@ -22,6 +23,11 @@ export type LayoutProps = {
    * spacing collapses, and the search/sidebar are unstyled.
    */
   openapiStylesheetHref?: string | null
+  /**
+   * Search affordance config. When omitted the Header renders no SearchBox —
+   * this is the natural off-switch for `search.enabled === false`.
+   */
+  search?: SearchBoxProps
   bodyHtml: string
 }
 
@@ -36,6 +42,7 @@ export function Layout(props: LayoutProps) {
     mermaidBundleHref,
     openapiBundleHref,
     openapiStylesheetHref,
+    search,
     bodyHtml,
   } = props
   return (
@@ -51,7 +58,7 @@ export function Layout(props: LayoutProps) {
         {openapiStylesheetHref ? <link rel="stylesheet" href={openapiStylesheetHref} /> : null}
       </head>
       <body class="aid-body">
-        <Header config={config} />
+        <Header config={config} search={search} />
         <div class="aid-shell">
           <aside class="aid-sidebar">
             <Nav tree={nav} />

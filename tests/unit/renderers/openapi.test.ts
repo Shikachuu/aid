@@ -135,3 +135,132 @@ describe("renderOpenApi", () => {
     expect(page.hasOpenApi).toBe(true)
   })
 })
+
+describe("renderOpenApi — search tokens", () => {
+  async function renderFixture(name: string, body: string) {
+    const sourcePath = await write(name, body)
+    const route: Route = { source: sourcePath, path: "/api", kind: "openapi" }
+    return renderOpenApi({ route, sourcePath })
+  }
+
+  test("extras: empty spec produces an empty extras dict (title-only index entry)", async () => {
+    const page = await renderFixture(
+      "api.yaml",
+      `openapi: "3.1.0"\ninfo:\n  title: T\n  version: "1"\npaths: {}\n`,
+    )
+    expect(page.searchTokens.extras).toEqual({})
+  })
+
+  test("extras.operationIds collects operationId from each verb under each path", async () => {
+    const spec = [
+      `openapi: "3.1.0"`,
+      `info:`,
+      `  title: API`,
+      `  version: "1"`,
+      `paths:`,
+      `  /pets:`,
+      `    get:`,
+      `      operationId: listPets`,
+      `      responses: { "200": { description: ok } }`,
+      `    post:`,
+      `      operationId: createPet`,
+      `      responses: { "201": { description: ok } }`,
+      `  /pets/{id}:`,
+      `    get:`,
+      `      operationId: getPet`,
+      `      responses: { "200": { description: ok } }`,
+      ``,
+    ].join("\n")
+    const page = await renderFixture("api.yaml", spec)
+    expect(page.searchTokens.extras.operationIds).toEqual(["listPets", "createPet", "getPet"])
+  })
+
+  test("extras.paths collects each path string exactly once", async () => {
+    const spec = [
+      `openapi: "3.1.0"`,
+      `info: { title: API, version: "1" }`,
+      `paths:`,
+      `  /pets:`,
+      `    get: { responses: { "200": { description: ok } } }`,
+      `  /pets/{id}:`,
+      `    get: { responses: { "200": { description: ok } } }`,
+      ``,
+    ].join("\n")
+    const page = await renderFixture("api.yaml", spec)
+    expect(page.searchTokens.extras.paths).toEqual(["/pets", "/pets/{id}"])
+  })
+
+  test("extras.summaries collects operation summaries", async () => {
+    const spec = [
+      `openapi: "3.1.0"`,
+      `info: { title: API, version: "1" }`,
+      `paths:`,
+      `  /pets:`,
+      `    get:`,
+      `      summary: List all pets`,
+      `      responses: { "200": { description: ok } }`,
+      ``,
+    ].join("\n")
+    const page = await renderFixture("api.yaml", spec)
+    expect(page.searchTokens.extras.summaries).toEqual(["List all pets"])
+  })
+
+  test("extras.parameters collects parameter names, deduplicated across operations", async () => {
+    const spec = [
+      `openapi: "3.1.0"`,
+      `info: { title: API, version: "1" }`,
+      `paths:`,
+      `  /pets/{petId}:`,
+      `    get:`,
+      `      parameters:`,
+      `        - { name: petId, in: path, required: true, schema: { type: string } }`,
+      `        - { name: tag, in: query, schema: { type: string } }`,
+      `      responses: { "200": { description: ok } }`,
+      `    delete:`,
+      `      parameters:`,
+      `        - { name: petId, in: path, required: true, schema: { type: string } }`,
+      `      responses: { "204": { description: ok } }`,
+      ``,
+    ].join("\n")
+    const page = await renderFixture("api.yaml", spec)
+    expect(page.searchTokens.extras.parameters).toEqual(["petId", "tag"])
+  })
+
+  test("extras.schemas collects component schema names", async () => {
+    const spec = [
+      `openapi: "3.1.0"`,
+      `info: { title: API, version: "1" }`,
+      `paths: {}`,
+      `components:`,
+      `  schemas:`,
+      `    Pet: { type: object }`,
+      `    Owner: { type: object }`,
+      ``,
+    ].join("\n")
+    const page = await renderFixture("api.yaml", spec)
+    expect(page.searchTokens.extras.schemas).toEqual(["Pet", "Owner"])
+  })
+
+  test("non-HTTP-verb path-item keys (e.g. `parameters`, `summary`) are skipped", async () => {
+    const spec = [
+      `openapi: "3.1.0"`,
+      `info: { title: API, version: "1" }`,
+      `paths:`,
+      `  /pets:`,
+      `    summary: A path-level summary`,
+      `    parameters:`,
+      `      - { name: shouldBeIgnored, in: query, schema: { type: string } }`,
+      `    get:`,
+      `      operationId: listPets`,
+      `      responses: { "200": { description: ok } }`,
+      ``,
+    ].join("\n")
+    const page = await renderFixture("api.yaml", spec)
+    expect(page.searchTokens.extras.operationIds).toEqual(["listPets"])
+    // The path-level summary belongs to the path item, not an operation, so it
+    // must not leak into extras.summaries.
+    expect(page.searchTokens.extras.summaries).toBeUndefined()
+    // Same for path-level parameters — only per-operation params get bucketed.
+    expect(page.searchTokens.extras.parameters).toBeUndefined()
+  })
+})

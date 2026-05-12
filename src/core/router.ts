@@ -5,13 +5,14 @@ import type { BuildContext, PageKind, Route } from "./types"
 /**
  * Walk `ctx.contentDir` and produce a Route for every supported source file.
  * Segments starting with `_` are excluded (drafts, partials, includes).
- * `.md` files always become markdown routes; `.yaml` / `.yml` / `.json` files
- * are content-sniffed and become OpenAPI routes if they carry a top-level
- * `openapi:` / `swagger:` key, and are silently skipped otherwise (data files).
+ * `.md` files always become markdown routes; `.html` files always become HTML
+ * routes; `.yaml` / `.yml` / `.json` files are content-sniffed and become
+ * OpenAPI routes if they carry a top-level `openapi:` / `swagger:` key, and are
+ * silently skipped otherwise (data files).
  */
 export async function buildRoutes(ctx: BuildContext): Promise<Route[]> {
-  // TODO(other-renderers): wire .html/.proto renderers in subsequent milestones.
-  const glob = new Bun.Glob("**/*.{md,yaml,yml,json}")
+  // TODO(other-renderers): wire .proto renderer in a subsequent milestone.
+  const glob = new Bun.Glob("**/*.{md,html,yaml,yml,json}")
   const byPath = new Map<string, Route>()
   for await (const relative of glob.scan({ cwd: ctx.contentDir, onlyFiles: true })) {
     const segments = relative.split(path.sep)
@@ -36,6 +37,7 @@ export async function buildRoutes(ctx: BuildContext): Promise<Route[]> {
 async function classify(source: string): Promise<PageKind | null> {
   const ext = path.extname(source).toLowerCase()
   if (ext === ".md") return "markdown"
+  if (ext === ".html") return "html"
   if (ext === ".yaml" || ext === ".yml" || ext === ".json") {
     return (await sniffOpenApi(source)) ? "openapi" : null
   }

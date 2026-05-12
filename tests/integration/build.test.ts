@@ -133,6 +133,30 @@ test("produces dist/index.html linking a hashed main CSS for the sample fixture"
   expect(spec.info?.title).toBe("Sample API")
   expect(spec.paths?.["/pets"]).toBeDefined()
 
+  // HTML page: the fixture's about.html is wrapped in the Layout shell, its
+  // <title> drives the document title, colocated images get the same public-
+  // href treatment as markdown, and a sibling about.md sidechain is emitted.
+  const aboutHtmlPath = path.join(ctx.outputDir, "about", "index.html")
+  expect(await Bun.file(aboutHtmlPath).exists()).toBe(true)
+  const aboutHtml = await Bun.file(aboutHtmlPath).text()
+  expect(aboutHtml).toContain("About the Fixture")
+  expect(aboutHtml).toContain('class="aid-page aid-page-html"')
+  // <title> reaches the document <title>.
+  expect(aboutHtml).toMatch(/<title>[^<]*About the Fixture[^<]*<\/title>/)
+  // Colocated <img src="./hero.svg"> rewritten to the route-scoped output path.
+  expect(await Bun.file(path.join(ctx.outputDir, "about", "hero.svg")).exists()).toBe(true)
+  expect(aboutHtml).toContain('src="/about/hero.svg"')
+  expect(aboutHtml).not.toContain("./hero.svg")
+  // Mermaid block in the HTML body triggers the mermaid bundle for this page.
+  expect(aboutHtml).toContain(`<script type="module" src="/${mermaidFilename}" defer>`)
+  // .md sidechain: about.html → about.md with a sibling URL, containing the
+  // converted body and the same image href as the HTML output.
+  const aboutMdPath = path.join(ctx.outputDir, "about.md")
+  expect(await Bun.file(aboutMdPath).exists()).toBe(true)
+  const aboutMd = await Bun.file(aboutMdPath).text()
+  expect(aboutMd).toContain("About the Fixture")
+  expect(aboutMd).toContain("/about/hero.svg")
+
   // llms.txt: the bundled default template fires (the fixture has no
   // templates/llms.txt override), so the file ships with the site name, the
   // description blockquote, and a `## Docs` section listing every page by its
@@ -145,5 +169,51 @@ test("produces dist/index.html linking a hashed main CSS for the sample fixture"
   expect(llmsTxt).toContain("## Docs")
   expect(llmsTxt).toContain("[Sample Site](/index.md)")
   expect(llmsTxt).toContain("[Sample API](/api.json)")
+  expect(llmsTxt).toContain("[About the Fixture](/about.md)")
   expect(llmsTxt).not.toContain("{{")
+
+  // search-index: every build with `search.enabled` (the fixture leaves it on)
+  // emits a hashed `search-index.<hash>.js` at the site root, and the rendered
+  // SearchBox carries the public href + per-format weights as data attributes
+  // so the client knows where to fetch the index from.
+  const searchIndexMatches = entries.filter((e) => /^search-index\.[0-9a-f]{8}\.js$/.test(e))
+  expect(searchIndexMatches.length).toBe(1)
+  const searchIndexFilename = searchIndexMatches[0] as string
+  expect(html).toContain(`data-aid-search-index-href="/${searchIndexFilename}"`)
+  expect(html).toContain(`data-aid-search-typo-tolerance="0.2"`)
+  // Weights serialise as JSON with double-quoted keys; the HTML encoder swaps
+  // those for &quot; inside attribute values.
+  expect(html).toMatch(/data-aid-search-weights="\{[^"]*&quot;openapi&quot;:2[^"]*\}"/)
+
+  // The emitted index file is a self-bootstrapping JS that assigns
+  // window.__AID_SEARCH__ to MiniSearch's serialized JSON.
+  const searchIndexSrc = await Bun.file(path.join(ctx.outputDir, searchIndexFilename)).text()
+  expect(searchIndexSrc.startsWith("window.__AID_SEARCH__=")).toBe(true)
+  expect(searchIndexSrc.endsWith(";")).toBe(true)
+  const payload = JSON.parse(searchIndexSrc.slice("window.__AID_SEARCH__=".length, -1)) as {
+    storedFields: Record<string, { type: string; title: string; url: string }>
+  }
+  const stored = Object.values(payload.storedFields)
+  // Every routed markdown/html/openapi page is in the index.
+  const titles = stored.map((d) => d.title).sort()
+  expect(titles).toContain("Sample Site")
+  expect(titles).toContain("About the Fixture")
+  expect(titles).toContain("Sample API")
+  // OpenAPI extras enrichment reaches the index: a query for `listPets` should
+  // hit the API page.
+  const { default: MiniSearch } = await import("minisearch")
+  const ms = (
+    MiniSearch as unknown as {
+      loadJSON: (
+        json: string,
+        options: { fields: string[]; storeFields: string[] },
+      ) => { search: (q: string) => Array<{ title: unknown }> }
+    }
+  ).loadJSON(searchIndexSrc.slice("window.__AID_SEARCH__=".length, -1), {
+    fields: ["title", "headings", "body", "extras"],
+    storeFields: ["type", "title", "url"],
+  })
+  const hits = ms.search("listPets")
+  expect(hits.length).toBeGreaterThan(0)
+  expect(hits[0]?.title).toBe("Sample API")
 })

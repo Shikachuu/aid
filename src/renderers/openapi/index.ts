@@ -36,7 +36,7 @@ export async function renderOpenApi(args: RenderOpenApiArgs): Promise<RenderedPa
   return {
     route: args.route,
     html,
-    searchTokens: { title, body: "", headings: [], extras: {} },
+    searchTokens: { title, body: "", headings: [], extras: extractSearchExtras(doc) },
     exports: [
       {
         suffix: ".json",
@@ -48,4 +48,53 @@ export async function renderOpenApi(args: RenderOpenApiArgs): Promise<RenderedPa
     hasOpenApi: true,
     description,
   }
+}
+
+const HTTP_VERBS = new Set(["get", "post", "put", "patch", "delete", "head", "options", "trace"])
+
+/**
+ * Walk a normalized OpenAPI 3.1 document once and bucket the human-meaningful
+ * identifiers — operationIds, path strings, schema names, parameter names, and
+ * operation summaries — into `searchTokens.extras`. The search-index emitter
+ * flattens every bucket into one indexed field, so a query for `getPets` or
+ * `petId` lands on the OpenAPI page that defines it.
+ */
+function extractSearchExtras(doc: Record<string, unknown>): Record<string, string[]> {
+  const operationIds: string[] = []
+  const paths: string[] = []
+  const summaries: string[] = []
+  const parameters: string[] = []
+
+  const docPaths = (doc.paths ?? {}) as Record<string, unknown>
+  for (const [pathKey, pathItem] of Object.entries(docPaths)) {
+    paths.push(pathKey)
+    if (pathItem === null || typeof pathItem !== "object") continue
+    for (const [verbKey, op] of Object.entries(pathItem as Record<string, unknown>)) {
+      if (!HTTP_VERBS.has(verbKey)) continue
+      if (op === null || typeof op !== "object") continue
+      const opObj = op as { operationId?: unknown; summary?: unknown; parameters?: unknown }
+      if (typeof opObj.operationId === "string") operationIds.push(opObj.operationId)
+      if (typeof opObj.summary === "string") summaries.push(opObj.summary)
+      if (Array.isArray(opObj.parameters)) {
+        for (const param of opObj.parameters) {
+          const name = (param as { name?: unknown } | null)?.name
+          if (typeof name === "string") parameters.push(name)
+        }
+      }
+    }
+  }
+
+  const components = doc.components as { schemas?: unknown } | undefined
+  const schemas =
+    components?.schemas && typeof components.schemas === "object"
+      ? Object.keys(components.schemas as Record<string, unknown>)
+      : []
+
+  const extras: Record<string, string[]> = {}
+  if (operationIds.length > 0) extras.operationIds = operationIds
+  if (paths.length > 0) extras.paths = paths
+  if (schemas.length > 0) extras.schemas = schemas
+  if (parameters.length > 0) extras.parameters = [...new Set(parameters)]
+  if (summaries.length > 0) extras.summaries = summaries
+  return extras
 }

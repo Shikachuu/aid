@@ -1,14 +1,17 @@
 import path from "node:path"
 import { render, renderDocument } from "../jsx-runtime"
+import { renderHtml } from "../renderers/html"
 import { renderMarkdown } from "../renderers/markdown"
 import type { CopyAsset } from "../renderers/markdown/colocated-assets"
 import { renderOpenApi } from "../renderers/openapi"
 import { Layout } from "../theme/components/Layout"
+import { PageHtml } from "../theme/components/PageHtml"
 import { PageMarkdown } from "../theme/components/PageMarkdown"
 import { AssetRegistry } from "./assets"
 import { writeCss } from "./css-writer"
 import { buildLlmsTxt } from "./llms-txt"
 import { buildRoutes } from "./router"
+import { buildSearchIndex, type SearchIndexResult } from "./search-index"
 import { copyStaticAssets } from "./static"
 import { compileTailwind } from "./tailwind"
 import type { BuildContext, RenderedPage, Route } from "./types"
@@ -37,9 +40,11 @@ export async function build(ctx: BuildContext): Promise<void> {
     includeOpenApi: siteHasOpenApi,
   })
 
+  const searchIndex = buildSearchIndex(ctx, rendered)
+
   const docs = rendered.map((page) => ({
     fsPath: outputPathForRoute(page.route, ctx),
-    html: wrapInLayout(page, ctx, STYLESHEET_PLACEHOLDER, web),
+    html: wrapInLayout(page, ctx, STYLESHEET_PLACEHOLDER, web, searchIndex),
   }))
 
   // Side-channel exports — sibling `.md` for markdown/HTML pages and `.json`
@@ -60,6 +65,9 @@ export async function build(ctx: BuildContext): Promise<void> {
   const { css } = await compileTailwind({ ctx, htmlContents: docs.map((d) => d.html) })
   const { href } = await writeCss({ ctx, css })
 
+  const searchIndexPath = searchIndex ? path.join(ctx.outputDir, searchIndex.filename) : null
+  if (searchIndex && searchIndexPath) registry.register(searchIndexPath, "<generated:search-index>")
+
   await Promise.all([
     ...docs.map(async (doc) => {
       registry.register(doc.fsPath, `<rendered:${doc.fsPath}>`)
@@ -70,6 +78,7 @@ export async function build(ctx: BuildContext): Promise<void> {
       await Bun.write(exp.fsPath, exp.body)
     }),
     Bun.write(llmsTxtPath, llmsTxt),
+    ...(searchIndex && searchIndexPath ? [Bun.write(searchIndexPath, searchIndex.source)] : []),
   ])
 }
 
@@ -81,6 +90,12 @@ async function dispatchRenderer(
   switch (route.kind) {
     case "markdown":
       return renderMarkdown({
+        route,
+        sourcePath: route.source,
+        copyAsset: makeCopyAsset(route, ctx, registry),
+      })
+    case "html":
+      return renderHtml({
         route,
         sourcePath: route.source,
         copyAsset: makeCopyAsset(route, ctx, registry),
@@ -139,17 +154,29 @@ function wrapInLayout(
     openapiHref: string | null
     openapiCssHref: string | null
   },
+  searchIndex: SearchIndexResult | null,
 ): string {
   const fm = page.route.frontmatter
   const title =
     typeof fm?.title === "string" && fm.title.length > 0 ? fm.title : page.searchTokens.title
   const description = typeof fm?.description === "string" ? fm.description : undefined
-  // The OpenAPI renderer already produces a fully-wrapped PageOpenAPI body;
-  // markdown still needs the PageMarkdown chrome added at layout time.
+  // The OpenAPI renderer already produces a fully-wrapped PageOpenAPI body.
+  // Markdown and HTML pages both share the prose-style article chrome (toolbar
+  // + AI button slot) — same shell, different variant class so themes can
+  // target them separately.
   const pageHtml =
     page.route.kind === "openapi"
       ? page.html
-      : render(PageMarkdown({ bodyHtml: page.html, machineUrl: "" }) as never)
+      : page.route.kind === "html"
+        ? render(PageHtml({ bodyHtml: page.html, machineUrl: "" }) as never)
+        : render(PageMarkdown({ bodyHtml: page.html, machineUrl: "" }) as never)
+  const search = searchIndex
+    ? {
+        indexHref: searchIndex.href,
+        typoTolerance: ctx.config.search.typo_tolerance,
+        weights: ctx.config.search.weights,
+      }
+    : undefined
   return renderDocument(
     Layout({
       config: ctx.config,
@@ -161,6 +188,7 @@ function wrapInLayout(
       mermaidBundleHref: page.hasMermaid ? web.mermaidHref : null,
       openapiBundleHref: page.hasOpenApi ? web.openapiHref : null,
       openapiStylesheetHref: page.hasOpenApi ? web.openapiCssHref : null,
+      search,
       bodyHtml: pageHtml,
     }) as never,
   )
