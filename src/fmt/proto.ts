@@ -21,7 +21,9 @@ export const formatProto = async (
   dir: string,
   opts: { check: boolean },
 ): Promise<ToolResult> => {
-  if (paths.length === 0) return { tool: "proto", ok: true, diagnostics: [] }
+  if (paths.length === 0) {
+    return { tool: "proto", ok: true, diagnostics: [] }
+  }
   const bin = await resolveBufBinary()
   if (bin === null) {
     return {
@@ -40,7 +42,9 @@ export const formatProto = async (
   for (const file of paths) {
     if (opts.check) {
       const args = ["format", "-d"]
-      if (tempCfg !== null) args.push("--config", tempCfg)
+      if (tempCfg !== null) {
+        args.push("--config", tempCfg)
+      }
       args.push(file)
       const proc = Bun.spawn([bin, ...args], { stdout: "pipe", stderr: "pipe", cwd: dir })
       const stdout = await new Response(proc.stdout).text()
@@ -52,13 +56,17 @@ export const formatProto = async (
       }
     } else {
       const args = ["format", "-w"]
-      if (tempCfg !== null) args.push("--config", tempCfg)
+      if (tempCfg !== null) {
+        args.push("--config", tempCfg)
+      }
       args.push(file)
       const proc = Bun.spawn([bin, ...args], { stdout: "pipe", stderr: "pipe", cwd: dir })
       await new Response(proc.stdout).text()
       await new Response(proc.stderr).text()
       const exitCode = await proc.exited
-      if (exitCode !== 0) ok = false
+      if (exitCode !== 0) {
+        ok = false
+      }
     }
   }
   return { tool: "proto", ok, diagnostics: [], wouldChange: opts.check ? wouldChange : undefined }

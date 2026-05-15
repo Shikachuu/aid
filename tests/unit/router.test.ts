@@ -40,7 +40,9 @@ describe("buildRoutes", () => {
     await writeMd(ctx, "b/index.md")
     const routes = await buildRoutes(ctx)
     expect(routes.map((r) => r.path)).toEqual(["/", "/a", "/b"])
-    for (const r of routes) expect(r.kind).toBe("markdown")
+    for (const r of routes) {
+      expect(r.kind).toBe("markdown")
+    }
   })
 
   test("excludes any path with a _-prefixed segment", async () => {

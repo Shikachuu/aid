@@ -37,10 +37,18 @@ export const formatAll = async (opts: FormatOptions): Promise<FormatReport> => {
     want(opts.filter, "proto") ? discover(dir, PROTO_PATTERNS) : Promise.resolve([]),
   ])
   const tasks: Promise<ToolResult>[] = []
-  if (want(opts.filter, "md")) tasks.push(formatMarkdown(md, dir, { check: opts.check }))
-  if (want(opts.filter, "openapi")) tasks.push(formatOpenApi(oa, dir, { check: opts.check }))
-  if (want(opts.filter, "biome")) tasks.push(formatWithBiome(bi, dir, { check: opts.check }))
-  if (want(opts.filter, "proto")) tasks.push(formatProto(pr, dir, { check: opts.check }))
+  if (want(opts.filter, "md")) {
+    tasks.push(formatMarkdown(md, dir, { check: opts.check }))
+  }
+  if (want(opts.filter, "openapi")) {
+    tasks.push(formatOpenApi(oa, dir, { check: opts.check }))
+  }
+  if (want(opts.filter, "biome")) {
+    tasks.push(formatWithBiome(bi, dir, { check: opts.check }))
+  }
+  if (want(opts.filter, "proto")) {
+    tasks.push(formatProto(pr, dir, { check: opts.check }))
+  }
   const results = await Promise.all(tasks)
   return { ok: results.every((r) => r.ok), results }
 }

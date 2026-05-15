@@ -40,7 +40,9 @@ const extractEmbeddedBuf = async (embedded: string): Promise<string> => {
  * available.
  */
 export const resolveBufBinary = async (): Promise<string | null> => {
-  if (cachedBin !== undefined) return cachedBin
+  if (cachedBin !== undefined) {
+    return cachedBin
+  }
   const embedded = pickEmbeddedBuf()
   if (embedded !== null && (await Bun.file(embedded).exists())) {
     cachedBin = embedded.startsWith("/$bunfs/") ? await extractEmbeddedBuf(embedded) : embedded
@@ -71,7 +73,9 @@ const parseBufOutput = (stdout: string): Diagnostic[] => {
   const out: Diagnostic[] = []
   for (const line of stdout.split("\n")) {
     const trimmed = line.trim()
-    if (trimmed.length === 0) continue
+    if (trimmed.length === 0) {
+      continue
+    }
     try {
       const j = JSON.parse(trimmed) as BufJsonError
       out.push({
@@ -91,7 +95,9 @@ const parseBufOutput = (stdout: string): Diagnostic[] => {
 
 /** Run `buf lint` over the project. Skips silently when buf isn't installed. */
 export const lintProto = async (paths: string[], dir: string): Promise<ToolResult> => {
-  if (paths.length === 0) return { tool: "proto", ok: true, diagnostics: [] }
+  if (paths.length === 0) {
+    return { tool: "proto", ok: true, diagnostics: [] }
+  }
   const bin = await resolveBufBinary()
   if (bin === null) {
     return {
@@ -105,7 +111,9 @@ export const lintProto = async (paths: string[], dir: string): Promise<ToolResul
   const userConfig = await findUserConfig(dir, USER_CONFIGS)
   const tempCfg = userConfig === null ? await writeTempBufConfig() : null
   const args = ["lint", "--error-format=json"]
-  if (tempCfg !== null) args.push("--config", tempCfg)
+  if (tempCfg !== null) {
+    args.push("--config", tempCfg)
+  }
   args.push(dir)
   const proc = Bun.spawn([bin, ...args], { stdout: "pipe", stderr: "pipe", cwd: dir })
   const stdout = await new Response(proc.stdout).text()

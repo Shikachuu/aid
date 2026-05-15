@@ -1,0 +1,311 @@
+@import "tailwindcss";
+
+@source "./**/*.{ts,tsx}";
+
+@layer components {
+  /*
+   * Component-scoped tokens. Site-wide design tokens belong in `@theme`, but
+   * these are override hooks for the component library — consumers re-declare
+   * `--proto-*` on `.proto-root` (or a wrapping selector) to retheme.
+   */
+  .proto-root {
+    --proto-color-bg: oklch(99% 0 0);
+    --proto-color-text: oklch(20% 0 0);
+    --proto-color-muted: oklch(50% 0 0);
+    --proto-color-border: oklch(90% 0 0);
+    --proto-color-accent: oklch(60% 0.15 250);
+    --proto-color-scalar: oklch(45% 0.1 30);
+    --proto-color-keyword: oklch(45% 0.15 280);
+    --proto-color-deprecated-bg: oklch(95% 0.05 30);
+    --proto-color-deprecated-fg: oklch(40% 0.18 30);
+
+    --proto-font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --proto-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  .proto-root {
+    @apply grid w-full;
+    grid-template-columns: 16rem 1fr;
+    gap: 2rem;
+    background: var(--proto-color-bg);
+    color: var(--proto-color-text);
+    font-family: var(--proto-font-sans);
+  }
+
+  .proto-main {
+    @apply flex min-w-0 flex-col gap-8;
+  }
+
+  .proto-empty,
+  .proto-loading {
+    @apply px-6 py-10 text-sm;
+    color: var(--proto-color-muted);
+    grid-column: 1 / -1;
+  }
+
+  .proto-error {
+    @apply overflow-auto px-6 py-4 text-sm;
+    color: var(--proto-color-deprecated-fg);
+    background: var(--proto-color-deprecated-bg);
+    border-radius: 0.5rem;
+    grid-column: 1 / -1;
+    font-family: var(--proto-font-mono);
+  }
+
+  .proto-sidebar {
+    @apply sticky top-0 flex max-h-screen flex-col gap-4 overflow-y-auto py-6 pr-4 text-sm;
+    border-right: 1px solid var(--proto-color-border);
+  }
+
+  .proto-sidebar-group {
+    @apply flex flex-col gap-1;
+  }
+
+  .proto-sidebar-group-label {
+    @apply m-0 text-xs font-semibold tracking-wider uppercase;
+    color: var(--proto-color-muted);
+  }
+
+  .proto-sidebar-list {
+    @apply m-0 flex list-none flex-col gap-px p-0;
+  }
+
+  .proto-sidebar-item {
+    @apply m-0;
+  }
+
+  .proto-sidebar-link {
+    @apply block rounded px-2 py-1;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .proto-sidebar-link:hover {
+    background: color-mix(in oklch, var(--proto-color-accent) 10%, transparent);
+    color: var(--proto-color-accent);
+  }
+
+  .proto-package-header {
+    @apply flex flex-col items-start gap-2 pt-6;
+    border-bottom: 1px solid var(--proto-color-border);
+    padding-bottom: 1.5rem;
+  }
+
+  .proto-package-name {
+    @apply m-0 text-2xl font-semibold;
+    font-family: var(--proto-font-mono);
+  }
+
+  .proto-package-keyword {
+    color: var(--proto-color-keyword);
+  }
+
+  .proto-file-source-link {
+    @apply text-sm underline underline-offset-2;
+    color: var(--proto-color-accent);
+  }
+
+  .proto-entity-header {
+    @apply flex flex-wrap items-baseline gap-2;
+    scroll-margin-top: 1rem;
+  }
+
+  .proto-entity-kind {
+    @apply rounded px-2 py-px text-xs font-medium tracking-wider uppercase;
+    background: color-mix(in oklch, var(--proto-color-keyword) 12%, transparent);
+    color: var(--proto-color-keyword);
+  }
+
+  .proto-entity-name {
+    @apply m-0 text-xl font-semibold;
+    font-family: var(--proto-font-mono);
+  }
+
+  .proto-entity-copy {
+    @apply ml-auto cursor-pointer rounded border-0 bg-transparent px-2 py-1 text-sm;
+    color: var(--proto-color-muted);
+    font-family: var(--proto-font-mono);
+  }
+
+  .proto-entity-copy:hover {
+    color: var(--proto-color-accent);
+    background: color-mix(in oklch, var(--proto-color-accent) 10%, transparent);
+  }
+
+  .proto-service {
+    @apply flex flex-col gap-3;
+  }
+
+  .proto-rpc-list {
+    @apply m-0 flex list-none flex-col gap-4 p-0;
+  }
+
+  .proto-rpc-item {
+    @apply m-0 flex flex-col gap-2;
+    scroll-margin-top: 1rem;
+  }
+
+  .proto-rpc-signature {
+    @apply inline-flex flex-wrap items-baseline gap-x-1 rounded px-3 py-2 text-sm;
+    font-family: var(--proto-font-mono);
+    background: color-mix(in oklch, var(--proto-color-border) 30%, transparent);
+  }
+
+  .proto-rpc-keyword,
+  .proto-rpc-stream {
+    color: var(--proto-color-keyword);
+  }
+
+  .proto-rpc-name {
+    @apply font-semibold;
+  }
+
+  .proto-rpc-punct {
+    color: var(--proto-color-muted);
+  }
+
+  .proto-type-scalar {
+    color: var(--proto-color-scalar);
+    font-family: var(--proto-font-mono);
+  }
+
+  .proto-type-link {
+    color: var(--proto-color-accent);
+    font-family: var(--proto-font-mono);
+    text-decoration: none;
+  }
+
+  .proto-type-link:hover {
+    text-decoration: underline;
+  }
+
+  .proto-type-external {
+    color: var(--proto-color-accent);
+    font-family: var(--proto-font-mono);
+  }
+
+  .proto-type-unresolved {
+    color: var(--proto-color-muted);
+    font-family: var(--proto-font-mono);
+  }
+
+  .proto-message {
+    @apply flex flex-col gap-3;
+  }
+
+  .proto-field-table,
+  .proto-enum-table {
+    @apply w-full border-collapse text-sm;
+  }
+
+  .proto-field-table th,
+  .proto-field-table td,
+  .proto-enum-table th,
+  .proto-enum-table td {
+    @apply px-3 py-2 text-left align-top;
+    border-bottom: 1px solid var(--proto-color-border);
+  }
+
+  .proto-field-table th,
+  .proto-enum-table th {
+    @apply text-xs font-semibold tracking-wider uppercase;
+    color: var(--proto-color-muted);
+  }
+
+  .proto-field-number,
+  .proto-enum-number {
+    @apply text-right tabular-nums;
+    color: var(--proto-color-muted);
+    font-family: var(--proto-font-mono);
+  }
+
+  .proto-field-name,
+  .proto-enum-name {
+    font-family: var(--proto-font-mono);
+  }
+
+  .proto-field-rule {
+    font-family: var(--proto-font-mono);
+    color: var(--proto-color-muted);
+  }
+
+  .proto-field-doc :where(p),
+  .proto-enum-doc :where(p) {
+    @apply m-0;
+  }
+
+  .proto-oneof {
+    @apply flex flex-col gap-2 rounded p-3;
+    background: color-mix(in oklch, var(--proto-color-keyword) 4%, transparent);
+  }
+
+  .proto-oneof-name {
+    @apply m-0 text-sm font-semibold;
+    font-family: var(--proto-font-mono);
+    color: var(--proto-color-keyword);
+  }
+
+  .proto-oneof-fields {
+    @apply m-0 flex list-none flex-col gap-1 p-0;
+  }
+
+  .proto-oneof-field {
+    @apply m-0 flex flex-wrap items-baseline gap-2 text-sm;
+    font-family: var(--proto-font-mono);
+  }
+
+  .proto-nested {
+    @apply mt-2 flex flex-col gap-3 pl-4;
+    border-left: 2px solid var(--proto-color-border);
+  }
+
+  .proto-enum {
+    @apply flex flex-col gap-3;
+  }
+
+  .proto-doc {
+    @apply text-sm leading-relaxed;
+    color: var(--proto-color-text);
+  }
+
+  .proto-doc :where(pre) {
+    @apply overflow-auto rounded p-3 text-xs;
+    background: color-mix(in oklch, var(--proto-color-border) 30%, transparent);
+    font-family: var(--proto-font-mono);
+  }
+
+  .proto-doc :where(code) {
+    @apply rounded px-1 py-px text-[0.9em];
+    font-family: var(--proto-font-mono);
+    background: color-mix(in oklch, var(--proto-color-border) 30%, transparent);
+  }
+
+  .proto-doc :where(pre code) {
+    @apply bg-transparent p-0;
+  }
+
+  .proto-deprecated-badge {
+    @apply rounded px-2 py-px text-xs font-semibold tracking-wider uppercase;
+    background: var(--proto-color-deprecated-bg);
+    color: var(--proto-color-deprecated-fg);
+  }
+
+  .proto-view-source {
+    @apply flex flex-col gap-2;
+  }
+
+  .proto-view-source-toggle {
+    @apply cursor-pointer self-start rounded border-0 bg-transparent px-2 py-1 text-xs;
+    color: var(--proto-color-muted);
+  }
+
+  .proto-view-source-toggle:hover {
+    color: var(--proto-color-accent);
+  }
+
+  .proto-view-source-pre {
+    @apply m-0 overflow-auto rounded p-3 text-xs;
+    background: color-mix(in oklch, var(--proto-color-border) 30%, transparent);
+    font-family: var(--proto-font-mono);
+  }
+}

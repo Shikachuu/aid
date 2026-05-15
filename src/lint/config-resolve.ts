@@ -15,11 +15,17 @@ export const findUserConfig = async (
   for (;;) {
     for (const name of candidates) {
       const full = join(dir, name)
-      if (await Bun.file(full).exists()) return full
+      if (await Bun.file(full).exists()) {
+        return full
+      }
     }
     const parent = dirname(dir)
-    if (parent === dir) return null
-    if (existsSync(join(dir, ".git"))) return null
+    if (parent === dir) {
+      return null
+    }
+    if (existsSync(join(dir, ".git"))) {
+      return null
+    }
     dir = parent
   }
 }
@@ -51,7 +57,9 @@ const stripJsonComments = (input: string): string => {
         i += 2
         continue
       }
-      if (c === stringChar) inString = false
+      if (c === stringChar) {
+        inString = false
+      }
       i++
       continue
     }
@@ -63,12 +71,16 @@ const stripJsonComments = (input: string): string => {
       continue
     }
     if (c === "/" && n === "/") {
-      while (i < input.length && input[i] !== "\n") i++
+      while (i < input.length && input[i] !== "\n") {
+        i++
+      }
       continue
     }
     if (c === "/" && n === "*") {
       i += 2
-      while (i < input.length && !(input[i] === "*" && input[i + 1] === "/")) i++
+      while (i < input.length && !(input[i] === "*" && input[i + 1] === "/")) {
+        i++
+      }
       i += 2
       continue
     }

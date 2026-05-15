@@ -26,7 +26,9 @@ export async function copyStaticAssets(
   args: CopyStaticAssetsArgs,
 ): Promise<CopyStaticAssetsResult> {
   const { ctx, registry } = args
-  if (!(await isDirectory(ctx.staticDir))) return { copied: 0 }
+  if (!(await isDirectory(ctx.staticDir))) {
+    return { copied: 0 }
+  }
   const glob = new Bun.Glob("**/*")
   let copied = 0
   for await (const relative of glob.scan({ cwd: ctx.staticDir, onlyFiles: true })) {

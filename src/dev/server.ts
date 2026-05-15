@@ -56,7 +56,9 @@ async function handle(req: Request, state: DevState, config: AidConfig): Promise
   const url = new URL(req.url)
   const rawPath = decodeURIComponent(url.pathname)
 
-  if (rawPath === RELOAD_PATH) return openSseStream(state)
+  if (rawPath === RELOAD_PATH) {
+    return openSseStream(state)
+  }
 
   const relative = stripBasePath(rawPath, config.base_path)
   if (relative === null) {
@@ -87,7 +89,9 @@ function openSseStream(state: DevState): Response {
       }
     },
     cancel() {
-      if (controllerRef !== null) state.sseClients.delete(controllerRef)
+      if (controllerRef !== null) {
+        state.sseClients.delete(controllerRef)
+      }
     },
   })
   return new Response(stream, {
@@ -126,17 +130,27 @@ async function serveFile(distDir: string, pathname: string): Promise<Response> {
 
 function injectReloadScript(html: string): string {
   const tag = `<script>${RELOAD_CLIENT_SCRIPT}</script>`
-  if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, `${tag}</body>`)
-  if (/<\/html>/i.test(html)) return html.replace(/<\/html>/i, `${tag}</html>`)
+  if (/<\/body>/i.test(html)) {
+    return html.replace(/<\/body>/i, `${tag}</body>`)
+  }
+  if (/<\/html>/i.test(html)) {
+    return html.replace(/<\/html>/i, `${tag}</html>`)
+  }
   return `${html}\n${tag}`
 }
 
 function stripBasePath(pathname: string, basePath: string): string | null {
   const norm = basePath.endsWith("/") ? basePath : `${basePath}/`
-  if (norm === "/") return pathname
+  if (norm === "/") {
+    return pathname
+  }
   const bare = norm.slice(0, -1)
-  if (pathname === bare) return "/"
-  if (pathname.startsWith(norm)) return `/${pathname.slice(norm.length)}`
+  if (pathname === bare) {
+    return "/"
+  }
+  if (pathname.startsWith(norm)) {
+    return `/${pathname.slice(norm.length)}`
+  }
   return null
 }
 
@@ -170,7 +184,9 @@ function escapeHtml(s: string): string {
 }
 
 function isAddrInUse(err: unknown): boolean {
-  if (err === null || typeof err !== "object") return false
+  if (err === null || typeof err !== "object") {
+    return false
+  }
   const code = (err as { code?: unknown }).code
   return code === "EADDRINUSE"
 }

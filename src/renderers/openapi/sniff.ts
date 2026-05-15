@@ -13,6 +13,8 @@ const JSON_RE = /"(openapi|swagger)"\s*:\s*"\d/
 export async function sniffOpenApi(absPath: string): Promise<boolean> {
   const prefix = await Bun.file(absPath).slice(0, PREFIX_BYTES).text()
   const lower = absPath.toLowerCase()
-  if (lower.endsWith(".json")) return JSON_RE.test(prefix)
+  if (lower.endsWith(".json")) {
+    return JSON_RE.test(prefix)
+  }
   return YAML_RE.test(prefix)
 }

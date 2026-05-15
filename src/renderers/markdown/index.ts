@@ -119,6 +119,7 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
     ],
     hasMermaid: file.data[HAS_MERMAID_FLAG] === true,
     hasOpenApi: false,
+    hasProto: false,
     description: frontmatter?.description,
   }
 }
@@ -163,10 +164,14 @@ function collectHeadings(opts: { sink: string[] }) {
 const HEADING_TAGS = new Set(["h1", "h2", "h3", "h4", "h5", "h6"])
 
 function hastToString(node: HastElement | ElementContent): string {
-  if (node.type === "text") return node.value
+  if (node.type === "text") {
+    return node.value
+  }
   if (node.type === "element") {
     let out = ""
-    for (const child of node.children) out += hastToString(child)
+    for (const child of node.children) {
+      out += hastToString(child)
+    }
     return out
   }
   return ""

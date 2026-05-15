@@ -26,9 +26,15 @@ type CtxOverrides = {
 
 function makeCtx(overrides: CtxOverrides = {}): BuildContext {
   const rawConfig: Record<string, unknown> = { name: overrides.name ?? "Test Site" }
-  if (overrides.description !== undefined) rawConfig.description = overrides.description
-  if (overrides.base_url !== undefined) rawConfig.base_url = overrides.base_url
-  if (overrides.base_path !== undefined) rawConfig.base_path = overrides.base_path
+  if (overrides.description !== undefined) {
+    rawConfig.description = overrides.description
+  }
+  if (overrides.base_url !== undefined) {
+    rawConfig.base_url = overrides.base_url
+  }
+  if (overrides.base_path !== undefined) {
+    rawConfig.base_path = overrides.base_path
+  }
   const config = AidConfigSchema.parse(rawConfig)
   return {
     config,
@@ -65,6 +71,7 @@ function makePage(args: {
     exports: [],
     hasMermaid: false,
     hasOpenApi: kind === "openapi",
+    hasProto: kind === "proto",
     description: args.description,
   }
 }
@@ -155,7 +162,7 @@ describe("buildLlmsTxt — optional filter", () => {
 })
 
 describe("buildLlmsTxt — URL formation", () => {
-  test("kind drives suffix: openapi/proto → .json, otherwise .md", async () => {
+  test("kind drives suffix: openapi → .json, proto → .proto, otherwise .md", async () => {
     const ctx = makeCtx()
     const out = await buildLlmsTxt(ctx, [
       makePage({ routePath: "/md", title: "MD", kind: "markdown" }),
@@ -166,7 +173,7 @@ describe("buildLlmsTxt — URL formation", () => {
     expect(out).toContain("(/md.md)")
     expect(out).toContain("(/html.md)")
     expect(out).toContain("(/oa.json)")
-    expect(out).toContain("(/pb.json)")
+    expect(out).toContain("(/pb.proto)")
   })
 
   test("absolute URLs when base_url is set", async () => {

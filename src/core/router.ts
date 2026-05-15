@@ -5,21 +5,23 @@ import type { BuildContext, PageKind, Route } from "./types"
 /**
  * Walk `ctx.contentDir` and produce a Route for every supported source file.
  * Segments starting with `_` are excluded (drafts, partials, includes).
- * `.md` files always become markdown routes; `.html` files always become HTML
- * routes; `.yaml` / `.yml` / `.json` files are content-sniffed and become
- * OpenAPI routes if they carry a top-level `openapi:` / `swagger:` key, and are
- * silently skipped otherwise (data files).
+ * `.md` → markdown; `.html` → html; `.proto` → proto; `.yaml`/`.yml`/`.json`
+ * are content-sniffed and become OpenAPI routes if they carry a top-level
+ * `openapi:`/`swagger:` key, and are silently skipped otherwise.
  */
 export async function buildRoutes(ctx: BuildContext): Promise<Route[]> {
-  // TODO(other-renderers): wire .proto renderer in a subsequent milestone.
-  const glob = new Bun.Glob("**/*.{md,html,yaml,yml,json}")
+  const glob = new Bun.Glob("**/*.{md,html,yaml,yml,json,proto}")
   const byPath = new Map<string, Route>()
   for await (const relative of glob.scan({ cwd: ctx.contentDir, onlyFiles: true })) {
     const segments = relative.split(path.sep)
-    if (segments.some((seg) => seg.startsWith("_"))) continue
+    if (segments.some((seg) => seg.startsWith("_"))) {
+      continue
+    }
     const source = path.join(ctx.contentDir, relative)
     const kind = await classify(source)
-    if (kind === null) continue
+    if (kind === null) {
+      continue
+    }
     const routePath = toRoutePath(relative)
     const existing = byPath.get(routePath)
     if (existing) {
@@ -36,8 +38,15 @@ export async function buildRoutes(ctx: BuildContext): Promise<Route[]> {
 
 async function classify(source: string): Promise<PageKind | null> {
   const ext = path.extname(source).toLowerCase()
-  if (ext === ".md") return "markdown"
-  if (ext === ".html") return "html"
+  if (ext === ".md") {
+    return "markdown"
+  }
+  if (ext === ".html") {
+    return "html"
+  }
+  if (ext === ".proto") {
+    return "proto"
+  }
   if (ext === ".yaml" || ext === ".yml" || ext === ".json") {
     return (await sniffOpenApi(source)) ? "openapi" : null
   }
@@ -51,7 +60,9 @@ function toRoutePath(relative: string): string {
   const last = parts[parts.length - 1]
   if (last === "index") {
     const parent = parts.slice(0, -1).join("/")
-    if (parent === "") return "/"
+    if (parent === "") {
+      return "/"
+    }
     return `/${parent}`
   }
   return `/${withoutExt}`

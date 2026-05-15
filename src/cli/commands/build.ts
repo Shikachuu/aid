@@ -46,7 +46,9 @@ export const command = defineCommand({
 })
 
 function resolveProjectDir(input: string | undefined): string {
-  if (input === undefined || input === ".") return process.cwd()
+  if (input === undefined || input === ".") {
+    return process.cwd()
+  }
   return input.startsWith("/") ? input : `${process.cwd()}/${input}`
 }
 

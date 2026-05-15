@@ -34,10 +34,14 @@ export type ExtractedFrontmatter = {
  */
 export function extractFrontmatter(source: string): ExtractedFrontmatter {
   const match = source.match(FRONTMATTER_RE)
-  if (!match) return { frontmatter: undefined, body: source }
+  if (!match) {
+    return { frontmatter: undefined, body: source }
+  }
   const yamlText = match[1] ?? ""
   const parsed = Bun.YAML.parse(yamlText)
-  if (parsed == null) return { frontmatter: undefined, body: source.slice(match[0].length) }
+  if (parsed == null) {
+    return { frontmatter: undefined, body: source.slice(match[0].length) }
+  }
   if (typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error("frontmatter must be a YAML mapping, not a scalar or sequence")
   }

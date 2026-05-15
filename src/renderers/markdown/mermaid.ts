@@ -21,10 +21,16 @@ export function mermaidPlugin() {
   return (tree: HastRoot, file: VFile): void => {
     let found = false
     visit(tree, "element", (node, index, parent) => {
-      if (node.tagName !== "pre" || !parent || index == null) return
+      if (node.tagName !== "pre" || !parent || index == null) {
+        return
+      }
       const code = node.children.find(isCodeElement)
-      if (!code) return
-      if (!hasMermaidLanguageClass(code)) return
+      if (!code) {
+        return
+      }
+      if (!hasMermaidLanguageClass(code)) {
+        return
+      }
       const text = extractText(code)
       parent.children[index] = {
         type: "element",
@@ -35,7 +41,9 @@ export function mermaidPlugin() {
       found = true
       return SKIP
     })
-    if (found) file.data[HAS_MERMAID_FLAG] = true
+    if (found) {
+      file.data[HAS_MERMAID_FLAG] = true
+    }
   }
 }
 
@@ -45,11 +53,19 @@ function isCodeElement(node: { type: string }): node is HastElement {
 
 function hasMermaidLanguageClass(node: HastElement): boolean {
   const classes = node.properties?.className
-  if (!Array.isArray(classes)) return false
+  if (!Array.isArray(classes)) {
+    return false
+  }
   for (const cls of classes) {
-    if (typeof cls !== "string") continue
-    if (cls === MERMAID_LANGUAGE_CLASS) return true
-    if (cls.startsWith(LANGUAGE_CLASS_PREFIX)) return false
+    if (typeof cls !== "string") {
+      continue
+    }
+    if (cls === MERMAID_LANGUAGE_CLASS) {
+      return true
+    }
+    if (cls.startsWith(LANGUAGE_CLASS_PREFIX)) {
+      return false
+    }
   }
   return false
 }
@@ -57,8 +73,11 @@ function hasMermaidLanguageClass(node: HastElement): boolean {
 function extractText(node: HastElement): string {
   let out = ""
   for (const child of node.children) {
-    if (child.type === "text") out += child.value
-    else if (child.type === "element") out += extractText(child)
+    if (child.type === "text") {
+      out += child.value
+    } else if (child.type === "element") {
+      out += extractText(child)
+    }
   }
   return out
 }

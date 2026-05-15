@@ -11,6 +11,7 @@
       "src/**",
       "scripts/**",
       "tests/**",
+      "packages/**",
       "*.json",
       "*.md",
       "!!**/node_modules",
@@ -47,6 +48,7 @@
       "recommended": true,
       "style": {
         "noDefaultExport": "error",
+        "useBlockStatements": "error",
         "useConsistentTypeDefinitions": {
           "level": "error",
           "options": { "style": "type" }
@@ -68,5 +70,6 @@
         }
       }
     }
-  }
+  },
+  "plugins": ["./plugins/no-promise-chains.grit"]
 }

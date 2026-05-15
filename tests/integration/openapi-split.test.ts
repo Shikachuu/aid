@@ -91,7 +91,9 @@ test("Swagger 2.0 source is upgraded to 3.1 in the rendered page", async () => {
     /<script type="application\/json" id="aid-openapi-spec">([\s\S]*?)<\/script>/,
   )
   expect(match).not.toBeNull()
-  if (!match) return
+  if (!match) {
+    return
+  }
   const spec = JSON.parse(match[1] ?? "") as { openapi?: string; swagger?: string }
   expect(spec.openapi).toMatch(/^3\.1/)
   expect(spec.swagger).toBeUndefined()

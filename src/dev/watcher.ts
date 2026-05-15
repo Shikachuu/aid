@@ -41,7 +41,9 @@ export function watchContent(
 
   const flush = () => {
     timer = null
-    if (pending.size === 0) return
+    if (pending.size === 0) {
+      return
+    }
     const paths = [...pending.keys()]
     pending = new Map()
     const configChanged = paths.some((p) => p === configPath)
@@ -49,7 +51,9 @@ export function watchContent(
   }
 
   const enqueue = async (absPath: string) => {
-    if (absPath.startsWith(`${ignoreRoot}${path.sep}`) || absPath === ignoreRoot) return
+    if (absPath.startsWith(`${ignoreRoot}${path.sep}`) || absPath === ignoreRoot) {
+      return
+    }
     let mtime: number | null = null
     try {
       const stat = await Bun.file(absPath).stat()
@@ -60,18 +64,24 @@ export function watchContent(
     }
     if (mtime !== null) {
       const prev = seenMtimes.get(absPath)
-      if (prev !== undefined && mtime <= prev) return
+      if (prev !== undefined && mtime <= prev) {
+        return
+      }
       seenMtimes.set(absPath, mtime)
     }
     pending.set(absPath, true)
-    if (timer !== null) clearTimeout(timer)
+    if (timer !== null) {
+      clearTimeout(timer)
+    }
     timer = setTimeout(flush, DEBOUNCE_MS)
   }
 
   const watchDir = (dir: string, set: Set<ReturnType<typeof watch>> = watchers) => {
     try {
       const w = watch(dir, { recursive: true }, (_event, filename) => {
-        if (!filename) return
+        if (!filename) {
+          return
+        }
         void enqueue(path.join(dir, filename.toString()))
       })
       set.add(w)
@@ -93,22 +103,36 @@ export function watchContent(
 
   watchDir(ctx.contentDir)
   watchDir(ctx.staticDir)
-  if (ctx.templatesDir !== null) watchDir(ctx.templatesDir)
+  if (ctx.templatesDir !== null) {
+    watchDir(ctx.templatesDir)
+  }
   watchFile(configPath)
-  for (const dep of initialTailwindDeps) watchFile(dep, tailwindWatchers)
+  for (const dep of initialTailwindDeps) {
+    watchFile(dep, tailwindWatchers)
+  }
 
   return {
     close() {
-      if (timer !== null) clearTimeout(timer)
-      for (const w of watchers) w.close()
-      for (const w of tailwindWatchers) w.close()
+      if (timer !== null) {
+        clearTimeout(timer)
+      }
+      for (const w of watchers) {
+        w.close()
+      }
+      for (const w of tailwindWatchers) {
+        w.close()
+      }
       watchers.clear()
       tailwindWatchers.clear()
     },
     updateTailwindDeps(deps) {
-      for (const w of tailwindWatchers) w.close()
+      for (const w of tailwindWatchers) {
+        w.close()
+      }
       tailwindWatchers.clear()
-      for (const dep of deps) watchFile(dep, tailwindWatchers)
+      for (const dep of deps) {
+        watchFile(dep, tailwindWatchers)
+      }
     },
   }
 }

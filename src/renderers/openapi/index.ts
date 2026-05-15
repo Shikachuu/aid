@@ -23,7 +23,9 @@ export type RenderOpenApiArgs = {
 export async function renderOpenApi(args: RenderOpenApiArgs): Promise<RenderedPage> {
   const source = await Bun.file(args.sourcePath).text()
   const { doc, warnings } = await parseOpenApi(source, args.sourcePath)
-  for (const w of warnings) console.warn(`aid: ${w}`)
+  for (const w of warnings) {
+    console.warn(`aid: ${w}`)
+  }
 
   const info = (doc.info ?? {}) as { title?: unknown; description?: unknown }
   const fallbackTitle = path.basename(args.sourcePath, path.extname(args.sourcePath))
@@ -46,6 +48,7 @@ export async function renderOpenApi(args: RenderOpenApiArgs): Promise<RenderedPa
     ],
     hasMermaid: false,
     hasOpenApi: true,
+    hasProto: false,
     description,
   }
 }
@@ -68,17 +71,29 @@ function extractSearchExtras(doc: Record<string, unknown>): Record<string, strin
   const docPaths = (doc.paths ?? {}) as Record<string, unknown>
   for (const [pathKey, pathItem] of Object.entries(docPaths)) {
     paths.push(pathKey)
-    if (pathItem === null || typeof pathItem !== "object") continue
+    if (pathItem === null || typeof pathItem !== "object") {
+      continue
+    }
     for (const [verbKey, op] of Object.entries(pathItem as Record<string, unknown>)) {
-      if (!HTTP_VERBS.has(verbKey)) continue
-      if (op === null || typeof op !== "object") continue
+      if (!HTTP_VERBS.has(verbKey)) {
+        continue
+      }
+      if (op === null || typeof op !== "object") {
+        continue
+      }
       const opObj = op as { operationId?: unknown; summary?: unknown; parameters?: unknown }
-      if (typeof opObj.operationId === "string") operationIds.push(opObj.operationId)
-      if (typeof opObj.summary === "string") summaries.push(opObj.summary)
+      if (typeof opObj.operationId === "string") {
+        operationIds.push(opObj.operationId)
+      }
+      if (typeof opObj.summary === "string") {
+        summaries.push(opObj.summary)
+      }
       if (Array.isArray(opObj.parameters)) {
         for (const param of opObj.parameters) {
           const name = (param as { name?: unknown } | null)?.name
-          if (typeof name === "string") parameters.push(name)
+          if (typeof name === "string") {
+            parameters.push(name)
+          }
         }
       }
     }
@@ -91,10 +106,20 @@ function extractSearchExtras(doc: Record<string, unknown>): Record<string, strin
       : []
 
   const extras: Record<string, string[]> = {}
-  if (operationIds.length > 0) extras.operationIds = operationIds
-  if (paths.length > 0) extras.paths = paths
-  if (schemas.length > 0) extras.schemas = schemas
-  if (parameters.length > 0) extras.parameters = [...new Set(parameters)]
-  if (summaries.length > 0) extras.summaries = summaries
+  if (operationIds.length > 0) {
+    extras.operationIds = operationIds
+  }
+  if (paths.length > 0) {
+    extras.paths = paths
+  }
+  if (schemas.length > 0) {
+    extras.schemas = schemas
+  }
+  if (parameters.length > 0) {
+    extras.parameters = [...new Set(parameters)]
+  }
+  if (summaries.length > 0) {
+    extras.summaries = summaries
+  }
   return extras
 }

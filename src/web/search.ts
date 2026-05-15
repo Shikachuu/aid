@@ -23,7 +23,9 @@ function wireInput(input: HTMLInputElement): void {
   const rootEl = input.closest<HTMLElement>(".aid-search")
   const resultsEl = rootEl?.querySelector<HTMLElement>("[data-aid-search-results]")
   const indexHrefRaw = input.dataset.aidSearchIndexHref
-  if (!rootEl || !resultsEl || !indexHrefRaw) return
+  if (!rootEl || !resultsEl || !indexHrefRaw) {
+    return
+  }
   const root: HTMLElement = rootEl
   const results: HTMLElement = resultsEl
   const indexHref: string = indexHrefRaw
@@ -40,16 +42,22 @@ function wireInput(input: HTMLInputElement): void {
   let debounce: ReturnType<typeof setTimeout> | null = null
 
   input.addEventListener("focus", () => {
-    if (loadPromise === null && !ready) loadPromise = load()
+    if (loadPromise === null && !ready) {
+      loadPromise = load()
+    }
   })
 
   input.addEventListener("input", () => {
-    if (debounce !== null) clearTimeout(debounce)
+    if (debounce !== null) {
+      clearTimeout(debounce)
+    }
     debounce = setTimeout(() => runQuery(input.value), DEBOUNCE_MS)
   })
 
   input.addEventListener("keydown", (e) => {
-    if (results.hidden) return
+    if (results.hidden) {
+      return
+    }
     if (e.key === "ArrowDown") {
       e.preventDefault()
       active = Math.min(active + 1, items.length - 1)
@@ -79,7 +87,9 @@ function wireInput(input: HTMLInputElement): void {
   })
 
   document.addEventListener("click", (e) => {
-    if (!root.contains(e.target as Node)) close()
+    if (!root.contains(e.target as Node)) {
+      close()
+    }
   })
 
   async function load(): Promise<void> {
@@ -88,7 +98,9 @@ function wireInput(input: HTMLInputElement): void {
       loadIndexScript(indexHref),
     ])
     const data = (window as unknown as { __AID_SEARCH__?: unknown }).__AID_SEARCH__
-    if (data === undefined) return
+    if (data === undefined) {
+      return
+    }
     const Ctor = MiniSearchCtor as unknown as MiniSearchStatic
     ms = Ctor.loadJSON(JSON.stringify(data), {
       fields: ["title", "headings", "body", "extras"],
@@ -174,13 +186,19 @@ function wireInput(input: HTMLInputElement): void {
 }
 
 function parseWeights(raw: string | undefined): Weights {
-  if (raw === undefined) return {}
+  if (raw === undefined) {
+    return {}
+  }
   try {
     const parsed = JSON.parse(raw) as unknown
-    if (parsed === null || typeof parsed !== "object") return {}
+    if (parsed === null || typeof parsed !== "object") {
+      return {}
+    }
     const out: Weights = {}
     for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
-      if (typeof v === "number" && Number.isFinite(v)) out[k] = v
+      if (typeof v === "number" && Number.isFinite(v)) {
+        out[k] = v
+      }
     }
     return out
   } catch {
@@ -192,7 +210,9 @@ async function loadIndexScript(href: string): Promise<void> {
   const selector = `script[data-aid-search-index-src="${cssEscape(href)}"]`
   const existing = document.querySelector<HTMLScriptElement>(selector)
   if (existing) {
-    if ((window as unknown as { __AID_SEARCH__?: unknown }).__AID_SEARCH__ !== undefined) return
+    if ((window as unknown as { __AID_SEARCH__?: unknown }).__AID_SEARCH__ !== undefined) {
+      return
+    }
     await new Promise<void>((resolve, reject) => {
       existing.addEventListener("load", () => resolve(), { once: true })
       existing.addEventListener("error", () => reject(new Error(`aid: failed to load ${href}`)), {
@@ -216,7 +236,9 @@ async function loadIndexScript(href: string): Promise<void> {
 
 function cssEscape(value: string): string {
   const cssApi = (window as unknown as { CSS?: { escape?: (s: string) => string } }).CSS
-  if (cssApi?.escape) return cssApi.escape(value)
+  if (cssApi?.escape) {
+    return cssApi.escape(value)
+  }
   return value.replace(/["\\]/g, "\\$&")
 }
 

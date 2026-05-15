@@ -1,5 +1,12 @@
 import path from "node:path"
-import { aidMermaidJs, aidOpenapiCss, aidOpenapiJs, aidWebJs } from "../web/_bundled"
+import {
+  aidMermaidJs,
+  aidOpenapiCss,
+  aidOpenapiJs,
+  aidProtoCss,
+  aidProtoJs,
+  aidWebJs,
+} from "../web/_bundled"
 import type { BuildContext } from "./types"
 
 /**
@@ -9,6 +16,7 @@ import type { BuildContext } from "./types"
  * at module load would throw before we ever reach the branch decision.
  */
 const SCALAR_CSS_SPECIFIER = "@scalar/api-reference/style.css"
+const PROTO_UI_CSS_SPECIFIER = "@aid/proto-ui/styles.css"
 
 /** Inputs for {@link buildWebBundle}. */
 export type BuildWebBundleArgs = {
@@ -25,6 +33,12 @@ export type BuildWebBundleArgs = {
    * sites with no OpenAPI pages never pay for the Scalar runtime.
    */
   includeOpenApi?: boolean
+  /**
+   * When `true`, the `@aid/proto-ui` runtime bundle is emitted alongside the
+   * base one. When `false` (the default), only the base bundle is produced —
+   * sites with no Proto pages never pay for the proto-ui runtime.
+   */
+  includeProto?: boolean
 }
 
 /** Result of writing the compiled web bundle(s) to disk. */
@@ -42,12 +56,17 @@ export type BuildWebBundleResult = {
    * renders at intrinsic size and the chrome is unstyled.
    */
   openapiCssHref: string | null
+  /** Public href for the proto-ui bundle, or `null` when `includeProto` is false. */
+  protoHref: string | null
+  /** Public href for the proto-ui stylesheet, or `null` when `includeProto` is false. */
+  protoCssHref: string | null
 }
 
 const aidProjectRoot = path.join(import.meta.dir, "../..")
 const baseEntry = path.join(aidProjectRoot, "src/web/index.ts")
 const mermaidEntry = path.join(aidProjectRoot, "src/web/mermaid-entry.ts")
 const openapiEntry = path.join(aidProjectRoot, "src/web/openapi-entry.ts")
+const protoEntry = path.join(aidProjectRoot, "src/web/proto-entry.ts")
 
 /**
  * Materialise the browser-side runtime into `outputDir`. There are two
@@ -70,7 +89,7 @@ const openapiEntry = path.join(aidProjectRoot, "src/web/openapi-entry.ts")
  * filenames are content-addressable for cache-busting.
  */
 export async function buildWebBundle(args: BuildWebBundleArgs): Promise<BuildWebBundleResult> {
-  const { ctx, includeMermaid = false, includeOpenApi = false } = args
+  const { ctx, includeMermaid = false, includeOpenApi = false, includeProto = false } = args
 
   // Prefer the source tree when it is available on disk: in dev mode that's
   // always the case, and `Bun.build` with splitting produces the smaller
@@ -104,7 +123,19 @@ export async function buildWebBundle(args: BuildWebBundleArgs): Promise<BuildWeb
         )
     : null
 
-  return { baseHref, mermaidHref, openapiHref, openapiCssHref }
+  const protoHref = includeProto
+    ? useSource
+      ? await buildAndWrite(ctx, "aid-proto", protoEntry)
+      : await writeEmbedded(ctx, "aid-proto", requireEmbedded("aid-proto", aidProtoJs))
+    : null
+
+  const protoCssHref = includeProto
+    ? useSource
+      ? await copyProtoUiCss(ctx)
+      : await writeEmbeddedCss(ctx, "aid-proto", requireEmbedded("aid-proto.css", aidProtoCss))
+    : null
+
+  return { baseHref, mermaidHref, openapiHref, openapiCssHref, protoHref, protoCssHref }
 }
 
 function requireEmbedded(name: string, bytes: string): string {
@@ -136,6 +167,12 @@ async function copyScalarCss(ctx: BuildContext): Promise<string> {
   return writeEmbeddedCss(ctx, "aid-openapi", source)
 }
 
+async function copyProtoUiCss(ctx: BuildContext): Promise<string> {
+  const protoCssEntry = Bun.resolveSync(PROTO_UI_CSS_SPECIFIER, import.meta.dir)
+  const source = await Bun.file(protoCssEntry).text()
+  return writeEmbeddedCss(ctx, "aid-proto", source)
+}
+
 async function buildAndWrite(ctx: BuildContext, name: string, entry: string): Promise<string> {
   const result = await Bun.build({
     entrypoints: [entry],
@@ -151,11 +188,15 @@ async function buildAndWrite(ctx: BuildContext, name: string, entry: string): Pr
     },
   })
   if (!result.success) {
-    for (const log of result.logs) console.error(log)
+    for (const log of result.logs) {
+      console.error(log)
+    }
     throw new Error(`buildWebBundle: ${name} bundle failed`)
   }
   const entryOutput = result.outputs.find((o) => o.kind === "entry-point")
-  if (!entryOutput) throw new Error(`buildWebBundle: no entry-point output for ${name}`)
+  if (!entryOutput) {
+    throw new Error(`buildWebBundle: no entry-point output for ${name}`)
+  }
   const filename = path.basename(entryOutput.path)
   return path.posix.join(ctx.config.base_path, filename)
 }

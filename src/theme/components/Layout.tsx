@@ -23,6 +23,10 @@ export type LayoutProps = {
    * spacing collapses, and the search/sidebar are unstyled.
    */
   openapiStylesheetHref?: string | null
+  /** Per-page; injected only when the page is a Proto reference. */
+  protoBundleHref?: string | null
+  /** `@aid/proto-ui` stylesheet, linked only on Proto pages. */
+  protoStylesheetHref?: string | null
   /**
    * Search affordance config. When omitted the Header renders no SearchBox —
    * this is the natural off-switch for `search.enabled === false`.
@@ -42,6 +46,8 @@ export function Layout(props: LayoutProps) {
     mermaidBundleHref,
     openapiBundleHref,
     openapiStylesheetHref,
+    protoBundleHref,
+    protoStylesheetHref,
     search,
     bodyHtml,
   } = props
@@ -56,6 +62,7 @@ export function Layout(props: LayoutProps) {
         {description ? <meta name="description" content={description} /> : null}
         <link rel="stylesheet" href={stylesheetHref} />
         {openapiStylesheetHref ? <link rel="stylesheet" href={openapiStylesheetHref} /> : null}
+        {protoStylesheetHref ? <link rel="stylesheet" href={protoStylesheetHref} /> : null}
       </head>
       <body class="aid-body">
         <Header config={config} search={search} />
@@ -71,6 +78,7 @@ export function Layout(props: LayoutProps) {
         <script type="module" src={webBundleHref} defer />
         {mermaidBundleHref ? <script type="module" src={mermaidBundleHref} defer /> : null}
         {openapiBundleHref ? <script type="module" src={openapiBundleHref} defer /> : null}
+        {protoBundleHref ? <script type="module" src={protoBundleHref} defer /> : null}
       </body>
     </html>
   )

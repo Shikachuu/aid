@@ -30,22 +30,36 @@ export function RawHtml({ html }: { html: string }): Element {
 }
 
 export function render(node: Child): string {
-  if (node == null || node === false || node === true) return ""
-  if (typeof node === "string") return escapeHtml(node)
-  if (typeof node === "number" || typeof node === "bigint") return String(node)
+  if (node == null || node === false || node === true) {
+    return ""
+  }
+  if (typeof node === "string") {
+    return escapeHtml(node)
+  }
+  if (typeof node === "number" || typeof node === "bigint") {
+    return String(node)
+  }
   if (Array.isArray(node)) {
     let out = ""
-    for (const child of node) out += render(child)
+    for (const child of node) {
+      out += render(child)
+    }
     return out
   }
   if (typeof node === "object" && (node as Element).__aid_jsx) {
     const el = node as Element
-    if (el.type === Fragment) return render(el.props.children)
-    if (el.type === RAW) return String((el.props as { html: string }).html)
+    if (el.type === Fragment) {
+      return render(el.props.children)
+    }
+    if (el.type === RAW) {
+      return String((el.props as { html: string }).html)
+    }
     if (typeof el.type === "function") {
       return render((el.type as (props: Props) => Child)(el.props))
     }
-    if (typeof el.type === "string") return renderIntrinsic(el.type, el.props)
+    if (typeof el.type === "string") {
+      return renderIntrinsic(el.type, el.props)
+    }
   }
   return ""
 }
@@ -59,7 +73,9 @@ function renderIntrinsic(tag: string, props: Props): string {
     dangerouslySetInnerHTML?: { __html: string }
   }
   const attrs = renderAttrs(rest)
-  if (VOID_ELEMENTS.has(tag)) return `<${tag}${attrs}>`
+  if (VOID_ELEMENTS.has(tag)) {
+    return `<${tag}${attrs}>`
+  }
   if (dangerouslySetInnerHTML) {
     return `<${tag}${attrs}>${dangerouslySetInnerHTML.__html}</${tag}>`
   }
@@ -69,9 +85,13 @@ function renderIntrinsic(tag: string, props: Props): string {
 function renderAttrs(attrs: Record<string, unknown>): string {
   let out = ""
   for (const key in attrs) {
-    if (key === "children" || key === "key" || key === "ref") continue
+    if (key === "children" || key === "key" || key === "ref") {
+      continue
+    }
     const value = attrs[key]
-    if (value == null || value === false) continue
+    if (value == null || value === false) {
+      continue
+    }
     const name = ATTR_REWRITE[key] ?? key
     if (value === true) {
       out += ` ${name}`
@@ -90,7 +110,9 @@ function serializeStyle(style: Record<string, string | number>): string {
   let out = ""
   for (const k in style) {
     const v = style[k]
-    if (v == null) continue
+    if (v == null) {
+      continue
+    }
     out += `${kebab(k)}:${typeof v === "number" ? `${v}px` : v};`
   }
   return out

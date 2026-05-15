@@ -6,7 +6,9 @@
  */
 export function attachDarkMode(): void {
   const toggle = document.querySelector<HTMLElement>("[data-aid-dark-toggle]")
-  if (!toggle) return
+  if (!toggle) {
+    return
+  }
   toggle.addEventListener("click", () => {
     // cycle theme + persist
   })

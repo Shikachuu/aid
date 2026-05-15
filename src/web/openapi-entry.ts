@@ -13,9 +13,13 @@ import { createApiReference } from "@scalar/api-reference"
 document.addEventListener("DOMContentLoaded", () => {
   const mount = document.getElementById("aid-openapi-mount")
   const specEl = document.getElementById("aid-openapi-spec")
-  if (!mount || !specEl) return
+  if (!mount || !specEl) {
+    return
+  }
   const text = specEl.textContent ?? ""
-  if (text.length === 0) return
+  if (text.length === 0) {
+    return
+  }
   const content = JSON.parse(text) as Record<string, unknown>
   createApiReference(mount, {
     content,

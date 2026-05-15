@@ -55,7 +55,9 @@ let installPromise: Promise<void> | null = null
  * for the exact subpackage specifier, so unrelated requires are untouched.
  */
 export const installLightningcssShim = async (): Promise<void> => {
-  if (installPromise) return installPromise
+  if (installPromise) {
+    return installPromise
+  }
   installPromise = doInstall()
   return installPromise
 }
@@ -66,7 +68,9 @@ type ModuleNs = {
 
 const doInstall = async (): Promise<void> => {
   const picked = pickEmbedded()
-  if (picked === null) return
+  if (picked === null) {
+    return
+  }
 
   // Copy the staged bytes out as a real `.node` file. `process.dlopen` (which
   // `require()` invokes for `.node` files) needs a real filesystem path; the
@@ -87,7 +91,9 @@ const doInstall = async (): Promise<void> => {
   const moduleNs = cjsRequire("node:module") as ModuleNs
   const original = moduleNs.prototype.require
   moduleNs.prototype.require = function (this: unknown, id: string): unknown {
-    if (id === picked.subpkg) return bindings
+    if (id === picked.subpkg) {
+      return bindings
+    }
     return original.call(this, id)
   }
 }

@@ -13,19 +13,27 @@ export const formatMarkdown = async (
   dir: string,
   opts: { check: boolean },
 ): Promise<ToolResult> => {
-  if (paths.length === 0) return { tool: "md", ok: true, diagnostics: [] }
+  if (paths.length === 0) {
+    return { tool: "md", ok: true, diagnostics: [] }
+  }
   const config = await resolveMarkdownConfig(dir)
   // biome-ignore lint/suspicious/noExplicitAny: markdownlint Configuration type isn't published as a TS type
   const results = await lint({ files: paths, config: config as any })
   const wouldChange: string[] = []
   let ok = true
   for (const [file, errors] of Object.entries(results)) {
-    if (!Array.isArray(errors)) continue
+    if (!Array.isArray(errors)) {
+      continue
+    }
     const fixable = errors.filter((e) => e.fixInfo)
-    if (fixable.length === 0) continue
+    if (fixable.length === 0) {
+      continue
+    }
     const original = await Bun.file(file).text()
     const fixed = applyFixes(original, fixable)
-    if (fixed === original) continue
+    if (fixed === original) {
+      continue
+    }
     if (opts.check) {
       wouldChange.push(file)
       ok = false

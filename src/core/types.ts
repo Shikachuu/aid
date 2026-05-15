@@ -28,6 +28,8 @@ export type RenderedPage = {
   hasMermaid: boolean
   /** True iff the page is an OpenAPI reference. Drives lazy Scalar runtime injection. */
   hasOpenApi: boolean
+  /** True iff the page is a Proto reference. Drives lazy proto-ui runtime injection. */
+  hasProto: boolean
   /** One-line summary used in llms.txt bullets and (later) <meta description>. */
   description?: string
 }
@@ -41,8 +43,8 @@ export type SearchTokens = {
 }
 
 export type SideChannelExport = {
-  /** URL suffix appended to the route, e.g. ".md" or ".json". */
-  suffix: ".md" | ".json"
+  /** URL suffix appended to the route, e.g. ".md", ".json", ".proto". */
+  suffix: ".md" | ".json" | ".proto"
   /** Content type for the response. */
   contentType: string
   /** Body bytes / string. */

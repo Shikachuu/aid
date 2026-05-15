@@ -69,9 +69,13 @@ export const renderPretty = (results: ToolResult[]): string => {
             : `${d.file}:${d.line}:${d.col}`
       const sev = colorize(d.severity.padEnd(5), severityColor(d.severity))
       lines.push(`${loc}  ${sev}  ${colorize(d.code, "bold")}  ${d.message}`)
-      if (d.severity === "error") errors++
-      else if (d.severity === "warn") warnings++
-      else infos++
+      if (d.severity === "error") {
+        errors++
+      } else if (d.severity === "warn") {
+        warnings++
+      } else {
+        infos++
+      }
       perTool[r.tool]++
     }
     if (r.wouldChange && r.wouldChange.length > 0) {

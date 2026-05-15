@@ -47,11 +47,17 @@ export const discover = async (dir: string, patterns: readonly string[]): Promis
       const matches: string[] = []
       for await (const match of glob.scan({ cwd: root, absolute: true, onlyFiles: true })) {
         const rel = match.startsWith(root + sep) ? match.slice(root.length + 1) : match
-        if (!isIgnored(rel)) matches.push(match)
+        if (!isIgnored(rel)) {
+          matches.push(match)
+        }
       }
       return matches
     }),
   )
-  for (const list of lists) for (const m of list) seen.add(m)
+  for (const list of lists) {
+    for (const m of list) {
+      seen.add(m)
+    }
+  }
   return Array.from(seen).sort()
 }

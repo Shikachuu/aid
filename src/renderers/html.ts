@@ -117,6 +117,7 @@ export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
     ],
     hasMermaid,
     hasOpenApi: false,
+    hasProto: false,
     description: frontmatter.description,
   }
 }
@@ -134,13 +135,19 @@ function findChildElement(parent: HastElement | HastRoot, tagName: string): Hast
 }
 
 function extractHeadMetadata(head: HastElement | null): Record<string, unknown> {
-  if (!head) return {}
+  if (!head) {
+    return {}
+  }
   const out: Record<string, unknown> = {}
   for (const child of head.children) {
-    if (child.type !== "element") continue
+    if (child.type !== "element") {
+      continue
+    }
     if (child.tagName === "title") {
       const text = elementTextContent(child)
-      if (text.length > 0) out.title = text
+      if (text.length > 0) {
+        out.title = text
+      }
       continue
     }
     if (child.tagName === "meta") {
@@ -157,16 +164,23 @@ function extractHeadMetadata(head: HastElement | null): Record<string, unknown> 
 function elementTextContent(node: HastElement): string {
   let out = ""
   for (const child of node.children) {
-    if (child.type === "text") out += child.value
-    else if (child.type === "element") out += elementTextContent(child)
+    if (child.type === "text") {
+      out += child.value
+    } else if (child.type === "element") {
+      out += elementTextContent(child)
+    }
   }
   return out.trim()
 }
 
 function hasClass(node: HastElement, cls: string): boolean {
   const value = node.properties?.className
-  if (Array.isArray(value)) return value.includes(cls)
-  if (typeof value === "string") return value.split(/\s+/).includes(cls)
+  if (Array.isArray(value)) {
+    return value.includes(cls)
+  }
+  if (typeof value === "string") {
+    return value.split(/\s+/).includes(cls)
+  }
   return false
 }
 

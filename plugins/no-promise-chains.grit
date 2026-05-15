@@ -1,0 +1,13 @@
+engine biome(1.0)
+language js(typescript, jsx)
+
+or {
+  `$_.then($...)`,
+  `$_.catch($...)`,
+  `$_.finally($...)`,
+} as $chain where {
+  register_diagnostic(
+    span = $chain,
+    message = "Prefer async/await over Promise.then/.catch/.finally."
+  )
+}

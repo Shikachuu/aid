@@ -6,7 +6,7 @@ const BUNDLED_DEFAULT = `# {{name}}
 
 > {{description}}
 
-This documentation is available in machine-readable form. Append \`.md\` to a markdown route or \`.json\` to an OpenAPI/proto route to receive the parseable variant.
+This documentation is available in machine-readable form. Append \`.md\` to a markdown route, \`.json\` to an OpenAPI route, or \`.proto\` to a Proto route to receive the parseable variant.
 
 {{toc}}
 
@@ -52,9 +52,13 @@ export async function buildLlmsTxt(ctx: BuildContext, pages: RenderedPage[]): Pr
 }
 
 async function resolveTemplate(ctx: BuildContext): Promise<string> {
-  if (ctx.templatesDir === null) return BUNDLED_DEFAULT
+  if (ctx.templatesDir === null) {
+    return BUNDLED_DEFAULT
+  }
   const file = Bun.file(path.join(ctx.templatesDir, TEMPLATE_FILENAME))
-  if (!(await file.exists())) return BUNDLED_DEFAULT
+  if (!(await file.exists())) {
+    return BUNDLED_DEFAULT
+  }
   return await file.text()
 }
 
@@ -74,26 +78,32 @@ function buildEntry(page: RenderedPage, config: AidConfig): Entry {
 }
 
 /**
- * Produce the machine-readable URL for a route: `.json` for spec-shaped pages
- * (OpenAPI, proto), `.md` for prose pages. Root `/` collapses to `/index<suffix>`
- * so it matches the file `outputPathForExport` writes (`<outputDir>/index.<ext>`).
+ * Produce the machine-readable URL for a route: `.json` for OpenAPI, `.proto`
+ * for proto, `.md` for prose pages. Root `/` collapses to `/index<suffix>` so
+ * it matches the file `outputPathForExport` writes (`<outputDir>/index.<ext>`).
  * Absolute when `config.base_url` is set; path-only otherwise.
  */
 function machineUrlFor(route: Route, config: AidConfig): string {
-  const suffix = route.kind === "openapi" || route.kind === "proto" ? ".json" : ".md"
+  const suffix = route.kind === "openapi" ? ".json" : route.kind === "proto" ? ".proto" : ".md"
   const localPath = route.path === "/" ? `/index${suffix}` : `${route.path}${suffix}`
   const prefix = config.base_path === "/" ? "" : config.base_path.replace(/\/$/, "")
   const withBase = `${prefix}${localPath}`
-  if (!config.base_url) return withBase
+  if (!config.base_url) {
+    return withBase
+  }
   return new URL(withBase, config.base_url).toString()
 }
 
 /** Root files → "Docs". Otherwise: first path segment, title-cased ("getting-started" → "Getting Started"). */
 function groupLabelFor(routePath: string): string {
-  if (routePath === "/") return "Docs"
+  if (routePath === "/") {
+    return "Docs"
+  }
   const segments = routePath.replace(/^\//, "").split("/")
   const first = segments.length > 1 ? segments[0] : null
-  if (first === null || first === undefined || first === "") return "Docs"
+  if (first === null || first === undefined || first === "") {
+    return "Docs"
+  }
   return titleCase(first)
 }
 
@@ -121,21 +131,29 @@ function groupByDirectory(entries: Entry[]): Map<string, Entry[]> {
 function renderGroupedToc(groups: Map<string, Entry[]>): string {
   // `Docs` (the root bucket) pins first; remaining groups alphabetical.
   const keys = [...groups.keys()].sort((a, b) => {
-    if (a === "Docs") return -1
-    if (b === "Docs") return 1
+    if (a === "Docs") {
+      return -1
+    }
+    if (b === "Docs") {
+      return 1
+    }
     return a < b ? -1 : a > b ? 1 : 0
   })
   const blocks: string[] = []
   for (const key of keys) {
     const entries = groups.get(key) ?? []
-    if (entries.length === 0) continue
+    if (entries.length === 0) {
+      continue
+    }
     blocks.push(`## ${key}\n\n${entries.map(renderBullet).join("\n")}`)
   }
   return blocks.join("\n\n")
 }
 
 function renderFlatToc(entries: Entry[]): string {
-  if (entries.length === 0) return ""
+  if (entries.length === 0) {
+    return ""
+  }
   const sorted = [...entries].sort((a, b) =>
     a.routePath < b.routePath ? -1 : a.routePath > b.routePath ? 1 : 0,
   )

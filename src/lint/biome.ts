@@ -9,7 +9,9 @@ const USER_CONFIGS = ["biome.json", "biome.jsonc"] as const
 /** Resolve the active Biome configuration: user's `biome.json[c]` if present, else the bundled default. */
 export const resolveBiomeConfig = async (dir: string): Promise<Configuration> => {
   const path = await findUserConfig(dir, USER_CONFIGS)
-  if (path === null) return biomeDefault as unknown as Configuration
+  if (path === null) {
+    return biomeDefault as unknown as Configuration
+  }
   return (await parseConfigFile(path)) as Configuration
 }
 
@@ -30,8 +32,12 @@ const offsetToLineCol = (source: string, byteOffset: number): { line: number; co
 }
 
 const mapBiomeSeverity = (s: BiomeDiagnostic["severity"]): Severity => {
-  if (s === "error" || s === "fatal") return "error"
-  if (s === "warning") return "warn"
+  if (s === "error" || s === "fatal") {
+    return "error"
+  }
+  if (s === "warning") {
+    return "warn"
+  }
   return "info"
 }
 
@@ -57,7 +63,9 @@ export const lintWithBiome = async (
   dir: string,
   opts: { fix: boolean },
 ): Promise<ToolResult> => {
-  if (paths.length === 0) return { tool: "biome", ok: true, diagnostics: [] }
+  if (paths.length === 0) {
+    return { tool: "biome", ok: true, diagnostics: [] }
+  }
   const config = await resolveBiomeConfig(dir)
   const biome = new Biome()
   try {
@@ -77,7 +85,9 @@ export const lintWithBiome = async (
       for (const d of res.diagnostics) {
         const mapped = toDiagnostic(d, file, content)
         diagnostics.push(mapped)
-        if (mapped.severity === "error") ok = false
+        if (mapped.severity === "error") {
+          ok = false
+        }
       }
     }
     return { tool: "biome", ok, diagnostics }

@@ -17,7 +17,9 @@ export function colocatedAssetsMdastPlugin(opts: ColocatedAssetsOptions) {
     const tasks: Promise<void>[] = []
     visit(tree, "image", (node: Image) => {
       const src = node.url
-      if (typeof src !== "string" || !isRelative(src)) return
+      if (typeof src !== "string" || !isRelative(src)) {
+        return
+      }
       const absSrc = path.resolve(opts.sourceDir, src)
       tasks.push(
         (async () => {

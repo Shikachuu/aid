@@ -25,16 +25,24 @@ type CtxOverrides = {
 
 function makeCtx(overrides: CtxOverrides = {}): BuildContext {
   const rawConfig: Record<string, unknown> = { name: "Test Site" }
-  if (overrides.base_path !== undefined) rawConfig.base_path = overrides.base_path
+  if (overrides.base_path !== undefined) {
+    rawConfig.base_path = overrides.base_path
+  }
   if (
     overrides.searchEnabled !== undefined ||
     overrides.typoTolerance !== undefined ||
     overrides.weights !== undefined
   ) {
     const search: Record<string, unknown> = {}
-    if (overrides.searchEnabled !== undefined) search.enabled = overrides.searchEnabled
-    if (overrides.typoTolerance !== undefined) search.typo_tolerance = overrides.typoTolerance
-    if (overrides.weights !== undefined) search.weights = overrides.weights
+    if (overrides.searchEnabled !== undefined) {
+      search.enabled = overrides.searchEnabled
+    }
+    if (overrides.typoTolerance !== undefined) {
+      search.typo_tolerance = overrides.typoTolerance
+    }
+    if (overrides.weights !== undefined) {
+      search.weights = overrides.weights
+    }
     rawConfig.search = search
   }
   const config = AidConfigSchema.parse(rawConfig)
@@ -74,6 +82,7 @@ function makePage(args: {
     exports: [],
     hasMermaid: false,
     hasOpenApi: kind === "openapi",
+    hasProto: kind === "proto",
   }
 }
 
@@ -139,7 +148,9 @@ describe("buildSearchIndex — output shape", () => {
     const result = buildSearchIndex(ctx, [
       makePage({ routePath: "/", title: "Home", body: "Welcome." }),
     ])
-    if (!result) throw new Error("expected result")
+    if (!result) {
+      throw new Error("expected result")
+    }
     const { storedFields } = extractIndex(result.source)
     expect(Object.keys(storedFields).length).toBeGreaterThan(0)
   })
@@ -163,7 +174,9 @@ describe("buildSearchIndex — indexed documents", () => {
       makePage({ routePath: "/events", title: "Events", kind: "proto" }),
       makePage({ routePath: "/listing", title: "Listing", kind: "index" }),
     ])
-    if (!result) throw new Error("expected result")
+    if (!result) {
+      throw new Error("expected result")
+    }
     const { storedFields } = extractIndex(result.source)
     const types = Object.values(storedFields)
       .map((d) => d.type)
@@ -176,7 +189,9 @@ describe("buildSearchIndex — indexed documents", () => {
     const result = buildSearchIndex(ctx, [
       makePage({ routePath: "/guides/intro", title: "Intro", body: "Hello." }),
     ])
-    if (!result) throw new Error("expected result")
+    if (!result) {
+      throw new Error("expected result")
+    }
     const { storedFields } = extractIndex(result.source)
     const doc = Object.values(storedFields)[0] as
       | { type: string; title: string; url: string }
@@ -189,7 +204,9 @@ describe("buildSearchIndex — indexed documents", () => {
   test("root route url collapses to base_path", () => {
     const ctx = makeCtx({ base_path: "/docs" })
     const result = buildSearchIndex(ctx, [makePage({ routePath: "/", title: "Home" })])
-    if (!result) throw new Error("expected result")
+    if (!result) {
+      throw new Error("expected result")
+    }
     const { storedFields } = extractIndex(result.source)
     const doc = Object.values(storedFields)[0] as { url: string } | undefined
     expect(doc?.url).toBe("/docs")
@@ -198,7 +215,9 @@ describe("buildSearchIndex — indexed documents", () => {
   test("nested routes are joined under base_path", () => {
     const ctx = makeCtx({ base_path: "/docs" })
     const result = buildSearchIndex(ctx, [makePage({ routePath: "/guides/intro", title: "Intro" })])
-    if (!result) throw new Error("expected result")
+    if (!result) {
+      throw new Error("expected result")
+    }
     const { storedFields } = extractIndex(result.source)
     const doc = Object.values(storedFields)[0] as { url: string } | undefined
     expect(doc?.url).toBe("/docs/guides/intro")
@@ -217,7 +236,9 @@ describe("buildSearchIndex — indexed documents", () => {
         },
       }),
     ])
-    if (!result) throw new Error("expected result")
+    if (!result) {
+      throw new Error("expected result")
+    }
     // Tokens land in the search index — easiest way to verify is to load the
     // serialized form into MiniSearch and run an actual query.
     const MiniSearch = (await import("minisearch")).default

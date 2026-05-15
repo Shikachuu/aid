@@ -7,6 +7,9 @@
   "bin": {
     "aid": "./src/cli/index.ts"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "build": "scripts/compile.ts",
     "emit-schema": "bun run scripts/emit-schema.ts",
@@ -19,6 +22,7 @@
     "bun": ">=1.2.0"
   },
   "dependencies": {
+    "@aid/proto-ui": "workspace:*",
     "@biomejs/js-api": "^4.0.0",
     "@biomejs/wasm-nodejs": "^2.4.15",
     "@bufbuild/buf": "^1.69.0",
@@ -34,7 +38,8 @@
     "markdownlint-cli2": "^0.22.1",
     "mermaid": "^11.14.0",
     "minisearch": "^7",
-    "protobufjs": "^8.2.0",
+    "react": "^19",
+    "react-dom": "^19",
     "rehype-autolink-headings": "^7.1.0",
     "rehype-remark": "^10.0.1",
     "rehype-slug": "^6.0.0",
@@ -59,6 +64,8 @@
     "@tailwindcss/oxide-linux-arm64-gnu": "4.3.0",
     "@tailwindcss/oxide-linux-x64-gnu": "4.3.0",
     "@types/bun": "^1.3.13",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "typescript": "^5"
   },
   "overrides": {

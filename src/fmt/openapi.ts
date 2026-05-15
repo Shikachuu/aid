@@ -12,7 +12,9 @@ export const formatOpenApi = async (
   _dir: string,
   opts: { check: boolean },
 ): Promise<ToolResult> => {
-  if (paths.length === 0) return { tool: "openapi", ok: true, diagnostics: [] }
+  if (paths.length === 0) {
+    return { tool: "openapi", ok: true, diagnostics: [] }
+  }
   const wouldChange: string[] = []
   let ok = true
   for (const file of paths) {
@@ -28,7 +30,9 @@ export const formatOpenApi = async (
       // skip files we can't parse
       continue
     }
-    if (formatted === original) continue
+    if (formatted === original) {
+      continue
+    }
     if (opts.check) {
       wouldChange.push(file)
       ok = false

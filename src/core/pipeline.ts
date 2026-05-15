@@ -4,6 +4,7 @@ import { renderHtml } from "../renderers/html"
 import { renderMarkdown } from "../renderers/markdown"
 import type { CopyAsset } from "../renderers/markdown/colocated-assets"
 import { renderOpenApi } from "../renderers/openapi"
+import { renderProto } from "../renderers/proto"
 import { Layout } from "../theme/components/Layout"
 import { PageHtml } from "../theme/components/PageHtml"
 import { PageMarkdown } from "../theme/components/PageMarkdown"
@@ -34,10 +35,12 @@ export async function build(ctx: BuildContext): Promise<void> {
 
   const siteHasMermaid = rendered.some((p) => p.hasMermaid)
   const siteHasOpenApi = rendered.some((p) => p.hasOpenApi)
+  const siteHasProto = rendered.some((p) => p.hasProto)
   const web = await buildWebBundle({
     ctx,
     includeMermaid: siteHasMermaid,
     includeOpenApi: siteHasOpenApi,
+    includeProto: siteHasProto,
   })
 
   const searchIndex = buildSearchIndex(ctx, rendered)
@@ -66,7 +69,9 @@ export async function build(ctx: BuildContext): Promise<void> {
   const { href } = await writeCss({ ctx, css })
 
   const searchIndexPath = searchIndex ? path.join(ctx.outputDir, searchIndex.filename) : null
-  if (searchIndex && searchIndexPath) registry.register(searchIndexPath, "<generated:search-index>")
+  if (searchIndex && searchIndexPath) {
+    registry.register(searchIndexPath, "<generated:search-index>")
+  }
 
   await Promise.all([
     ...docs.map(async (doc) => {
@@ -102,6 +107,8 @@ async function dispatchRenderer(
       })
     case "openapi":
       return renderOpenApi({ route, sourcePath: route.source })
+    case "proto":
+      return renderProto({ route, sourcePath: route.source })
     default:
       throw new Error(`renderer not implemented: ${route.kind}`)
   }
@@ -129,7 +136,9 @@ function makeCopyAsset(route: Route, ctx: BuildContext, registry: AssetRegistry)
       )
     }
     const src = Bun.file(absoluteSource)
-    if (!(await src.exists())) return null
+    if (!(await src.exists())) {
+      return null
+    }
     const filename = path.basename(absoluteSource)
     const destPath = path.join(routeOutputDir, filename)
     registry.register(destPath, absoluteSource)
@@ -153,6 +162,8 @@ function wrapInLayout(
     mermaidHref: string | null
     openapiHref: string | null
     openapiCssHref: string | null
+    protoHref: string | null
+    protoCssHref: string | null
   },
   searchIndex: SearchIndexResult | null,
 ): string {
@@ -160,12 +171,12 @@ function wrapInLayout(
   const title =
     typeof fm?.title === "string" && fm.title.length > 0 ? fm.title : page.searchTokens.title
   const description = typeof fm?.description === "string" ? fm.description : undefined
-  // The OpenAPI renderer already produces a fully-wrapped PageOpenAPI body.
-  // Markdown and HTML pages both share the prose-style article chrome (toolbar
-  // + AI button slot) — same shell, different variant class so themes can
-  // target them separately.
+  // The OpenAPI and Proto renderers already produce fully-wrapped page bodies
+  // (PageOpenAPI / PageProto). Markdown and HTML pages both share the
+  // prose-style article chrome (toolbar + AI button slot) — same shell,
+  // different variant class so themes can target them separately.
   const pageHtml =
-    page.route.kind === "openapi"
+    page.route.kind === "openapi" || page.route.kind === "proto"
       ? page.html
       : page.route.kind === "html"
         ? render(PageHtml({ bodyHtml: page.html, machineUrl: "" }) as never)
@@ -188,6 +199,8 @@ function wrapInLayout(
       mermaidBundleHref: page.hasMermaid ? web.mermaidHref : null,
       openapiBundleHref: page.hasOpenApi ? web.openapiHref : null,
       openapiStylesheetHref: page.hasOpenApi ? web.openapiCssHref : null,
+      protoBundleHref: page.hasProto ? web.protoHref : null,
+      protoStylesheetHref: page.hasProto ? web.protoCssHref : null,
       search,
       bodyHtml: pageHtml,
     }) as never,
@@ -196,7 +209,9 @@ function wrapInLayout(
 
 /** Disk path for a route's rendered HTML, e.g. `/foo` → `<outputDir>/foo/index.html`. */
 export function outputPathForRoute(route: Route, ctx: BuildContext): string {
-  if (route.path === "/") return path.join(ctx.outputDir, "index.html")
+  if (route.path === "/") {
+    return path.join(ctx.outputDir, "index.html")
+  }
   const segments = route.path.replace(/^\//, "").split("/")
   return path.join(ctx.outputDir, ...segments, "index.html")
 }
@@ -207,9 +222,13 @@ export function outputPathForRoute(route: Route, ctx: BuildContext): string {
  * file `<outputDir>/foo.md`. Root `/` collapses to `<outputDir>/index<suffix>`.
  */
 export function outputPathForExport(route: Route, suffix: string, ctx: BuildContext): string {
-  if (route.path === "/") return path.join(ctx.outputDir, `index${suffix}`)
+  if (route.path === "/") {
+    return path.join(ctx.outputDir, `index${suffix}`)
+  }
   const segments = route.path.replace(/^\//, "").split("/")
   const last = segments.pop()
-  if (last === undefined) return path.join(ctx.outputDir, `index${suffix}`)
+  if (last === undefined) {
+    return path.join(ctx.outputDir, `index${suffix}`)
+  }
   return path.join(ctx.outputDir, ...segments, `${last}${suffix}`)
 }

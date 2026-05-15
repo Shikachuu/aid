@@ -18,7 +18,9 @@ export type SearchBoxProps = {
  * fraction, and the per-format weights as JSON.
  */
 export function SearchBox(props: SearchBoxProps) {
-  if (props.indexHref === undefined) return null
+  if (props.indexHref === undefined) {
+    return null
+  }
   const weightsJson = JSON.stringify(props.weights)
   return (
     <div class="aid-search">

@@ -8,12 +8,12 @@ const main: CommandDef = defineCommand({
     description: "Single-binary documentation generator for markdown, HTML, OpenAPI, and Protobuf.",
   },
   subCommands: {
-    init: () => import("./commands/init").then((m) => m.command),
-    dev: () => import("./commands/dev").then((m) => m.command),
-    build: () => import("./commands/build").then((m) => m.command),
-    lint: () => import("./commands/lint").then((m) => m.command),
-    fmt: () => import("./commands/fmt").then((m) => m.command),
-    help: () => import("./commands/help").then((m) => m.createHelp(main)),
+    init: async () => (await import("./commands/init")).command,
+    dev: async () => (await import("./commands/dev")).command,
+    build: async () => (await import("./commands/build")).command,
+    lint: async () => (await import("./commands/lint")).command,
+    fmt: async () => (await import("./commands/fmt")).command,
+    help: async () => (await import("./commands/help")).createHelp(main),
   },
   default: "help",
 })

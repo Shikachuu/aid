@@ -95,6 +95,24 @@
   }
 
   /*
+   * `@aid/proto-ui` token bridge. The embedded React component carries its own
+   * `--proto-*` defaults on `.proto-root`; aid's `.aid-page-proto` wrapper
+   * re-points them at the aid palette so proto pages inherit theming without
+   * per-page CSS. `:where()` keeps specificity at zero so consumer overrides
+   * still win.
+   */
+
+  :where(.aid-page-proto) {
+    --proto-color-bg: var(--color-aid-bg);
+    --proto-color-text: var(--color-aid-text);
+    --proto-color-muted: var(--color-aid-muted);
+    --proto-color-border: var(--color-aid-border);
+    --proto-color-accent: var(--color-aid-accent);
+    --proto-font-sans: var(--font-aid-sans);
+    --proto-font-mono: var(--font-aid-mono);
+  }
+
+  /*
    * Shiki dual-theme bridge. `@shikijs/rehype` with `themes: { light, dark }`
    * emits inline `style="--shiki-light:#…;--shiki-dark:#…"` on every span. We
    * pick the light variable by default and flip to `--shiki-dark` under

@@ -54,6 +54,8 @@ function generateJsonSchema(): string {
 
 async function readExisting(path: string): Promise<string> {
   const file = Bun.file(path)
-  if (!(await file.exists())) return ""
+  if (!(await file.exists())) {
+    return ""
+  }
   return file.text()
 }

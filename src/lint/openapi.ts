@@ -10,7 +10,9 @@ const USER_CONFIGS = [".spectral.yaml", ".spectral.yml", ".spectral.json"] as co
 /** Resolve the active Spectral ruleset: user's `.spectral.*` if present, else the bundled `spectral:oas`. */
 export const resolveSpectralRuleset = async (dir: string): Promise<RulesetDefinition> => {
   const path = await findUserConfig(dir, USER_CONFIGS)
-  if (path === null) return oas as unknown as RulesetDefinition
+  if (path === null) {
+    return oas as unknown as RulesetDefinition
+  }
   return (await parseConfigFile(path)) as RulesetDefinition
 }
 
@@ -18,7 +20,9 @@ const mapSeverity = (s: number): Severity => (s === 0 ? "error" : s === 1 ? "war
 
 /** Lint a list of OpenAPI files (.yaml/.yml/.json) via Spectral. */
 export const lintOpenApi = async (paths: string[], dir: string): Promise<ToolResult> => {
-  if (paths.length === 0) return { tool: "openapi", ok: true, diagnostics: [] }
+  if (paths.length === 0) {
+    return { tool: "openapi", ok: true, diagnostics: [] }
+  }
   const ruleset = await resolveSpectralRuleset(dir)
   const spectral = new Spectral()
   spectral.setRuleset(ruleset)
@@ -33,7 +37,9 @@ export const lintOpenApi = async (paths: string[], dir: string): Promise<ToolRes
     const results = await spectral.run(doc)
     for (const r of results) {
       const sev = mapSeverity(r.severity)
-      if (sev === "error") ok = false
+      if (sev === "error") {
+        ok = false
+      }
       const startLine = r.range?.start?.line
       const startChar = r.range?.start?.character
       diagnostics.push({

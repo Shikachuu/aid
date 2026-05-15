@@ -118,7 +118,9 @@ describe("renderOpenApi", () => {
     )
     expect(page.exports.length).toBe(1)
     const exp = page.exports[0]
-    if (!exp) throw new Error("missing export")
+    if (!exp) {
+      throw new Error("missing export")
+    }
     expect(exp.suffix).toBe(".json")
     expect(exp.contentType).toBe("application/json")
     const parsed = JSON.parse(exp.body) as { openapi?: string; swagger?: string }

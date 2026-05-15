@@ -76,7 +76,9 @@ export async function compileTailwind(args: CompileTailwindArgs): Promise<Compil
       dependencies.push(p)
     },
     customCssResolver: async (id) => {
-      if (id === "tailwindcss") return bundledTailwindcssEntry
+      if (id === "tailwindcss") {
+        return bundledTailwindcssEntry
+      }
       if (id.startsWith("tailwindcss/")) {
         return Bun.resolveSync(id, import.meta.dir)
       }
@@ -90,7 +92,9 @@ export async function compileTailwind(args: CompileTailwindArgs): Promise<Compil
       ...scanner.scanFiles(htmlContents.map((content) => ({ content, extension: "html" }))),
     )
   }
-  if (safelist) candidates.push(...safelist)
+  if (safelist) {
+    candidates.push(...safelist)
+  }
   const css = compiled.build(candidates)
   return { css, dependencies }
 }
@@ -165,13 +169,19 @@ function inlineAidImports(css: string): string {
 }
 
 function applyDarkModeFlag(css: string, mode: "auto" | "manual" | "off"): string {
-  if (mode === "off") return stripPrefersDarkBlocks(css)
-  if (mode === "manual") return css
+  if (mode === "off") {
+    return stripPrefersDarkBlocks(css)
+  }
+  if (mode === "manual") {
+    return css
+  }
   const result = deriveDarkPalette(css)
   for (const warning of result.warnings) {
     console.warn(warning)
   }
-  if (result.darkBlock === "") return css
+  if (result.darkBlock === "") {
+    return css
+  }
   return `${css}\n${result.darkBlock}`
 }
 
@@ -183,11 +193,15 @@ function stripPrefersDarkBlocks(css: string): string {
   PREFERS_DARK_RE.lastIndex = 0
   while (true) {
     const match = PREFERS_DARK_RE.exec(css)
-    if (!match) break
+    if (!match) {
+      break
+    }
     const blockStart = match.index
     const bodyStart = match.index + match[0].length
     const bodyEnd = findMatchingBrace(css, bodyStart - 1)
-    if (bodyEnd < 0) break
+    if (bodyEnd < 0) {
+      break
+    }
     out += css.slice(cursor, blockStart)
     cursor = bodyEnd + 1
     PREFERS_DARK_RE.lastIndex = cursor

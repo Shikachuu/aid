@@ -8,16 +8,22 @@
  */
 export async function attachMermaid(): Promise<void> {
   const elements = document.querySelectorAll<HTMLElement>("pre.mermaid")
-  if (elements.length === 0) return
+  if (elements.length === 0) {
+    return
+  }
   const originals = new WeakMap<HTMLElement, string>()
-  for (const el of elements) originals.set(el, el.textContent ?? "")
+  for (const el of elements) {
+    originals.set(el, el.textContent ?? "")
+  }
 
   const { default: mermaid } = await import("mermaid")
   const render = async () => {
     for (const el of elements) {
       el.removeAttribute("data-processed")
       const src = originals.get(el)
-      if (src !== undefined) el.textContent = src
+      if (src !== undefined) {
+        el.textContent = src
+      }
     }
     mermaid.initialize({ startOnLoad: false, theme: currentTheme() })
     await mermaid.run({ querySelector: "pre.mermaid", suppressErrors: true })
@@ -32,7 +38,11 @@ export async function attachMermaid(): Promise<void> {
 
 function currentTheme(): "default" | "dark" {
   const attr = document.documentElement.dataset.aidTheme
-  if (attr === "dark") return "dark"
-  if (attr === "light") return "default"
+  if (attr === "dark") {
+    return "dark"
+  }
+  if (attr === "light") {
+    return "default"
+  }
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default"
 }

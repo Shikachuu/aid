@@ -52,7 +52,9 @@ export const command = defineCommand({
 })
 
 function resolveProjectDir(input: string | undefined): string {
-  if (input === undefined || input === ".") return process.cwd()
+  if (input === undefined || input === ".") {
+    return process.cwd()
+  }
   return input.startsWith("/") ? input : `${process.cwd()}/${input}`
 }
 
@@ -61,7 +63,9 @@ function resolveUnder(dir: string, p: string): string {
 }
 
 function resolvePort(flag: string | undefined, fallback: number): number {
-  if (flag === undefined || flag === "") return fallback
+  if (flag === undefined || flag === "") {
+    return fallback
+  }
   const n = Number.parseInt(flag, 10)
   if (!Number.isFinite(n) || n < 0 || n > 65535) {
     throw new Error(`aid dev: --port must be an integer between 0 and 65535, got "${flag}"`)

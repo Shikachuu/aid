@@ -11,7 +11,9 @@ export const formatWithBiome = async (
   dir: string,
   opts: { check: boolean },
 ): Promise<ToolResult> => {
-  if (paths.length === 0) return { tool: "biome", ok: true, diagnostics: [] }
+  if (paths.length === 0) {
+    return { tool: "biome", ok: true, diagnostics: [] }
+  }
   const config = await resolveBiomeConfig(dir)
   const biome = new Biome()
   try {
@@ -22,7 +24,9 @@ export const formatWithBiome = async (
     for (const file of paths) {
       const original = await Bun.file(file).text()
       const res = biome.formatContent(projectKey, original, { filePath: file })
-      if (res.content === original) continue
+      if (res.content === original) {
+        continue
+      }
       if (opts.check) {
         wouldChange.push(file)
         ok = false

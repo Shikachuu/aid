@@ -32,10 +32,18 @@ export const lintAll = async (opts: LintOptions): Promise<LintReport> => {
     want(opts.filter, "proto") ? discover(dir, PROTO_PATTERNS) : Promise.resolve([]),
   ])
   const tasks: Promise<ToolResult>[] = []
-  if (want(opts.filter, "md")) tasks.push(lintMarkdown(md, dir, { fix: opts.fix }))
-  if (want(opts.filter, "openapi")) tasks.push(lintOpenApi(oa, dir))
-  if (want(opts.filter, "biome")) tasks.push(lintWithBiome(bi, dir, { fix: opts.fix }))
-  if (want(opts.filter, "proto")) tasks.push(lintProto(pr, dir))
+  if (want(opts.filter, "md")) {
+    tasks.push(lintMarkdown(md, dir, { fix: opts.fix }))
+  }
+  if (want(opts.filter, "openapi")) {
+    tasks.push(lintOpenApi(oa, dir))
+  }
+  if (want(opts.filter, "biome")) {
+    tasks.push(lintWithBiome(bi, dir, { fix: opts.fix }))
+  }
+  if (want(opts.filter, "proto")) {
+    tasks.push(lintProto(pr, dir))
+  }
   const results = await Promise.all(tasks)
   return { ok: results.every((r) => r.ok), results }
 }

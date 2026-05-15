@@ -5,11 +5,15 @@ import { lintAll } from "../../lint/orchestrate"
 const KNOWN_TOOLS: ReadonlySet<Tool> = new Set(["md", "openapi", "biome", "proto"])
 
 const parseFilter = (raw: string | undefined): Set<Tool> | null => {
-  if (raw === undefined || raw.length === 0) return null
+  if (raw === undefined || raw.length === 0) {
+    return null
+  }
   const out = new Set<Tool>()
   for (const part of raw.split(",")) {
     const trimmed = part.trim() as Tool
-    if (KNOWN_TOOLS.has(trimmed)) out.add(trimmed)
+    if (KNOWN_TOOLS.has(trimmed)) {
+      out.add(trimmed)
+    }
   }
   return out.size === 0 ? null : out
 }

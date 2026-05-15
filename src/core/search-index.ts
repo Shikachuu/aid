@@ -31,7 +31,9 @@ export function buildSearchIndex(
   ctx: BuildContext,
   pages: RenderedPage[],
 ): SearchIndexResult | null {
-  if (!ctx.config.search.enabled) return null
+  if (!ctx.config.search.enabled) {
+    return null
+  }
   const ms = new MiniSearch({
     idField: "id",
     fields: [...SEARCH_FIELDS],
@@ -58,6 +60,8 @@ export function buildSearchIndex(
 }
 
 function urlFor(routePath: string, basePath: string): string {
-  if (routePath === "/") return basePath
+  if (routePath === "/") {
+    return basePath
+  }
   return path.posix.join(basePath, routePath)
 }

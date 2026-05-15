@@ -30,9 +30,13 @@ export function colocatedAssetsPlugin(opts: ColocatedAssetsOptions) {
   return async (tree: HastRoot, file: VFile): Promise<void> => {
     const tasks: Promise<void>[] = []
     visit(tree, "element", (node: HastElement) => {
-      if (node.tagName !== "img") return
+      if (node.tagName !== "img") {
+        return
+      }
       const src = node.properties?.src
-      if (typeof src !== "string" || !isRelative(src)) return
+      if (typeof src !== "string" || !isRelative(src)) {
+        return
+      }
       const absSrc = path.resolve(opts.sourceDir, src)
       tasks.push(
         (async () => {
@@ -56,9 +60,17 @@ const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i
  * fragment. Matches `./foo.png`, `../bar/baz.svg`, and bare `foo.png` alike.
  */
 export function isRelative(src: string): boolean {
-  if (src.length === 0) return false
-  if (src.startsWith("/")) return false
-  if (src.startsWith("#")) return false
-  if (SCHEME_RE.test(src)) return false
+  if (src.length === 0) {
+    return false
+  }
+  if (src.startsWith("/")) {
+    return false
+  }
+  if (src.startsWith("#")) {
+    return false
+  }
+  if (SCHEME_RE.test(src)) {
+    return false
+  }
   return true
 }

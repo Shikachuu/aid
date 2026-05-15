@@ -29,20 +29,28 @@ export function deriveDarkPalette(css: string): DerivedDarkPalette {
   THEME_OPEN_RE.lastIndex = 0
   while (true) {
     const match = THEME_OPEN_RE.exec(css)
-    if (!match) break
+    if (!match) {
+      break
+    }
     const bodyStart = match.index + match[0].length
     const bodyEnd = findMatchingBrace(css, bodyStart - 1)
-    if (bodyEnd < 0) break
+    if (bodyEnd < 0) {
+      break
+    }
     const body = css.slice(bodyStart, bodyEnd)
     THEME_OPEN_RE.lastIndex = bodyEnd + 1
 
     const localDecl = new RegExp(DECL_RE.source, "g")
     while (true) {
       const dm = localDecl.exec(body)
-      if (!dm) break
+      if (!dm) {
+        break
+      }
       const name = dm[1]
       const rawValue = dm[2]
-      if (!name || !rawValue || !name.startsWith("--color-")) continue
+      if (!name || !rawValue || !name.startsWith("--color-")) {
+        continue
+      }
       const value = rawValue.trim()
 
       const inverted = invertOklchLightness(value)
@@ -67,7 +75,9 @@ export function deriveDarkPalette(css: string): DerivedDarkPalette {
 
 function invertOklchLightness(value: string): string | null {
   const m = OKLCH_RE.exec(value.trim())
-  if (!m) return null
+  if (!m) {
+    return null
+  }
   const lRaw = m[1] ?? ""
   const c = m[2] ?? ""
   const h = m[3] ?? ""
@@ -76,7 +86,9 @@ function invertOklchLightness(value: string): string | null {
   const lNum = lRaw.endsWith("%")
     ? Number.parseFloat(lRaw.slice(0, -1))
     : Number.parseFloat(lRaw) * 100
-  if (!Number.isFinite(lNum)) return null
+  if (!Number.isFinite(lNum)) {
+    return null
+  }
   const inverted = roundTo(100 - lNum, 4)
   const lOut = `${inverted}%`
   const alphaSuffix = alpha !== undefined ? ` / ${alpha}` : ""
