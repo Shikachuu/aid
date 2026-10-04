@@ -130,7 +130,6 @@ describe("buildLlmsTxt — optional filter", () => {
     const ctx = makeCtx(cwd)
     const out = await buildLlmsTxt(ctx, [makePage({ routePath: "/", title: "Home" })])
     expect(out).toContain("## Optional")
-    // Nothing after the heading except trailing whitespace.
     const tail = out.split("## Optional")[1] ?? ""
     expect(tail.trim()).toBe("")
   })

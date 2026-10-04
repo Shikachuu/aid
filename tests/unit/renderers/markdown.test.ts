@@ -109,7 +109,6 @@ describe("renderMarkdown", () => {
     expect(page.route.frontmatter?.title).toBe("Win Line Endings")
     expect(page.searchTokens.title).toBe("Win Line Endings")
     expect(page.html).toContain("Body")
-    // The body must not include the frontmatter delimiters as literal text.
     expect(page.html).not.toContain("---")
   })
 
@@ -142,9 +141,7 @@ describe("renderMarkdown", () => {
     const page = await renderFixture("page.md", "# T\n\n```mermaid\ngraph LR\n  A --> B\n```\n")
     expect(page.html).toContain('<pre class="mermaid">')
     expect(page.html).toContain("graph LR")
-    // The arrow text is preserved verbatim; HTML escaping is fine.
     expect(page.html).toMatch(/A --(&gt;|>) B/)
-    // No <code> wrapping after the rewrite.
     expect(page.html).not.toMatch(/<pre class="mermaid">\s*<code/)
   })
 

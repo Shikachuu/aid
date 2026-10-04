@@ -24,7 +24,6 @@ describe("formatMarkdown", () => {
     await formatMarkdown([file], dir, { check: false })
     const after = await Bun.file(file).text()
     expect(after).not.toContain("\n\n\n\n")
-    // second run produces no further changes
     await formatMarkdown([file], dir, { check: false })
     const afterSecond = await Bun.file(file).text()
     expect(afterSecond).toBe(after)

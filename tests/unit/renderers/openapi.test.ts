@@ -256,10 +256,7 @@ describe("renderOpenApi — search tokens", () => {
     ].join("\n")
     const page = await renderFixture("api.yaml", spec)
     expect(page.searchTokens.extras.operationIds).toEqual(["listPets"])
-    // The path-level summary belongs to the path item, not an operation, so it
-    // must not leak into extras.summaries.
     expect(page.searchTokens.extras.summaries).toBeUndefined()
-    // Same for path-level parameters — only per-operation params get bucketed.
     expect(page.searchTokens.extras.parameters).toBeUndefined()
   })
 })

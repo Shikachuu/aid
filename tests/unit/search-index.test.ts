@@ -2,11 +2,9 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import MiniSearch from "minisearch"
 import { buildSearchIndex } from "../../src/core/search-index"
-import { SEARCH_OPTIONS } from "../../src/core/search-options"
 import type { BuildContext, RenderedPage, Route } from "../../src/core/types"
-import { makeCtx } from "../helpers"
+import { makeCtx, parseSearchIndexScript } from "../helpers"
 
 let cwd: string
 
@@ -53,13 +51,7 @@ function storedDocs(ctx: BuildContext, pages: RenderedPage[]) {
   if (!result) {
     throw new Error("expected result")
   }
-  const prefix = "window.__AID_SEARCH__="
-  expect(result.source.startsWith(prefix)).toBe(true)
-  expect(result.source.endsWith(";")).toBe(true)
-  const parsed = JSON.parse(result.source.slice(prefix.length, -1)) as {
-    storedFields: Record<string, { type: string; title: string; url: string }>
-  }
-  return Object.values(parsed.storedFields)
+  return parseSearchIndexScript(result.source).docs
 }
 
 describe("buildSearchIndex — gating", () => {
@@ -144,10 +136,7 @@ describe("buildSearchIndex — indexed documents", () => {
         },
       }),
     ])
-    // Tokens land in the search index — easiest way to verify is to load the
-    // serialized form into MiniSearch and run an actual query.
-    const payload = result?.source.slice("window.__AID_SEARCH__=".length, -1) ?? ""
-    const hits = MiniSearch.loadJSON(payload, SEARCH_OPTIONS).search("listPets")
+    const hits = parseSearchIndexScript(result?.source ?? "").search("listPets")
     expect(hits.length).toBeGreaterThan(0)
     expect(hits[0]?.title).toBe("API")
   })

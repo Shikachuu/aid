@@ -64,7 +64,6 @@ describe("compileTailwind", () => {
     const css = await compileTailwind(ctx, [stubHtml("bg-aid-custom")])
     expect(css).toContain("--color-aid-custom")
     expect(css).toContain(".bg-aid-custom")
-    // Bundled-only token must not appear.
     expect(css).not.toContain("--color-aid-accent")
   })
 

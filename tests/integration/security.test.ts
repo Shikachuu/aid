@@ -17,11 +17,9 @@ afterEach(async () => {
 
 test("blocks colocated <img src> that escapes contentDir", async () => {
   const ctx = await makeSite(cwd)
-  // A 'secret' sibling outside contentDir.
   await Bun.write(path.join(cwd, "secret.txt"), "TOP SECRET")
   await Bun.write(path.join(ctx.contentDir, "index.md"), "# Attack\n\n![](../secret.txt)\n")
   await expect(build(ctx)).rejects.toThrow(/escapes contentDir/)
-  // Crucially, the secret was NOT copied into the output.
   expect(await Bun.file(path.join(ctx.outputDir, "secret.txt")).exists()).toBe(false)
 })
 

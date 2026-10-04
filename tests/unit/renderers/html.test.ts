@@ -112,7 +112,6 @@ describe("renderHtml", () => {
     expect(page.exports).toHaveLength(1)
     const [md] = page.exports
     expect(md?.suffix).toBe(".md")
-    // Recognisable markdown for a simple h1 + paragraph.
     expect(md?.body).toContain("# Heading")
     expect(md?.body).toContain("Body.")
   })
@@ -158,7 +157,6 @@ describe("renderHtml", () => {
   })
 
   test("<meta name=description> without content leaves description undefined", async () => {
-    // <meta name="description"> without content shouldn't crash; description stays undefined.
     const page = await renderFixture(
       "page.html",
       doc(`<title>T</title><meta name="description">`, `<p>x</p>`),

@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package sample.events;
 
-// A trivial event stream used by the proto-renderer fixture tests.
 service EventBus {
   // Subscribe to the live event stream.
   rpc Subscribe(SubscribeRequest) returns (stream Event);
