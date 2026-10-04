@@ -5,29 +5,6 @@ import { findMatchingBrace } from "./internal/css-scan"
 import { installLightningcssShim } from "./internal/lightningcss-native"
 import type { BuildContext } from "./types"
 
-export type CompileTailwindArgs = {
-  ctx: BuildContext
-  /**
-   * Class names that aren't statically discoverable (e.g. emitted by embedded
-   * UIs at render time). Tailwind generates these unconditionally, regardless
-   * of @source scan results.
-   */
-  safelist?: Iterable<string>
-  /**
-   * In-memory HTML strings to scan for utility-class candidates. Pass the
-   * rendered page HTML here so Tailwind picks up classes that haven't been
-   * written to disk yet — avoiding a temp-write/round-trip pass.
-   */
-  htmlContents?: readonly string[]
-}
-
-export type CompileTailwindResult = {
-  /** Compiled CSS, ready to write to disk. */
-  css: string
-  /** Absolute paths reported by Tailwind during compile. Use these in dev for file-watch invalidation. */
-  dependencies: string[]
-}
-
 const aidProjectRoot = path.join(import.meta.dir, "../..")
 const bundledMainCssPath = path.join(aidProjectRoot, "src/theme/main.css")
 const bundledTailwindcssEntry = Bun.resolveSync("tailwindcss/index.css", import.meta.dir)
@@ -38,19 +15,21 @@ const bundledTailwindcssEntry = Bun.resolveSync("tailwindcss/index.css", import.
  * (default `main.css`) replaces the bundled default when present; otherwise the
  * bundled `src/theme/main.css` is used. The prelude points Tailwind at the
  * bundled theme components, the user templates directory (if configured), and
- * the rendered HTML output, so utilities used in any of those become candidates.
+ * the rendered HTML passed in `htmlContents`, so utilities used in any of those
+ * become candidates.
  * A custom CSS resolver intercepts the `tailwindcss` import so the compile works
  * without `tailwindcss` being installed in the user's project — required for the
- * compiled-binary distribution model. The optional `safelist` adds class names
- * that aren't statically discoverable (e.g. emitted by embedded UIs at render
- * time). Honours `theme.dark_mode`: `"off"` strips the dark `@media` block,
+ * compiled-binary distribution model. Honours `theme.dark_mode`: `"off"` strips the dark `@media` block,
  * `"manual"` passes through unchanged. When dark_mode is `"auto"`, light @theme
  * oklch tokens are inverted to produce the dark palette automatically. Users can
  * opt into the bundled aid theme (defaults, components, Scalar bridge) by writing
  * `@import "aid/theme";` in their main.css; the bundled content is inlined into
  * the source before compile.
  */
-export async function compileTailwind(args: CompileTailwindArgs): Promise<CompileTailwindResult> {
+export async function compileTailwind(
+  ctx: BuildContext,
+  htmlContents: readonly string[],
+): Promise<string> {
   // @tailwindcss/node minifies via lightningcss, whose native binding loader
   // (`require(\`lightningcss-${platform}\`)`) isn't followed by `bun build
   // --compile`. The shim must run BEFORE @tailwindcss/node is loaded — its
@@ -61,20 +40,16 @@ export async function compileTailwind(args: CompileTailwindArgs): Promise<Compil
   await installLightningcssShim()
   const { compile } = await import("@tailwindcss/node")
   const { Scanner } = await import("@tailwindcss/oxide")
-  const { ctx, safelist, htmlContents } = args
   const entry = await resolveEntry(ctx)
   const sourceTargets = collectSourceTargets(ctx)
   const inlined = inlineAidImports(entry.css)
   const darkApplied = applyDarkModeFlag(inlined, ctx.config.theme.dark_mode)
   const source = buildSourcePrelude(sourceTargets) + darkApplied
 
-  const dependencies: string[] = []
   const compiled = await compile(source, {
     base: entry.base,
     from: entry.from,
-    onDependency: (p) => {
-      dependencies.push(p)
-    },
+    onDependency: () => {},
     customCssResolver: async (id) => {
       if (id === "tailwindcss") {
         return bundledTailwindcssEntry
@@ -86,17 +61,10 @@ export async function compileTailwind(args: CompileTailwindArgs): Promise<Compil
     },
   })
   const scanner = new Scanner({ sources: compiled.sources })
-  const candidates = [...scanner.scan()]
-  if (htmlContents && htmlContents.length > 0) {
-    candidates.push(
-      ...scanner.scanFiles(htmlContents.map((content) => ({ content, extension: "html" }))),
-    )
-  }
-  if (safelist) {
-    candidates.push(...safelist)
-  }
-  const css = compiled.build(candidates)
-  return { css, dependencies }
+  return compiled.build([
+    ...scanner.scan(),
+    ...scanner.scanFiles(htmlContents.map((content) => ({ content, extension: "html" }))),
+  ])
 }
 
 type ResolvedEntry = {
@@ -131,16 +99,9 @@ function collectSourceTargets(ctx: BuildContext): SourceTarget[] {
   // Rendered HTML is passed to compileTailwind in memory via `htmlContents`;
   // we no longer @source-scan `dist/**/*.html`. That avoids a temp-write pass
   // and lets us emit each HTML file exactly once.
-  const targets: SourceTarget[] = [
-    { base: aidProjectRoot, pattern: "src/theme/components/**/*.{tsx,ts}" },
-    { base: aidProjectRoot, pattern: "src/theme/**/*.{tsx,ts}" },
-  ]
-  const templatesDir = ctx.config.dir.templates
-  if (templatesDir !== "") {
-    targets.push({
-      base: path.join(ctx.cwd, templatesDir),
-      pattern: "**/*.{tsx,ts,html}",
-    })
+  const targets: SourceTarget[] = [{ base: aidProjectRoot, pattern: "src/theme/**/*.{tsx,ts}" }]
+  if (ctx.templatesDir !== null) {
+    targets.push({ base: ctx.templatesDir, pattern: "**/*.{tsx,ts,html}" })
   }
   return targets
 }

@@ -13,19 +13,18 @@ export type SearchIndexResult = {
 }
 
 /** Indexed text fields. Stored on each document and tokenized by MiniSearch. */
-export const SEARCH_FIELDS = ["title", "headings", "body", "extras"] as const
+export const SEARCH_FIELDS = ["title", "headings", "body", "extras"]
 
 /** Fields retained on each search hit. Drives result rendering and per-format weighting. */
-export const SEARCH_STORE_FIELDS = ["type", "title", "url"] as const
+export const SEARCH_STORE_FIELDS = ["type", "title", "url"]
 
 /** Title/heading boosts applied at index build time. Per-format weights are applied at query time. */
-export const SEARCH_FIELD_BOOST = { title: 3, headings: 2 } as const
+export const SEARCH_FIELD_BOOST = { title: 3, headings: 2 }
 
 /**
  * Build the cross-format MiniSearch index from rendered pages. Returns `null`
  * when `config.search.enabled === false` so the pipeline skips emission and
- * the Layout omits the SearchBox entirely. Proto pages are filtered out
- * defensively until a proto renderer exists.
+ * the Layout omits the SearchBox entirely.
  */
 export function buildSearchIndex(
   ctx: BuildContext,
@@ -35,33 +34,27 @@ export function buildSearchIndex(
     return null
   }
   const ms = new MiniSearch({
-    idField: "id",
-    fields: [...SEARCH_FIELDS],
-    storeFields: [...SEARCH_STORE_FIELDS],
-    searchOptions: { boost: { ...SEARCH_FIELD_BOOST } },
+    fields: SEARCH_FIELDS,
+    storeFields: SEARCH_STORE_FIELDS,
+    searchOptions: { boost: SEARCH_FIELD_BOOST },
   })
-  const docs = pages
-    .filter((p) => p.route.kind !== "proto" && p.route.kind !== "index")
-    .map((p) => ({
+  ms.addAll(
+    pages.map((p) => ({
       id: p.route.path,
       type: p.route.kind,
       title: p.searchTokens.title,
-      url: urlFor(p.route.path, ctx.config.base_path),
+      url:
+        p.route.path === "/"
+          ? ctx.config.base_path
+          : path.posix.join(ctx.config.base_path, p.route.path),
       headings: p.searchTokens.headings.join(" "),
       body: p.searchTokens.body,
       extras: Object.values(p.searchTokens.extras).flat().join(" "),
-    }))
-  ms.addAll(docs)
+    })),
+  )
   const source = `window.__AID_SEARCH__=${JSON.stringify(ms.toJSON())};`
   const hash = Bun.hash.xxHash64(source).toString(16).padStart(16, "0").slice(0, 8)
   const filename = `search-index.${hash}.js`
   const href = path.posix.join(ctx.config.base_path, filename)
   return { filename, href, source }
-}
-
-function urlFor(routePath: string, basePath: string): string {
-  if (routePath === "/") {
-    return basePath
-  }
-  return path.posix.join(basePath, routePath)
 }

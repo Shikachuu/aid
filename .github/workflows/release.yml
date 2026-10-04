@@ -21,10 +21,6 @@ jobs:
             os: ubuntu-latest
           - target: bun-linux-arm64
             os: ubuntu-latest
-          - target: bun-windows-x64
-            os: windows-latest
-          - target: bun-windows-arm64
-            os: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2

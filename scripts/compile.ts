@@ -6,6 +6,7 @@
  * `@bufbuild/buf` and `@tailwindcss/oxide` native deps.
  */
 
+import { mkdir, rm } from "node:fs/promises"
 import { resolve } from "node:path"
 
 const ROOT = resolve(import.meta.dir, "..")
@@ -59,8 +60,6 @@ const TARGETS: readonly Target[] = [
     platform: "linux",
     arch: "x64",
   },
-  // Windows targets are derived later — re-enable once @bufbuild/buf-win32-*
-  // and @tailwindcss/oxide-win32-* are pinned and proto.ts handles win32.
 ]
 
 const BUF_SUBPKGS = TARGETS.map((t) => t.bufSubpkg)
@@ -90,8 +89,8 @@ const run = async (cmd: string[], label: string): Promise<void> => {
 }
 
 // 1. Clean dist tree.
-await Bun.$`rm -rf ${DIST}`.quiet()
-await Bun.$`mkdir -p ${DIST}/bin ${DIST}/schemas ${DIST}/web`.quiet()
+await rm(DIST, { recursive: true, force: true })
+await mkdir(resolve(DIST, "bin"), { recursive: true })
 console.log(`[compile] cleaned ${DIST}`)
 
 // 2. Schema — emit-schema.ts writes schemas/aid.schema.json; copy into dist/schemas.
@@ -147,6 +146,5 @@ console.log("\n[compile] artefacts:")
 const glob = new Bun.Glob("**/*")
 for await (const rel of glob.scan({ cwd: DIST, onlyFiles: true })) {
   const abs = resolve(DIST, rel)
-  const size = (await Bun.file(abs).stat()).size
-  console.log(`  dist/${rel}  (${fmtBytes(size)})`)
+  console.log(`  dist/${rel}  (${fmtBytes(Bun.file(abs).size)})`)
 }

@@ -3,8 +3,8 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { AidConfigSchema } from "../../src/core/config"
-import { writeCss } from "../../src/core/css-writer"
 import type { BuildContext } from "../../src/core/types"
+import { writeHashed } from "../../src/core/web-bundle"
 
 let cwd: string
 
@@ -32,7 +32,12 @@ function makeCtx(overrides: { base_path?: string } = {}): BuildContext {
   }
 }
 
-describe("writeCss", () => {
+async function writeCss({ ctx, css }: { ctx: BuildContext; css: string }) {
+  const href = await writeHashed(ctx, "main", "css", css)
+  return { href, path: path.join(ctx.outputDir, path.posix.basename(href)) }
+}
+
+describe("writeHashed (main.css)", () => {
   test("writes the CSS to disk at the expected path", async () => {
     const ctx = makeCtx()
     const css = ".foo { color: red; }"

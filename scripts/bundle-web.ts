@@ -102,22 +102,7 @@ console.log(`[bundle-web] wrote dist/web/aid-openapi.css (${fmtBytes(aidOpenapiC
 // on `mise install`'s postinstall hook to keep that fresh, but defensively
 // invoke the package build here too — keeps the CI path consistent regardless
 // of whether postinstall ran in this shell.
-{
-  const protoUiRoot = resolve(ROOT, "packages/proto-ui")
-  const proc = Bun.spawn(["bun", "run", "scripts/build.ts"], {
-    cwd: protoUiRoot,
-    stdout: "pipe",
-    stderr: "pipe",
-  })
-  const stdout = await new Response(proc.stdout).text()
-  const stderr = await new Response(proc.stderr).text()
-  const code = await proc.exited
-  if (code !== 0) {
-    console.error(stdout)
-    console.error(stderr)
-    throw new Error(`[bundle-web] @aid/proto-ui build exited with code ${code}`)
-  }
-}
+await Bun.$`bun run scripts/build.ts`.cwd(resolve(ROOT, "packages/proto-ui"))
 const protoUiCssPath = Bun.resolveSync("@aid/proto-ui/styles.css", ROOT)
 const aidProtoCss = await Bun.file(protoUiCssPath).text()
 await Bun.write(resolve(DIST_WEB, "aid-proto.css"), aidProtoCss)

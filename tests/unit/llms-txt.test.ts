@@ -68,7 +68,13 @@ function makePage(args: {
     route,
     html: "",
     searchTokens: { title: args.title, body: "", headings: [], extras: {} },
-    exports: [],
+    exports: [
+      {
+        suffix: kind === "openapi" ? ".json" : kind === "proto" ? ".proto" : ".md",
+        contentType: "",
+        body: "",
+      },
+    ],
     hasMermaid: false,
     hasOpenApi: kind === "openapi",
     hasProto: kind === "proto",

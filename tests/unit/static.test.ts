@@ -32,16 +32,14 @@ function makeCtx(): BuildContext {
 describe("copyStaticAssets", () => {
   test("no-ops when the static directory doesn't exist", async () => {
     const ctx = makeCtx()
-    const result = await copyStaticAssets({ ctx, registry: new AssetRegistry() })
-    expect(result.copied).toBe(0)
+    await expect(copyStaticAssets(ctx, new AssetRegistry())).resolves.toBeUndefined()
   })
 
   test("copies a single top-level file verbatim", async () => {
     const ctx = makeCtx()
     await Bun.write(path.join(ctx.staticDir, "logo.svg"), "<svg/>")
 
-    const result = await copyStaticAssets({ ctx, registry: new AssetRegistry() })
-    expect(result.copied).toBe(1)
+    await copyStaticAssets(ctx, new AssetRegistry())
     const dest = await Bun.file(path.join(ctx.outputDir, "logo.svg")).text()
     expect(dest).toBe("<svg/>")
   })
@@ -51,8 +49,7 @@ describe("copyStaticAssets", () => {
     await Bun.write(path.join(ctx.staticDir, "img", "icons", "star.svg"), "<svg>star</svg>")
     await Bun.write(path.join(ctx.staticDir, "robots.txt"), "User-agent: *")
 
-    const result = await copyStaticAssets({ ctx, registry: new AssetRegistry() })
-    expect(result.copied).toBe(2)
+    await copyStaticAssets(ctx, new AssetRegistry())
     expect(await Bun.file(path.join(ctx.outputDir, "img/icons/star.svg")).text()).toBe(
       "<svg>star</svg>",
     )
@@ -64,7 +61,7 @@ describe("copyStaticAssets", () => {
     await Bun.write(path.join(ctx.outputDir, "logo.svg"), "<old/>")
     await Bun.write(path.join(ctx.staticDir, "logo.svg"), "<new/>")
 
-    await copyStaticAssets({ ctx, registry: new AssetRegistry() })
+    await copyStaticAssets(ctx, new AssetRegistry())
     expect(await Bun.file(path.join(ctx.outputDir, "logo.svg")).text()).toBe("<new/>")
   })
 })

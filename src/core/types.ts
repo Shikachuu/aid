@@ -1,9 +1,7 @@
 import type { Frontmatter } from "../renderers/markdown/frontmatter"
 import type { AidConfig } from "./config"
 
-export type { Frontmatter }
-
-export type PageKind = "markdown" | "html" | "openapi" | "proto" | "index"
+export type PageKind = "markdown" | "html" | "openapi" | "proto"
 
 export type Route = {
   /** Source file path relative to repo root. */

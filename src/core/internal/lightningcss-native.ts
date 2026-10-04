@@ -54,11 +54,8 @@ let installPromise: Promise<void> | null = null
  * paths; the same write-out + resolver-hook flow runs. The hook only fires
  * for the exact subpackage specifier, so unrelated requires are untouched.
  */
-export const installLightningcssShim = async (): Promise<void> => {
-  if (installPromise) {
-    return installPromise
-  }
-  installPromise = doInstall()
+export const installLightningcssShim = (): Promise<void> => {
+  installPromise ??= doInstall()
   return installPromise
 }
 

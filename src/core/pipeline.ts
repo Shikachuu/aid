@@ -1,3 +1,4 @@
+import { realpath } from "node:fs/promises"
 import path from "node:path"
 import { render, renderDocument } from "../jsx-runtime"
 import { renderHtml } from "../renderers/html"
@@ -9,14 +10,13 @@ import { Layout } from "../theme/components/Layout"
 import { PageHtml } from "../theme/components/PageHtml"
 import { PageMarkdown } from "../theme/components/PageMarkdown"
 import { AssetRegistry } from "./assets"
-import { writeCss } from "./css-writer"
 import { buildLlmsTxt } from "./llms-txt"
 import { buildRoutes } from "./router"
 import { buildSearchIndex, type SearchIndexResult } from "./search-index"
 import { copyStaticAssets } from "./static"
 import { compileTailwind } from "./tailwind"
 import type { BuildContext, RenderedPage, Route } from "./types"
-import { buildWebBundle } from "./web-bundle"
+import { type BuildWebBundleResult, buildWebBundle, writeHashed } from "./web-bundle"
 
 const STYLESHEET_PLACEHOLDER = "__AID_STYLESHEET_HREF__"
 
@@ -29,18 +29,14 @@ const STYLESHEET_PLACEHOLDER = "__AID_STYLESHEET_HREF__"
 export async function build(ctx: BuildContext): Promise<void> {
   const registry = new AssetRegistry()
 
-  const [routes] = await Promise.all([buildRoutes(ctx), copyStaticAssets({ ctx, registry })])
+  const [routes] = await Promise.all([buildRoutes(ctx), copyStaticAssets(ctx, registry)])
 
   const rendered = await Promise.all(routes.map((route) => dispatchRenderer(route, ctx, registry)))
 
-  const siteHasMermaid = rendered.some((p) => p.hasMermaid)
-  const siteHasOpenApi = rendered.some((p) => p.hasOpenApi)
-  const siteHasProto = rendered.some((p) => p.hasProto)
-  const web = await buildWebBundle({
-    ctx,
-    includeMermaid: siteHasMermaid,
-    includeOpenApi: siteHasOpenApi,
-    includeProto: siteHasProto,
+  const web = await buildWebBundle(ctx, {
+    mermaid: rendered.some((p) => p.hasMermaid),
+    openapi: rendered.some((p) => p.hasOpenApi),
+    proto: rendered.some((p) => p.hasProto),
   })
 
   const searchIndex = buildSearchIndex(ctx, rendered)
@@ -65,12 +61,17 @@ export async function build(ctx: BuildContext): Promise<void> {
   const llmsTxtPath = path.join(ctx.outputDir, "llms.txt")
   registry.register(llmsTxtPath, "<generated:llms.txt>")
 
-  const { css } = await compileTailwind({ ctx, htmlContents: docs.map((d) => d.html) })
-  const { href } = await writeCss({ ctx, css })
+  const css = await compileTailwind(
+    ctx,
+    docs.map((d) => d.html),
+  )
+  const href = await writeHashed(ctx, "main", "css", css)
 
-  const searchIndexPath = searchIndex ? path.join(ctx.outputDir, searchIndex.filename) : null
-  if (searchIndex && searchIndexPath) {
+  const writes: Promise<unknown>[] = [Bun.write(llmsTxtPath, llmsTxt)]
+  if (searchIndex) {
+    const searchIndexPath = path.join(ctx.outputDir, searchIndex.filename)
     registry.register(searchIndexPath, "<generated:search-index>")
+    writes.push(Bun.write(searchIndexPath, searchIndex.source))
   }
 
   await Promise.all([
@@ -82,8 +83,7 @@ export async function build(ctx: BuildContext): Promise<void> {
       registry.register(exp.fsPath, `<export:${exp.source}>`)
       await Bun.write(exp.fsPath, exp.body)
     }),
-    Bun.write(llmsTxtPath, llmsTxt),
-    ...(searchIndex && searchIndexPath ? [Bun.write(searchIndexPath, searchIndex.source)] : []),
+    ...writes,
   ])
 }
 
@@ -117,7 +117,7 @@ async function dispatchRenderer(
 /**
  * Build a per-page `copyAsset` callback. The callback enforces three rules:
  * (1) the resolved source must live inside `ctx.contentDir` — a `..`-escape
- * throws so an untrusted contributor cannot exfiltrate arbitrary files via a
+ * or a symlink pointing outside throws so an untrusted contributor cannot exfiltrate arbitrary files via a
  * colocated `<img>`; (2) the destination is registered with the shared
  * {@link AssetRegistry} before any copy, so a clash with a static asset or
  * another page surfaces as a hard error; (3) a non-existent source returns
@@ -130,7 +130,7 @@ function makeCopyAsset(route: Route, ctx: BuildContext, registry: AssetRegistry)
   const routeUrlDir =
     route.path === "/" ? ctx.config.base_path : path.posix.join(ctx.config.base_path, route.path)
   return async (absoluteSource) => {
-    if (!isInside(absoluteSource, ctx.contentDir)) {
+    if (!(await isInside(absoluteSource, ctx.contentDir))) {
       throw new Error(
         `aid: colocated asset "${absoluteSource}" referenced from ${route.source} escapes contentDir (${ctx.contentDir}). Use a top-level static/ asset or move the file under contentDir.`,
       )
@@ -147,30 +147,39 @@ function makeCopyAsset(route: Route, ctx: BuildContext, registry: AssetRegistry)
   }
 }
 
-/** `true` iff `child` is lexically a descendant of `parent`. Symlink-blind. */
-function isInside(child: string, parent: string): boolean {
+/**
+ * `true` iff `child` is a descendant of `parent`, both lexically and after
+ * resolving symlinks. A `child` that does not exist is checked lexically only.
+ */
+async function isInside(child: string, parent: string): Promise<boolean> {
+  const realChild = await realpathOrNull(child)
+  return (
+    isLexicallyInside(child, parent) &&
+    (realChild === null || isLexicallyInside(realChild, await realpath(parent)))
+  )
+}
+
+async function realpathOrNull(p: string): Promise<string | null> {
+  try {
+    return await realpath(p)
+  } catch {
+    return null
+  }
+}
+
+function isLexicallyInside(child: string, parent: string): boolean {
   const rel = path.relative(parent, child)
-  return rel.length > 0 && !rel.startsWith("..") && !path.isAbsolute(rel)
+  return rel !== "" && rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel)
 }
 
 function wrapInLayout(
   page: RenderedPage,
   ctx: BuildContext,
   stylesheetHref: string,
-  web: {
-    baseHref: string
-    mermaidHref: string | null
-    openapiHref: string | null
-    openapiCssHref: string | null
-    protoHref: string | null
-    protoCssHref: string | null
-  },
+  web: BuildWebBundleResult,
   searchIndex: SearchIndexResult | null,
 ): string {
-  const fm = page.route.frontmatter
-  const title =
-    typeof fm?.title === "string" && fm.title.length > 0 ? fm.title : page.searchTokens.title
-  const description = typeof fm?.description === "string" ? fm.description : undefined
+  const description = page.route.frontmatter?.description
   // The OpenAPI and Proto renderers already produce fully-wrapped page bodies
   // (PageOpenAPI / PageProto). Markdown and HTML pages both share the
   // prose-style article chrome (toolbar + AI button slot) — same shell,
@@ -179,8 +188,8 @@ function wrapInLayout(
     page.route.kind === "openapi" || page.route.kind === "proto"
       ? page.html
       : page.route.kind === "html"
-        ? render(PageHtml({ bodyHtml: page.html, machineUrl: "" }) as never)
-        : render(PageMarkdown({ bodyHtml: page.html, machineUrl: "" }) as never)
+        ? render(PageHtml({ bodyHtml: page.html, machineUrl: "" }))
+        : render(PageMarkdown({ bodyHtml: page.html, machineUrl: "" }))
   const search = searchIndex
     ? {
         indexHref: searchIndex.href,
@@ -191,7 +200,7 @@ function wrapInLayout(
   return renderDocument(
     Layout({
       config: ctx.config,
-      title,
+      title: page.searchTokens.title,
       description,
       nav: [],
       stylesheetHref,
@@ -203,17 +212,13 @@ function wrapInLayout(
       protoStylesheetHref: page.hasProto ? web.protoCssHref : null,
       search,
       bodyHtml: pageHtml,
-    }) as never,
+    }),
   )
 }
 
 /** Disk path for a route's rendered HTML, e.g. `/foo` → `<outputDir>/foo/index.html`. */
 export function outputPathForRoute(route: Route, ctx: BuildContext): string {
-  if (route.path === "/") {
-    return path.join(ctx.outputDir, "index.html")
-  }
-  const segments = route.path.replace(/^\//, "").split("/")
-  return path.join(ctx.outputDir, ...segments, "index.html")
+  return path.join(ctx.outputDir, route.path, "index.html")
 }
 
 /**
@@ -222,13 +227,5 @@ export function outputPathForRoute(route: Route, ctx: BuildContext): string {
  * file `<outputDir>/foo.md`. Root `/` collapses to `<outputDir>/index<suffix>`.
  */
 export function outputPathForExport(route: Route, suffix: string, ctx: BuildContext): string {
-  if (route.path === "/") {
-    return path.join(ctx.outputDir, `index${suffix}`)
-  }
-  const segments = route.path.replace(/^\//, "").split("/")
-  const last = segments.pop()
-  if (last === undefined) {
-    return path.join(ctx.outputDir, `index${suffix}`)
-  }
-  return path.join(ctx.outputDir, ...segments, `${last}${suffix}`)
+  return path.join(ctx.outputDir, route.path === "/" ? "index" : route.path) + suffix
 }

@@ -32,38 +32,26 @@ export async function buildRoutes(ctx: BuildContext): Promise<Route[]> {
     byPath.set(routePath, { source, path: routePath, kind })
   }
   const routes = [...byPath.values()]
-  routes.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
+  // Route paths are unique after the collision check, so ties never occur.
+  routes.sort((a, b) => (a.path < b.path ? -1 : 1))
   return routes
+}
+
+const KIND_BY_EXT: Record<string, PageKind> = {
+  ".md": "markdown",
+  ".html": "html",
+  ".proto": "proto",
 }
 
 async function classify(source: string): Promise<PageKind | null> {
   const ext = path.extname(source).toLowerCase()
-  if (ext === ".md") {
-    return "markdown"
-  }
-  if (ext === ".html") {
-    return "html"
-  }
-  if (ext === ".proto") {
-    return "proto"
-  }
   if (ext === ".yaml" || ext === ".yml" || ext === ".json") {
     return (await sniffOpenApi(source)) ? "openapi" : null
   }
-  return null
+  return KIND_BY_EXT[ext] ?? null
 }
 
 function toRoutePath(relative: string): string {
-  const posix = relative.split(path.sep).join("/")
-  const withoutExt = posix.slice(0, -path.extname(posix).length)
-  const parts = withoutExt.split("/")
-  const last = parts[parts.length - 1]
-  if (last === "index") {
-    const parent = parts.slice(0, -1).join("/")
-    if (parent === "") {
-      return "/"
-    }
-    return `/${parent}`
-  }
-  return `/${withoutExt}`
+  const withoutExt = relative.split(path.sep).join("/").slice(0, -path.extname(relative).length)
+  return `/${withoutExt.replace(/(^|\/)index$/, "")}`
 }

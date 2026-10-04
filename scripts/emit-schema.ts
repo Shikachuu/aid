@@ -22,7 +22,8 @@ const generated = generateJsonSchema()
 
 const check = process.argv.includes("--check")
 if (check) {
-  const existing = await readExisting(OUTPUT_PATH)
+  const file = Bun.file(OUTPUT_PATH)
+  const existing = (await file.exists()) ? await file.text() : ""
   if (existing !== generated) {
     console.error(
       `[emit-schema] schemas/aid.schema.json is out of date.\n` +
@@ -38,24 +39,11 @@ await Bun.write(OUTPUT_PATH, generated)
 console.log(`[emit-schema] wrote ${OUTPUT_PATH}`)
 
 function generateJsonSchema(): string {
-  // Zod v4: built-in toJSONSchema; fall back to the standalone helper if older
-  const toJsonSchema = (z as unknown as { toJSONSchema?: (s: unknown) => unknown }).toJSONSchema
-  if (typeof toJsonSchema !== "function") {
-    throw new Error(
-      "z.toJSONSchema is not available — upgrade `zod` to v4+ or wire in `zod-to-json-schema`.",
-    )
+  const schema = {
+    ...z.toJSONSchema(AidConfigSchema),
+    $id: SCHEMA_ID,
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    title: "aid project configuration",
   }
-  const schema = toJsonSchema(AidConfigSchema) as Record<string, unknown>
-  schema.$id = SCHEMA_ID
-  schema.$schema = "https://json-schema.org/draft/2020-12/schema"
-  schema.title = "aid project configuration"
   return `${JSON.stringify(schema, null, 2)}\n`
-}
-
-async function readExisting(path: string): Promise<string> {
-  const file = Bun.file(path)
-  if (!(await file.exists())) {
-    return ""
-  }
-  return file.text()
 }

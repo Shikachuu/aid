@@ -1,8 +1,13 @@
+import path from "node:path"
 import { z } from "zod"
+import type { BuildContext } from "./types"
 
 const AiTarget = z
   .enum(["chatgpt", "claude", "gemini"])
   .describe("Supported LLM chat target for the 'Open in AI' button.")
+
+/** Valid TCP port for the dev server. Shared by the config schema and the `--port` flag. */
+export const PortSchema = z.number().int().min(0).max(65535)
 
 const SearchWeights = z
   .object({
@@ -117,7 +122,7 @@ export const AidConfigSchema = z
 
     dev: z
       .object({
-        port: z.number().int().min(0).max(65535).default(3000).describe("Dev server port."),
+        port: PortSchema.default(3000).describe("Dev server port."),
         host: z.string().default("localhost").describe("Dev server host."),
       })
       .prefault({})
@@ -129,18 +134,27 @@ export const AidConfigSchema = z
 
 export type AidConfig = z.infer<typeof AidConfigSchema>
 
-export async function loadConfig(path: string): Promise<AidConfig> {
-  const text = await Bun.file(path).text()
-  const raw = parseYaml(text)
-  return AidConfigSchema.parse(raw)
+/** Read a YAML config file and validate it against {@link AidConfigSchema}. */
+export async function loadConfig(file: string): Promise<AidConfig> {
+  return AidConfigSchema.parse(Bun.YAML.parse(await Bun.file(file).text()))
 }
 
-function parseYaml(text: string): unknown {
-  const bunYAML = (globalThis as { Bun?: { YAML?: { parse?: (s: string) => unknown } } }).Bun?.YAML
-  if (!bunYAML?.parse) {
-    throw new Error(
-      "Bun.YAML.parse is not available. aid requires Bun >= 1.2 for native YAML parsing.",
-    )
+/**
+ * Load the config at `file` (relative to `dir`) and resolve every configured
+ * directory against `dir`. Both default to the current working directory.
+ */
+export async function loadBuildContext(
+  dir: string | undefined,
+  file: string,
+): Promise<BuildContext> {
+  const cwd = path.resolve(dir ?? ".")
+  const config = await loadConfig(path.resolve(cwd, file))
+  return {
+    config,
+    cwd,
+    contentDir: path.join(cwd, config.dir.content),
+    outputDir: path.join(cwd, config.dir.output),
+    templatesDir: config.dir.templates === "" ? null : path.join(cwd, config.dir.templates),
+    staticDir: path.join(cwd, config.dir.static),
   }
-  return bunYAML.parse(text)
 }

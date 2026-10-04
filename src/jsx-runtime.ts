@@ -34,7 +34,7 @@ export function render(node: Child): string {
     return ""
   }
   if (typeof node === "string") {
-    return escapeHtml(node)
+    return Bun.escapeHTML(node)
   }
   if (typeof node === "number" || typeof node === "bigint") {
     return String(node)
@@ -85,7 +85,7 @@ function renderIntrinsic(tag: string, props: Props): string {
 function renderAttrs(attrs: Record<string, unknown>): string {
   let out = ""
   for (const key in attrs) {
-    if (key === "children" || key === "key" || key === "ref") {
+    if (key === "key") {
       continue
     }
     const value = attrs[key]
@@ -97,36 +97,14 @@ function renderAttrs(attrs: Record<string, unknown>): string {
       out += ` ${name}`
       continue
     }
-    if (key === "style" && typeof value === "object") {
-      out += ` ${name}="${escapeAttr(serializeStyle(value as Record<string, string | number>))}"`
-      continue
-    }
-    out += ` ${name}="${escapeAttr(String(value))}"`
+    out += ` ${name}="${Bun.escapeHTML(String(value))}"`
   }
   return out
-}
-
-function serializeStyle(style: Record<string, string | number>): string {
-  let out = ""
-  for (const k in style) {
-    const v = style[k]
-    if (v == null) {
-      continue
-    }
-    out += `${kebab(k)}:${typeof v === "number" ? `${v}px` : v};`
-  }
-  return out
-}
-
-function kebab(s: string): string {
-  return s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
 }
 
 const ATTR_REWRITE: Record<string, string> = {
   className: "class",
   htmlFor: "for",
-  acceptCharset: "accept-charset",
-  httpEquiv: "http-equiv",
 }
 
 const VOID_ELEMENTS = new Set([
@@ -146,27 +124,10 @@ const VOID_ELEMENTS = new Set([
   "wbr",
 ])
 
-const HTML_ESCAPE: Record<string, string> = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;",
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => HTML_ESCAPE[c] ?? c)
-}
-
-function escapeAttr(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => HTML_ESCAPE[c] ?? c)
-}
-
 export namespace JSX {
-  export type Element = {
-    readonly __aid_jsx: true
-    readonly type: unknown
-    readonly props: Props
+  export type Element = import("./jsx-runtime").Element
+  export type IntrinsicAttributes = {
+    key?: string | number
   }
   export type ElementChildrenAttribute = {
     children: Record<string, never>

@@ -40,20 +40,11 @@ export function deriveDarkPalette(css: string): DerivedDarkPalette {
     const body = css.slice(bodyStart, bodyEnd)
     THEME_OPEN_RE.lastIndex = bodyEnd + 1
 
-    const localDecl = new RegExp(DECL_RE.source, "g")
-    while (true) {
-      const dm = localDecl.exec(body)
-      if (!dm) {
-        break
-      }
-      const name = dm[1]
-      const rawValue = dm[2]
+    for (const [, name, rawValue] of body.matchAll(DECL_RE)) {
       if (!name || !rawValue || !name.startsWith("--color-")) {
         continue
       }
-      const value = rawValue.trim()
-
-      const inverted = invertOklchLightness(value)
+      const inverted = invertOklchLightness(rawValue.trim())
       if (inverted === null) {
         warnings.push(
           `dark-mode auto-derivation skipped ${name}: only oklch() colours are supported. Use theme.dark_mode: "manual" or convert to oklch.`,
@@ -74,7 +65,7 @@ export function deriveDarkPalette(css: string): DerivedDarkPalette {
 }
 
 function invertOklchLightness(value: string): string | null {
-  const m = OKLCH_RE.exec(value.trim())
+  const m = OKLCH_RE.exec(value)
   if (!m) {
     return null
   }
@@ -89,13 +80,7 @@ function invertOklchLightness(value: string): string | null {
   if (!Number.isFinite(lNum)) {
     return null
   }
-  const inverted = roundTo(100 - lNum, 4)
-  const lOut = `${inverted}%`
+  const lOut = `${Math.round((100 - lNum) * 1e4) / 1e4}%`
   const alphaSuffix = alpha !== undefined ? ` / ${alpha}` : ""
   return `oklch(${lOut} ${c} ${h}${alphaSuffix})`
-}
-
-function roundTo(n: number, places: number): number {
-  const factor = 10 ** places
-  return Math.round(n * factor) / factor
 }

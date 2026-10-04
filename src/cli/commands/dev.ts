@@ -1,7 +1,8 @@
 import { defineCommand } from "citty"
-import { loadConfig } from "../../core/config"
-import type { BuildContext } from "../../core/types"
+import { z } from "zod"
+import { loadBuildContext, PortSchema } from "../../core/config"
 import { startDevSession } from "../../dev/session"
+import { projectArgs } from "./build"
 
 /** Start the local dev server with hot reload. */
 export const command = defineCommand({
@@ -10,17 +11,7 @@ export const command = defineCommand({
     description: "Start the local dev server with hot reload.",
   },
   args: {
-    dir: {
-      type: "positional",
-      required: false,
-      description: "Project directory (default: current directory).",
-    },
-    file: {
-      type: "string",
-      alias: "f",
-      default: "aid.yaml",
-      description: "Config file relative to the project directory (e.g. aid.yml).",
-    },
+    ...projectArgs,
     port: {
       type: "string",
       description: "Override dev server port.",
@@ -31,44 +22,11 @@ export const command = defineCommand({
     },
   },
   async run({ args }) {
-    const dir = resolveProjectDir(args.dir)
-    const configPath = resolveUnder(dir, args.file)
-    const config = await loadConfig(configPath)
-
-    const port = resolvePort(args.port, config.dev.port)
-    const host = args.host !== undefined && args.host !== "" ? args.host : config.dev.host
-
-    const ctx: BuildContext = {
-      config,
-      cwd: dir,
-      contentDir: `${dir}/${config.dir.content}`,
-      outputDir: `${dir}/${config.dir.output}`,
-      templatesDir: config.dir.templates === "" ? null : `${dir}/${config.dir.templates}`,
-      staticDir: `${dir}/${config.dir.static}`,
-    }
-
+    const ctx = await loadBuildContext(args.dir, args.file)
+    const port = args.port
+      ? z.coerce.number().pipe(PortSchema).parse(args.port)
+      : ctx.config.dev.port
+    const host = args.host || ctx.config.dev.host
     await startDevSession({ ctx, host, port })
   },
 })
-
-function resolveProjectDir(input: string | undefined): string {
-  if (input === undefined || input === ".") {
-    return process.cwd()
-  }
-  return input.startsWith("/") ? input : `${process.cwd()}/${input}`
-}
-
-function resolveUnder(dir: string, p: string): string {
-  return p.startsWith("/") ? p : `${dir}/${p}`
-}
-
-function resolvePort(flag: string | undefined, fallback: number): number {
-  if (flag === undefined || flag === "") {
-    return fallback
-  }
-  const n = Number.parseInt(flag, 10)
-  if (!Number.isFinite(n) || n < 0 || n > 65535) {
-    throw new Error(`aid dev: --port must be an integer between 0 and 65535, got "${flag}"`)
-  }
-  return n
-}

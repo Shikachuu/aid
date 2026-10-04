@@ -17,37 +17,31 @@
  * cross-compilation see the same staged tree.
  */
 
-import { mkdir } from "node:fs/promises"
 import { resolve } from "node:path"
 
 const ROOT = resolve(import.meta.dir, "..")
 const VENDOR = resolve(ROOT, "vendor", "natives")
 
-type Stage = {
-  /** lightningcss subpackage name (also the staged filename stem). */
-  pkg: string
-  /** Source file inside the subpackage relative to its root. */
-  nodeFile: string
-}
-
-const STAGES: readonly Stage[] = [
-  { pkg: "lightningcss-darwin-arm64", nodeFile: "lightningcss.darwin-arm64.node" },
-  { pkg: "lightningcss-darwin-x64", nodeFile: "lightningcss.darwin-x64.node" },
-  { pkg: "lightningcss-linux-arm64-gnu", nodeFile: "lightningcss.linux-arm64-gnu.node" },
-  { pkg: "lightningcss-linux-x64-gnu", nodeFile: "lightningcss.linux-x64-gnu.node" },
+const PKGS = [
+  "lightningcss-darwin-arm64",
+  "lightningcss-darwin-x64",
+  "lightningcss-linux-arm64-gnu",
+  "lightningcss-linux-x64-gnu",
 ]
 
-await mkdir(VENDOR, { recursive: true })
-
-for (const stage of STAGES) {
-  const src = resolve(ROOT, "node_modules", stage.pkg, stage.nodeFile)
-  const dst = resolve(VENDOR, `${stage.pkg}.bin`)
+for (const pkg of PKGS) {
+  const src = resolve(
+    ROOT,
+    "node_modules",
+    pkg,
+    `lightningcss.${pkg.slice("lightningcss-".length)}.node`,
+  )
+  const dst = resolve(VENDOR, `${pkg}.bin`)
   const srcFile = Bun.file(src)
   if (!(await srcFile.exists())) {
     console.warn(`[stage-natives] skip: ${src} not present`)
     continue
   }
   await Bun.write(dst, srcFile)
-  const size = (await srcFile.stat()).size
-  console.log(`[stage-natives] ${stage.pkg}.bin (${(size / 1024 / 1024).toFixed(1)} MB)`)
+  console.log(`[stage-natives] ${pkg}.bin (${(srcFile.size / 1024 / 1024).toFixed(1)} MB)`)
 }

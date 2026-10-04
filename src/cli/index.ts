@@ -1,10 +1,11 @@
 #!/usr/bin/env bun
 import { type CommandDef, defineCommand, runMain } from "citty"
+import { version } from "../../package.json"
 
 const main: CommandDef = defineCommand({
   meta: {
     name: "aid",
-    version: "0.0.0",
+    version,
     description: "Single-binary documentation generator for markdown, HTML, OpenAPI, and Protobuf.",
   },
   subCommands: {

@@ -165,14 +165,13 @@ describe("buildSearchIndex — output shape", () => {
 })
 
 describe("buildSearchIndex — indexed documents", () => {
-  test("indexes markdown, html, and openapi pages; skips proto and index", () => {
+  test("indexes markdown, html, openapi, and proto pages", () => {
     const ctx = makeCtx()
     const result = buildSearchIndex(ctx, [
       makePage({ routePath: "/", title: "Home", body: "Welcome.", kind: "markdown" }),
       makePage({ routePath: "/about", title: "About", body: "<p>x</p>", kind: "html" }),
       makePage({ routePath: "/api", title: "API", kind: "openapi" }),
       makePage({ routePath: "/events", title: "Events", kind: "proto" }),
-      makePage({ routePath: "/listing", title: "Listing", kind: "index" }),
     ])
     if (!result) {
       throw new Error("expected result")
@@ -181,7 +180,7 @@ describe("buildSearchIndex — indexed documents", () => {
     const types = Object.values(storedFields)
       .map((d) => d.type)
       .sort() as string[]
-    expect(types).toEqual(["html", "markdown", "openapi"])
+    expect(types).toEqual(["html", "markdown", "openapi", "proto"])
   })
 
   test("stored fields per document carry type, title, and url", () => {

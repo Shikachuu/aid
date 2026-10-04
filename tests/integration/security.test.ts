@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test } from "bun:test"
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdtemp, rm, symlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { AidConfigSchema } from "../../src/core/config"
@@ -38,6 +38,23 @@ test("blocks colocated <img src> that escapes contentDir", async () => {
   await expect(build(ctx)).rejects.toThrow(/escapes contentDir/)
   // Crucially, the secret was NOT copied into the output.
   expect(await Bun.file(path.join(ctx.outputDir, "secret.txt")).exists()).toBe(false)
+})
+
+test("blocks a colocated symlink that resolves outside contentDir", async () => {
+  const ctx = await makeCtx()
+  await Bun.write(path.join(cwd, "secret.txt"), "TOP SECRET")
+  await Bun.write(path.join(ctx.contentDir, "index.md"), "# Attack\n\n![](./link.txt)\n")
+  await symlink(path.join(cwd, "secret.txt"), path.join(ctx.contentDir, "link.txt"))
+  await expect(build(ctx)).rejects.toThrow(/escapes contentDir/)
+  expect(await Bun.file(path.join(ctx.outputDir, "link.txt")).exists()).toBe(false)
+})
+
+test("copies a colocated asset whose name starts with ..", async () => {
+  const ctx = await makeCtx()
+  await Bun.write(path.join(ctx.contentDir, "..hero.svg"), "<svg>dots</svg>")
+  await Bun.write(path.join(ctx.contentDir, "index.md"), "# Dots\n\n![](./..hero.svg)\n")
+  await build(ctx)
+  expect(await Bun.file(path.join(ctx.outputDir, "..hero.svg")).text()).toBe("<svg>dots</svg>")
 })
 
 test("hard-errors when static/ and a colocated asset target the same path", async () => {
