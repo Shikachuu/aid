@@ -19,8 +19,9 @@ const ctx = () => makeCtx(dir, { dir: { templates: "templates" } })
 
 describe("watchContent", () => {
   test("skips inputs that do not exist", () => {
-    const handle = watchContent(ctx(), join(dir, "aid.yaml"), [join(dir, "missing.css")], () => {})
-    handle.close()
+    expect(() =>
+      watchContent(ctx(), join(dir, "aid.yaml"), [join(dir, "missing.css")], () => {}).close(),
+    ).not.toThrow()
   })
 
   test("throws watch errors other than ENOENT", async () => {
@@ -42,9 +43,15 @@ describe("watchContent", () => {
     const changed = Promise.withResolvers<boolean>()
     const handle = watchContent(ctx(), configPath, [], changed.resolve)
     try {
-      await Bun.sleep(50)
-      await Bun.write(configPath, "title: b\n")
-      expect(await changed.promise).toBe(true)
+      for (let i = 0; i < 20; i++) {
+        await Bun.write(configPath, `title: ${i}\n`)
+        const fired = await Promise.race([changed.promise, Bun.sleep(100)])
+        if (fired !== undefined) {
+          expect(fired).toBe(true)
+          return
+        }
+      }
+      throw new Error("watcher never reported the config change")
     } finally {
       handle.close()
     }

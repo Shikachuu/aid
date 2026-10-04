@@ -6,9 +6,6 @@ type RpcSignatureProps = {
   baseHref?: string
 }
 
-/**
- * Render an RPC as a one-line `rpc Name(Request) returns (Response);` signature with linked types.
- */
 export const RpcSignature = ({ rpc, baseHref }: RpcSignatureProps) => (
   <code className="proto-rpc-signature">
     <span className="proto-rpc-keyword">rpc</span>{" "}

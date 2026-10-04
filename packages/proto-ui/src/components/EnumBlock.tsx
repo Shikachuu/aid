@@ -9,7 +9,6 @@ type EnumBlockProps = {
   enumEntity: ProtoEnum
 }
 
-/** Render an enum with its doc comment, value table and reconstructed declaration. */
 export const EnumBlock = ({ enumEntity }: EnumBlockProps) => (
   <section className="proto-enum">
     <EntityHeader

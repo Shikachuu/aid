@@ -113,20 +113,23 @@ function makeCopyAsset(route: Route, ctx: BuildContext, registry: AssetRegistry)
   const routeOutputDir = path.dirname(outputPathForRoute(route, ctx))
   const routeUrlDir = path.posix.join(ctx.config.base_path, route.path)
   return async (absoluteSource) => {
-    await assertInsideContent(absoluteSource, route, ctx)
-    const src = Bun.file(absoluteSource)
-    if (!(await src.exists())) {
+    const realSource = await assertInsideContent(absoluteSource, route, ctx)
+    if (realSource === null) {
       return null
     }
     const filename = path.basename(absoluteSource)
     const destPath = path.join(routeOutputDir, filename)
     registry.register(destPath, absoluteSource)
-    await Bun.write(destPath, src)
+    await Bun.write(destPath, Bun.file(realSource))
     return path.posix.join(routeUrlDir, filename)
   }
 }
 
-async function assertInsideContent(source: string, route: Route, ctx: BuildContext): Promise<void> {
+async function assertInsideContent(
+  source: string,
+  route: Route,
+  ctx: BuildContext,
+): Promise<string | null> {
   const realSource = await realpathOrNull(source)
   const inside =
     isLexicallyInside(source, ctx.contentDir) &&
@@ -136,6 +139,7 @@ async function assertInsideContent(source: string, route: Route, ctx: BuildConte
       `aid: colocated asset "${source}" referenced from ${route.source} escapes contentDir (${ctx.contentDir}). Use a top-level static/ asset or move the file under contentDir.`,
     )
   }
+  return realSource
 }
 
 async function realpathOrNull(p: string): Promise<string | null> {

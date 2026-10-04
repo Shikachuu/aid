@@ -18,7 +18,7 @@ const marked = new Marked({
     html: ({ text }) => escapeHtml(text),
   },
   walkTokens: (token) => {
-    if (token.type === "link" && !SAFE_HREF.test(token.href)) {
+    if ((token.type === "link" || token.type === "image") && !SAFE_HREF.test(token.href)) {
       token.href = "#"
     }
   },
@@ -26,6 +26,7 @@ const marked = new Marked({
 
 /**
  * Render a proto comment from markdown to HTML. Raw HTML in the comment comes out escaped. Links
- * with a scheme other than http, https or mailto, such as `javascript:`, get `#` as their href.
+ * and images with a scheme other than http, https or mailto, such as `javascript:`, get `#` as
+ * their URL.
  */
 export const renderDocMarkdown = (raw: string): string => marked.parse(raw) as string

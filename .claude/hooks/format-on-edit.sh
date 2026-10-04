@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# Exits 0 unconditionally so transient formatter errors never block the assistant.
-set -eo pipefail
+set -o pipefail
 
 payload=$(cat)
-file=$(printf '%s' "$payload" | jq -r '.tool_input.file_path // .tool_input.notebook_path // empty')
+file=$(printf '%s' "$payload" | jq -r '.tool_input.file_path // .tool_input.notebook_path // empty' 2>/dev/null) || exit 0
 [[ -z "$file" || ! -f "$file" ]] && exit 0
 
 case "$file" in

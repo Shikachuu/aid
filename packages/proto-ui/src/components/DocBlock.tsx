@@ -5,7 +5,6 @@ type DocBlockProps = {
   raw: string | null
 }
 
-/** Render a proto comment as markdown, or nothing when the comment is null or empty. */
 export const DocBlock = ({ raw }: DocBlockProps) =>
   raw ? (
     <div

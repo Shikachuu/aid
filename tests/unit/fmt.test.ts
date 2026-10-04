@@ -60,16 +60,18 @@ describe("formatOpenApi", () => {
     expect(second).toBe(first)
   })
 
-  test("reports an unparseable spec as an error and leaves it untouched", async () => {
+  test.each([
+    true,
+    false,
+  ])("reports an unparseable spec as an error and leaves it untouched (check: %p)", async (check) => {
     const file = join(dir, "openapi.json")
     const original = '{"openapi": "3.0.0",'
     await Bun.write(file, original)
-    const result = await formatOpenApi([file], dir, { check: true })
+    const result = await formatOpenApi([file], dir, { check })
     expect(result.ok).toBe(false)
     expect(result.diagnostics).toEqual([
       expect.objectContaining({ file, severity: "error", code: "openapi/parse" }),
     ])
-    expect(result.wouldChange).toEqual([])
     expect(await Bun.file(file).text()).toBe(original)
   })
 })

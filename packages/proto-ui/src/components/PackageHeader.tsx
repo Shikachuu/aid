@@ -6,7 +6,6 @@ type PackageHeaderProps = {
   fileSourceUrl?: string
 }
 
-/** Render the package name, the comment above the `package` line, and an optional source link. */
 export const PackageHeader = ({
   packageName,
   leadingComment,

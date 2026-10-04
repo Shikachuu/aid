@@ -19,6 +19,13 @@ describe("renderDocMarkdown", () => {
     const html = renderDocMarkdown("[a](javascript:alert(1)) [b](java&#115;cript:alert(1))")
     expect(html).not.toContain("script:")
     expect(html).toContain('<a href="#">a</a>')
+    expect(html).toContain('<a href="#">b</a>')
+  })
+
+  test("drops javascript: image sources", () => {
+    const html = renderDocMarkdown("![x](javascript:alert(1))")
+    expect(html).not.toContain("script:")
+    expect(html).toContain('src="#"')
   })
 
   test("keeps markdown formatting and safe links", () => {
