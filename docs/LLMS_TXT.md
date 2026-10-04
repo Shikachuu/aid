@@ -1,15 +1,15 @@
 # `llms.txt` generation
 
-aid emits a [`llms.txt`](https://llmstxt.org) discovery file at the site root on every build. The prose is yours; the routing is auto-generated.
+aid writes a [`llms.txt`](https://llmstxt.org) discovery file at the site root on every build. You write the prose in a template, and aid generates the table of contents.
 
 ## File layout
 
 | Path | Role |
-|---|---|
-| `<templatesDir>/llms.txt` | **Optional** template. If present, aid uses it verbatim and only substitutes placeholders. |
-| `<outputDir>/llms.txt` | Build output. Always emitted (bundled default kicks in when no template exists). |
+| --- | --- |
+| `<templatesDir>/llms.txt` | Optional template. If it exists, aid uses it as-is and substitutes only the placeholders. |
+| `<outputDir>/llms.txt` | Build output. aid always writes it and uses the bundled default when no template exists. |
 
-`<templatesDir>` resolves from `dir.templates` in `aid.yaml`. The default is `""` (no template directory) — drop a path there to activate the override.
+`<templatesDir>` resolves from `dir.templates` in `aid.yaml`. The default is `""`, which means no template directory. Set it to a directory path to enable the override.
 
 ```
 my-docs/
@@ -23,30 +23,30 @@ my-docs/
 
 ## Config
 
-Only existing top-level fields feed the generator — no `llms_txt` block today.
+The generator reads only existing top-level fields. There is no `llms_txt` config block.
 
 | `aid.yaml` field | Role in `llms.txt` |
-|---|---|
-| `name` | H1 / `{{name}}` |
-| `description` | Blockquote summary / `{{description}}` |
-| `base_url` | When set, every TOC bullet becomes an absolute URL. Empty → path-only. `{{base_url}}` |
-| `base_path` | Prepended to every TOC URL (e.g. `/docs/api.json`). |
+| --- | --- |
+| `name` | H1 and `{{name}}` |
+| `description` | Blockquote summary and `{{description}}` |
+| `base_url` | When set, every table of contents (TOC) bullet uses an absolute URL. When unset, bullets use path-only URLs. Also available as `{{base_url}}`. |
+| `base_path` | aid prepends it to every TOC URL (for example `/docs/api.json`). |
 | `dir.templates` | Where aid looks for `llms.txt`. |
-| `dir.output` | Where the rendered `llms.txt` is written. |
+| `dir.output` | Where aid writes the rendered `llms.txt`. |
 
 ## Template variables
 
-Substituted by a tiny `{{name}}` / `{{name:arg}}` engine. Unknown placeholders fail the build with the offending name in the message.
+aid substitutes placeholders of the form `{{name}}` and `{{name:arg}}`. An unknown placeholder fails the build, and the error names it.
 
 | Placeholder | Expands to |
-|---|---|
+| --- | --- |
 | `{{name}}` | `config.name` |
 | `{{description}}` | `config.description` (empty string if unset) |
 | `{{base_url}}` | `config.base_url` (empty string if unset) |
-| `{{toc}}` | Grouped TOC of every **non-optional** page (see "Grouping" below) |
-| `{{toc:optional}}` | Flat bullet list of pages marked optional, **no `## Optional` heading** — write that yourself in the template |
+| `{{toc}}` | Grouped TOC of every page not marked optional (see "TOC behavior" below) |
+| `{{toc:optional}}` | Flat bullet list of pages marked optional. It has no `## Optional` heading, so write that heading in the template yourself. |
 
-There is no conditional / loop syntax. If you need a structure the engine can't express, override the template and rely on the placeholders aid provides.
+The engine has no conditional or loop syntax. If you need a structure the engine cannot express, override the template and use the placeholders aid provides.
 
 ## Bundled default template
 
@@ -57,7 +57,7 @@ When no override exists, aid uses:
 
 > {{description}}
 
-This documentation is available in machine-readable form. Append `.md` to a markdown route or `.json` to an OpenAPI/proto route to receive the parseable variant.
+This documentation is available in machine-readable form. Append `.md` to a markdown route, `.json` to an OpenAPI route, or `.proto` to a Proto route to receive the parseable variant.
 
 {{toc}}
 
@@ -66,45 +66,50 @@ This documentation is available in machine-readable form. Append `.md` to a mark
 {{toc:optional}}
 ```
 
-Sites with no optional pages still get a `## Optional` heading with an empty body. Override the template if that bothers you.
+Sites with no optional pages still get a `## Optional` heading with an empty body. Override the template to remove the empty heading.
 
 ## TOC behavior (`{{toc}}`)
 
-- **Grouping**: by the first path segment under the content root.
-  - `docs/index.md`, `docs/api.yaml` → grouped under `## Docs` (root-level files).
-  - `docs/guides/intro.md` → `## Guides`.
-  - `docs/getting-started/x.md` → `## Getting Started` (slugs are title-cased, `-` / `_` become spaces).
-- **Order**: `Docs` is pinned first; all other groups alphabetical. Inside each group, bullets are sorted by route path.
-- **Bullet shape**: `- [Title](url): description` — the `: description` suffix is omitted when none exists.
-- **Title source**: frontmatter `title` first, then the page's H1, then the filename.
-- **Description source**: markdown frontmatter `description`, or OpenAPI `info.description`. Proto: none today.
+aid groups pages by the first path segment under the content root:
+
+- Root-level files such as `docs/index.md` and `docs/api.yaml` go under `## Docs`.
+- `docs/guides/intro.md` goes under `## Guides`.
+- `docs/getting-started/x.md` goes under `## Getting Started`. aid title-cases the slug and turns `-` and `_` into spaces.
+
+`Docs` comes first, and the other groups follow in alphabetical order. aid sorts the bullets in each group by route path.
+
+Each bullet has the shape `- [Title](url): description`. aid omits the `: description` suffix when the page has no description.
+
+The title comes from frontmatter `title` (or the HTML `<title>`), then the page's H1, then the filename.
+
+The description comes from markdown frontmatter `description`, HTML `<meta name="description">`, OpenAPI `info.description`, or the first paragraph of a proto file's package comment.
 
 ## Link URLs
 
-Every bullet links to the **machine-readable** variant, not the rendered HTML.
+Every bullet links to the machine-readable variant, not the rendered HTML.
 
 | Page kind | URL suffix |
-|---|---|
+| --- | --- |
 | `.md` (markdown) | `.md` |
 | `.html` | `.md` |
 | OpenAPI (`.yaml` / `.yml` / `.json`) | `.json` |
-| `.proto` | `.json` |
+| `.proto` | `.proto` |
 
-The root route `/` collapses to `/index.<suffix>` to match the file aid actually writes.
+The root route `/` maps to `/index.<suffix>` to match the file aid writes.
 
 Examples (assuming `base_url: "https://docs.example.com"`, `base_path: "/docs"`):
 
 | Route | TOC URL |
-|---|---|
+| --- | --- |
 | `/` (markdown) | `https://docs.example.com/docs/index.md` |
 | `/api` (openapi) | `https://docs.example.com/docs/api.json` |
 | `/guides/intro` (markdown) | `https://docs.example.com/docs/guides/intro.md` |
 
-With `base_url` unset the same routes emit path-only URLs (`/docs/index.md`, `/docs/api.json`, …).
+With `base_url` unset, the same routes get path-only URLs (`/docs/index.md`, `/docs/api.json`, and so on).
 
 ## Marking pages optional
 
-Mark a markdown page so it ships in `{{toc:optional}}` instead of `{{toc}}`:
+Mark a markdown page so it appears in `{{toc:optional}}` instead of `{{toc}}`:
 
 ```markdown
 ---
@@ -115,7 +120,7 @@ llms: optional
 # Changelog
 ```
 
-The only accepted value is the string `optional`. Non-markdown pages (OpenAPI, proto, HTML) cannot be marked optional in v1.
+The only accepted value is the string `optional`. Non-markdown pages (OpenAPI, proto, HTML) cannot be marked optional in v0.1.
 
 ## Custom template example
 
@@ -136,4 +141,4 @@ machine-readable variants — feel free to fetch them directly.
 {{toc:optional}}
 ```
 
-The auto-generated `{{toc}}` block already contains `## Docs`, `## Guides`, etc. — don't wrap it in another H2.
+The generated `{{toc}}` block already has its own H2 headings (`## Docs`, `## Guides`, and so on), so do not wrap it in another H2.

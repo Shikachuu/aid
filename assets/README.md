@@ -1,6 +1,5 @@
 # `assets/`
 
-Static files baked into the aid binary via Bun's `with { type: "file" }` import attribute or copied to the build output.
+This directory holds static files that aid either embeds in the binary through Bun's `with { type: "file" }` import attribute or copies to the build output.
 
-- `scaffold/` — copied verbatim by `aid init` to a new project directory.
-- `minisearch.min.js` — emitted at build time by `scripts/bundle-web.ts` from the npm `minisearch` package; not checked in.
+`aid init` will copy `scaffold/` into a new project directory. The command is not implemented yet.

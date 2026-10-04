@@ -1,6 +1,6 @@
 # `aid dev`
 
-Local dev server with hot reload. Runs the same build pipeline as `aid build` into a scratch directory, serves it over HTTP, and reloads connected browsers on every successful rebuild.
+`aid dev` runs a local dev server with hot reload. It runs the same build pipeline as `aid build` into a scratch directory, serves the result over HTTP, and reloads connected browsers on every successful rebuild.
 
 ## Command
 
@@ -9,13 +9,13 @@ aid dev [dir] [--file aid.yaml] [--port N] [--host H]
 ```
 
 | Flag | Default | Role |
-|---|---|---|
+| --- | --- | --- |
 | `dir` (positional) | current directory | Project root (where `aid.yaml` lives). |
-| `--file` / `-f` | `aid.yaml` | Config filename, relative to `dir` (use for `.yml` or alt configs). |
-| `--port` | `dev.port` from config (3000) | Listening port. Integer 0–65535. |
+| `--file` / `-f` | `aid.yaml` | Config filename, relative to `dir` (use it for `.yml` or other config filenames). |
+| `--port` | `dev.port` from config (3000) | Listening port. An integer from 0 to 65535. |
 | `--host` | `dev.host` from config (`localhost`) | Listening host. |
 
-CLI flags win over config; config wins over defaults.
+CLI flags override the config file, and the config file overrides the defaults.
 
 ## Config
 
@@ -28,45 +28,45 @@ dev:
   host: "localhost"
 ```
 
-`base_path: "/docs"` makes the server redirect `/` → `/docs/`; everything below the prefix is served, everything above 404s.
+With `base_path: "/docs"`, the server redirects `/` to `/docs/`, serves every path under the prefix, and returns 404 for every other path.
 
 ## What gets watched
 
-Everything the build pipeline reads from is watched recursively:
+The watcher recursively watches every input of the build pipeline:
 
 | Source | Watched | On change |
-|---|---|---|
+| --- | --- | --- |
 | `<contentDir>` (default `docs/`) | yes | rebuild |
 | `<staticDir>` (default `static/`) | yes | rebuild |
 | `<templatesDir>` (if `dir.templates` set) | yes | rebuild |
-| `aid.yaml` | yes | **process exits** — restart `aid dev` to pick up the new config |
-| Tailwind dependency set (auto-detected from compile output) | yes | rebuild |
+| Config file (`aid.yaml` or the `--file` value) | yes | The process exits. Restart `aid dev` to load the new config. |
+| Tailwind entrypoint (`stylesheet`, default `main.css`) | yes | rebuild |
 
-Anything under `.aid/` is filtered out so aid's own writes can't loop back into the watcher. Watcher events are batched on a 100ms debounce; files whose `mtimeMs` hasn't advanced are dropped (works around macOS emitting read events).
+The watcher ignores everything under `.aid/`, so aid's own writes do not trigger rebuilds. It batches events in a 100ms debounce window. It drops files whose `mtimeMs` has not changed, because macOS emits events on reads.
 
 ## Rebuild model
 
-- **Double-buffered output.** Builds alternate between `.aid/dev/build-a/` and `.aid/dev/build-b/`. The server serves whichever buffer was most recently built; the other one is being written to. Readers never see a half-written `dist/`.
-- **Serial with one queued slot.** While a build is in flight, change events coalesce into a single pending rebuild. Saving five files in quick succession triggers at most two builds (the current one plus one trailing).
-- **No in-memory fast path.** Output goes to disk — same code path as `aid build`. Per-build durations are logged: `[aid] rebuilt in 217ms`.
+- **Double-buffered output.** Builds alternate between `.aid/dev/build-a/` and `.aid/dev/build-b/`. The server serves whichever buffer was built most recently, and the next build writes to the other one. Readers never see a half-written build.
+- **Serial with one queued slot.** While a build runs, change events coalesce into a single pending rebuild. Saving five files in quick succession triggers at most two builds (the running build and one more).
+- **No in-memory fast path.** Each build writes to disk through the same code path as `aid build`. The server logs each build's duration, for example `[aid] rebuilt in 217ms`.
 
 ## Hot reload
 
-The server injects a small SSE client into every served HTML response. It connects to `/__aid/reload` and listens for three events:
+The server injects a small server-sent events (SSE) client into every served HTML response. The client connects to `/__aid/reload` and listens for three events:
 
 | Event | Effect |
-|---|---|
-| `reload` | `location.reload()` — fired after every successful rebuild. |
+| --- | --- |
+| `reload` | Calls `location.reload()`. The server sends it after every successful rebuild. |
 | `error-detail` | Renders a fullscreen error overlay over the page. |
-| `clear-error` | Removes the overlay (fired alongside the next successful rebuild). |
+| `clear-error` | Removes the overlay (sent with the next successful rebuild). |
 
-No browser plugin needed. The SSE channel has `idleTimeout: 0` so the connection stays open indefinitely.
+You do not need a browser plugin. The SSE channel has `idleTimeout: 0`, so the connection stays open until the client or the server closes it.
 
 ## Error behavior
 
-When a build throws, the current buffer keeps serving (last successful output stays live). New connections also receive the `error-detail` frame, so a refresh during a broken state still shows the overlay.
+When a build throws, the server keeps serving the last successful build. New connections also receive the `error-detail` frame, so a refresh during a broken state still shows the overlay.
 
-When the **first** build (before any buffer is live) fails, every non-SSE request returns a minimal HTML bootstrap page that hosts the overlay — there is no prior site to fall back to.
+If the first build fails, there is no earlier build to serve. Every non-SSE request then returns a minimal HTML page that shows the overlay.
 
 ## Scratch directory layout
 
@@ -79,23 +79,23 @@ When the **first** build (before any buffer is live) fails, every non-SSE reques
 │       └── build-b/
 ```
 
-`.aid/` is created on first run and ignored from git via the auto-written `.gitignore`. Safe to delete between sessions.
+`aid dev` creates `.aid/` on first run and writes a `.gitignore` inside it that excludes the directory from git. You can delete `.aid/` between sessions.
 
 ## Lifecycle
 
-1. Load config, resolve paths.
+1. Load the config and resolve paths.
 2. Write `.aid/.gitignore`.
-3. Kick off the initial build into buffer A.
+3. Run the initial build into buffer A.
 4. Start `Bun.serve` on `host:port`.
 5. Start the watcher.
-6. Loop: change → debounce → rebuild → flip buffer → broadcast `reload`.
-7. SIGINT / SIGTERM → stop the watcher and the server, exit 0.
+6. On each change, debounce, rebuild, swap the live buffer, and broadcast `reload`.
+7. On SIGINT or SIGTERM, stop the watcher and the server and exit with code 0.
 
-If `aid.yaml` changes mid-session: the server broadcasts an error frame telling the user to restart, then exits 0.
+If the config file changes during a session, the server broadcasts an error frame that tells the user to restart, then exits with code 0.
 
-## Limitations (v0)
+## Limitations (v0.1)
 
-- No WebSocket — SSE only. Fine for one-way server→browser notifications; no client→server channel.
+- The server uses SSE, not WebSocket. SSE carries notifications from server to browser only, and there is no channel from browser to server.
 - The whole site rebuilds on every change. Incremental rebuild is not implemented.
-- `aid.yaml` changes require a manual restart.
-- The dev server has no auth and binds to `localhost` by default — don't expose it to a public network without a reverse proxy.
+- Config file changes require a manual restart.
+- The dev server has no auth and binds to `localhost` by default. Do not expose it to a public network without a reverse proxy.

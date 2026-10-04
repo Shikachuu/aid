@@ -5,24 +5,24 @@ paths:
 
 # CSS: Tailwind directives only
 
-Never write raw CSS rules. Every rule must flow through a Tailwind 4 directive.
+Never write raw CSS rules. Every rule must use a Tailwind 4 directive.
 
 Allowed directives:
 
-- `@apply` — compose utility classes into a rule
-- `@theme` — declare design tokens (colors, fonts, spacing, …)
-- `@utility` — define a new utility class
-- `@layer` — `@layer base | components | utilities`
-- `@variant` — register a custom variant
-- `@source` — point Tailwind at additional content roots
-- `@config` — load a JS/TS Tailwind config (rarely needed in v4)
-- `@reference` — reference another stylesheet for `@apply` lookups
-- `@plugin` — register a Tailwind plugin
+- `@apply` composes utility classes into a rule.
+- `@theme` declares design tokens (colors, fonts, spacing, and so on).
+- `@utility` defines a new utility class.
+- `@layer` places rules in the `base`, `components`, or `utilities` layer.
+- `@variant` registers a custom variant.
+- `@source` points Tailwind at additional content roots.
+- `@config` loads a JS or TS Tailwind config (rarely needed in v4).
+- `@reference` references another stylesheet for `@apply` lookups.
+- `@plugin` registers a Tailwind plugin.
 
 Patterns:
 
 - Design tokens go inside `@theme { ... }`, not as bare CSS custom properties at `:root`.
-- One-off utility classes are introduced via `@utility name { @apply ... }`, not bare selectors with property declarations.
+- Introduce one-off utility classes with `@utility name { @apply ... }`, not with bare selectors that declare properties.
 - Component-level styles use `@layer components { @apply ... }` blocks.
 
-If you genuinely cannot express something via a directive, stop and raise it. There is almost always a directive that fits.
+If no directive can express a rule, stop and raise it.

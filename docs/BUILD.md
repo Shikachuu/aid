@@ -1,6 +1,6 @@
 # `aid build`
 
-Builds the static documentation site to disk. Same code path the dev server uses internally.
+`aid build` writes the static documentation site to disk. The dev server runs the same code path.
 
 ## Command
 
@@ -9,12 +9,12 @@ aid build [dir] [--file aid.yaml] [--clean]
 ```
 
 | Flag | Default | Role |
-|---|---|---|
+| --- | --- | --- |
 | `dir` (positional) | current directory | Project root (where `aid.yaml` lives). |
 | `--file` / `-f` | `aid.yaml` | Config filename, relative to `dir`. |
-| `--clean` | off | `rm -rf <outputDir>` before building. Use when stale files from a previous build need to go. |
+| `--clean` | off | Runs `rm -rf <outputDir>` before building. Use it when a previous build left stale files. |
 
-Exit code is non-zero if the build throws (router collisions, asset clashes, frontmatter validation errors, etc.).
+The command exits non-zero if the build throws, for example on a route collision, an asset collision, or a frontmatter validation error.
 
 ## Config
 
@@ -29,11 +29,11 @@ stylesheet: "main.css"                  # Tailwind entrypoint relative to projec
 dir:
   content:   "docs"     # source pages
   static:    "static"   # mirrored verbatim into output
-  templates: ""         # partial overrides (empty = bundled defaults only)
+  templates: ""         # llms.txt template (empty = bundled default)
   output:    "dist"     # build target
 ```
 
-`<outputDir>` is always resolved relative to the project directory.
+aid resolves `<outputDir>` relative to the project directory.
 
 ## Project layout
 
@@ -43,47 +43,54 @@ dir:
 ├── main.css            # Tailwind entrypoint (default name; configurable)
 ├── docs/               # content (routes here)
 │   ├── index.md        # → /
+│   ├── about.html      # → /about (full HTML document)
 │   ├── api.yaml        # → /api (OpenAPI auto-detected)
+│   ├── service.proto   # → /service
 │   ├── guides/
 │   │   └── intro.md    # → /guides/intro
 │   └── _drafts/        # _-prefixed: excluded from routing
 ├── static/             # → copied verbatim to <outputDir>/
-└── templates/          # optional partial overrides
+└── templates/          # optional llms.txt template
 ```
 
 ## Routing rules
 
-- Scan `<contentDir>` for `**/*.{md,yaml,yml,json}`.
-- `.md` → markdown route.
-- `.yaml` / `.yml` / `.json` → content-sniffed; OpenAPI route iff the file has a top-level `openapi:` or `swagger:` key. Otherwise silently skipped (treated as a data file).
+- The router scans `<contentDir>` for `**/*.{md,html,yaml,yml,json,proto}`.
+- A `.md` file becomes a markdown route.
+- A `.html` file becomes an HTML route (see `HTML.md`).
+- A `.proto` file becomes a proto route.
+- aid sniffs the content of `.yaml`, `.yml`, and `.json` files. A file with a top-level `openapi:` or `swagger:` key becomes an OpenAPI route. aid skips any other such file without a warning and treats it as a data file.
 - Any path segment starting with `_` excludes the file (drafts, partials, includes).
-- Two sources resolving to the same route path → hard error with both filenames.
-- Route path = file path relative to content root, minus extension. `index.<ext>` collapses to its parent directory's route. Routes are sorted alphabetically.
+- If two sources resolve to the same route path, the build fails and the error names both files.
+- The route path is the file path relative to the content root, without the extension. `index.<ext>` maps to its parent directory's route. The router sorts routes alphabetically.
 
 ## Output shape
 
 For a route `/foo/bar`:
 
 | File | Origin |
-|---|---|
+| --- | --- |
 | `<outputDir>/foo/bar/index.html` | Rendered page in the site layout |
-| `<outputDir>/foo/bar.md` | Sidechain export (markdown/HTML pages only) |
-| `<outputDir>/foo/bar.json` | Sidechain export (OpenAPI/proto pages only) |
+| `<outputDir>/foo/bar.md` | Sidechain export (markdown and HTML pages only) |
+| `<outputDir>/foo/bar.json` | Sidechain export (OpenAPI pages only) |
+| `<outputDir>/foo/bar.proto` | Sidechain export (proto pages only) |
 
-Plus, at the site root:
+aid also writes these files at the site root:
 
 | File | Origin |
-|---|---|
-| `<outputDir>/index.html` | Root markdown page |
+| --- | --- |
+| `<outputDir>/index.html` | Root page |
 | `<outputDir>/main.<hash>.css` | Compiled, content-hashed Tailwind output |
 | `<outputDir>/aid-web.<hash>.js` | Base browser runtime (always emitted) |
 | `<outputDir>/aid-mermaid.<hash>.js` | Mermaid runtime (emitted only if any page uses mermaid) |
-| `<outputDir>/aid-openapi.<hash>.js` + `.css` | Scalar runtime (emitted only if any OpenAPI page exists) |
+| `<outputDir>/aid-openapi.<hash>.js` and `.css` | Scalar runtime (emitted only if any OpenAPI page exists) |
+| `<outputDir>/aid-proto.<hash>.js` and `.css` | Proto UI runtime (emitted only if any proto page exists) |
+| `<outputDir>/search-index.<hash>.js` | Search index (emitted when `search.enabled` is true, the default) |
 | `<outputDir>/llms.txt` | LLM discovery file (see `LLMS_TXT.md`) |
 | `<outputDir>/<static/**>` | Mirror of `<staticDir>` |
-| `<outputDir>/<route>/<image>` | Colocated assets next to markdown sources |
+| `<outputDir>/<route>/<image>` | Colocated assets next to markdown and HTML sources |
 
-All hashed filenames use xxh64 over their bytes — same content produces the same filename across runs.
+All hashed filenames use xxh64 over their bytes, so the same content produces the same filename across runs.
 
 ## Pipeline phases
 
@@ -95,100 +102,113 @@ All hashed filenames use xxh64 over their bytes — same content produces the sa
                                          ▼
                                 ┌─ 2. dispatch renderers ─┐   (parallel per route)
                                 │  markdown → renderMarkdown
+                                │  html     → renderHtml
                                 │  openapi  → renderOpenApi
+                                │  proto    → renderProto
                                 └────────────┬────────────┘
                                              ▼
-                              3. buildWebBundle (gated on mermaid/openapi presence)
+                              3. buildWebBundle (gated on mermaid/openapi/proto presence)
                                              ▼
-                              4. wrapInLayout (per page, in memory)
+                              4. buildSearchIndex (skipped when search.enabled is false)
                                              ▼
-                              5. buildLlmsTxt
+                              5. wrapInLayout (per page, in memory)
                                              ▼
-                              6. compileTailwind (scans rendered HTML)
+                              6. buildLlmsTxt
                                              ▼
-                              7. writeCss (hashed filename)
+                              7. compileTailwind (scans rendered HTML)
                                              ▼
-                              8. parallel writes: HTML pages, sidechain exports, llms.txt
+                              8. writeCss (hashed filename)
+                                             ▼
+                              9. parallel writes: HTML pages, sidechain exports, llms.txt, search index
                                              ▼
                                           done
 ```
 
-### 1. Route discovery + static copy
+### 1. Route discovery and static copy
 
-`buildRoutes` walks `<contentDir>` (see "Routing rules"). `copyStaticAssets` mirrors `<staticDir>` into `<outputDir>` verbatim. Both run concurrently.
+`buildRoutes` walks `<contentDir>` (see "Routing rules"). `copyStaticAssets` mirrors `<staticDir>` into `<outputDir>` as-is. The two run concurrently.
 
 ### 2. Renderers
 
-Each route is rendered in parallel. Renderers produce a `RenderedPage` with:
+The pipeline renders every route in parallel. Each renderer returns a `RenderedPage`:
 
-- `html` — body HTML (no `<html>`/`<head>` chrome yet)
-- `exports[]` — sidechain bodies (`.md` for prose pages, `.json` for specs)
-- `searchTokens` — title + headings + body for the (eventually-emitted) search index
-- `hasMermaid`, `hasOpenApi` — flags used to gate optional browser runtimes
-- `description` — used for `<meta>` and `llms.txt`
+- `html` is the body HTML, without the `<html>`/`<head>` chrome.
+- `exports[]` holds the sidechain bodies: `.md` for markdown and HTML pages, `.json` for OpenAPI specs, and `.proto` for proto files.
+- `searchTokens` holds the title, headings, and body for the search index.
+- `hasMermaid`, `hasOpenApi`, and `hasProto` decide which optional browser runtimes a page loads.
+- `description` is the one-line summary in `llms.txt`.
 
-**Markdown** (`renderMarkdown`): frontmatter is validated against a Zod schema (strict on known keys, `catchall(unknown)` for arbitrary user metadata). Body goes through unified/remark/rehype: GFM, slugged headings with anchor links, Mermaid fence rewriting, Shiki dual-theme syntax highlighting. Two outputs come off the same mdast — the rendered HTML and the `.md` sidechain — so colocated image URLs match across both.
+`renderMarkdown` validates frontmatter against a Zod schema (strict on known keys, `catchall(unknown)` for arbitrary user metadata). The body goes through unified, remark, and rehype: GFM, slugged headings with anchor links, Mermaid fence rewriting, and Shiki dual-theme syntax highlighting. The rendered HTML and the `.md` sidechain both come from the same mdast, so colocated image URLs match in both outputs.
 
-**OpenAPI** (`renderOpenApi`): `.yaml`/`.yml`/`.json` parsed via Scalar's parser, normalized to OpenAPI 3.1, embedded as `<script type="application/json">` inside a page shell. The browser-side Scalar runtime picks it up at runtime; the same normalized JSON is emitted as the sidechain.
+`renderHtml` takes a full `.html` document, keeps its `<body>`, and converts that body into the `.md` sidechain. See `HTML.md`.
 
-**Colocated assets** (markdown only): a relative `<img src="./x.svg">` in a markdown source copies `x.svg` next to the rendered page in the output, and rewrites the `<img src>` to the public absolute href. Colocated sources are sandboxed to `<contentDir>` — a `../escape.png` throws.
+`renderOpenApi` parses `.yaml`, `.yml`, and `.json` specs with Scalar's parser, normalizes them to OpenAPI 3.1, and embeds the result as `<script type="application/json">` inside a page shell. The Scalar browser runtime reads that JSON on page load. aid also writes the same JSON as the sidechain.
+
+`renderProto` parses the `.proto` file for the title, description, and search tokens, and writes a page shell with a mount point. The `aid-proto` browser runtime fetches the `.proto` sidechain and renders the UI. The sidechain is the unchanged `.proto` source.
+
+Colocated assets work in markdown and HTML pages. A relative `<img src="./x.svg">` copies `x.svg` next to the rendered page in the output and rewrites the `<img src>` to the public absolute href. The pipeline restricts colocated sources to `<contentDir>`, so a `../escape.png` reference throws.
 
 ### 3. Browser runtime bundles
 
-`buildWebBundle` emits up to three JS modules:
+`buildWebBundle` emits up to four JS modules:
 
-- `aid-web.<hash>.js` — base runtime (dark-mode toggle, AI button wiring, search-input lazy loader). Always emitted.
-- `aid-mermaid.<hash>.js` — Mermaid renderer. Emitted only if at least one rendered page had a mermaid block.
-- `aid-openapi.<hash>.js` + `.css` — Scalar runtime. Emitted only if at least one OpenAPI page exists.
+- `aid-web.<hash>.js` is the base runtime. It loads search on first focus and holds the hooks for the dark-mode toggle and the "Open in AI" button, which are not implemented yet. aid always emits it.
+- `aid-mermaid.<hash>.js` is the Mermaid renderer. aid emits it only if at least one rendered page has a mermaid block.
+- `aid-openapi.<hash>.js` and `.css` are the Scalar runtime. aid emits them only if at least one OpenAPI page exists.
+- `aid-proto.<hash>.js` and `.css` are the proto UI runtime. aid emits them only if at least one proto page exists.
 
-Sites with no mermaid / no OpenAPI pay zero bytes for those runtimes.
+Sites without mermaid blocks, OpenAPI pages, or proto pages download none of those runtimes.
 
-### 4. Layout wrap
+### 4. Search index
 
-`wrapInLayout` runs the page body through the bundled `Layout` JSX component, injecting the page title (frontmatter `title` → first H1 → filename), description, stylesheet href placeholder, web bundle href, and the gated mermaid/openapi bundle hrefs. Each HTML doc holds a `__AID_STYLESHEET_HREF__` placeholder that gets substituted after the CSS is hashed.
+`buildSearchIndex` builds a MiniSearch index over the rendered pages and serializes it into `search-index.<hash>.js`. It returns `null` when `search.enabled` is false, and the Layout then omits the search box.
 
-### 5. llms.txt
+### 5. Layout wrap
 
-`buildLlmsTxt` resolves the template (`<templatesDir>/llms.txt` if it exists, else bundled default), groups the rendered pages by their top-level directory, filters frontmatter-`llms: optional` pages into a separate section, and substitutes placeholders. See `LLMS_TXT.md` for details.
+`wrapInLayout` renders the page body inside the bundled `Layout` JSX component. It passes in the page title, the description, the stylesheet href placeholder, the web bundle href, the hrefs of the gated mermaid, OpenAPI, and proto bundles and stylesheets, and the search index settings. The title comes from frontmatter `title`, then the first H1, then the filename. Each HTML document holds a `__AID_STYLESHEET_HREF__` placeholder, which step 9 replaces with the hashed CSS href.
 
-### 6. Tailwind compile
+### 6. llms.txt
 
-`compileTailwind` runs the embedded Tailwind 4 oxide compiler against `stylesheet` (the user's `main.css` entrypoint), with the rendered HTML strings handed in as `htmlContents`. This means Tailwind scans the **actual output** for utility classes — not source files — so any utility that survives JSX → HTML rendering is picked up, and unused ones are dropped.
+`buildLlmsTxt` uses `<templatesDir>/llms.txt` when it exists, else the bundled default. It groups the rendered pages by top-level directory and moves pages with frontmatter `llms: optional` into a separate section. Then it substitutes the placeholders. See `LLMS_TXT.md` for details.
 
-The bundled aid theme (dark-mode token auto-derivation, default component styles) is exposed via `@import "aid/theme"` so user stylesheets opt in by importing it.
+### 7. Tailwind compile
 
-### 7. CSS write
+`compileTailwind` runs the embedded Tailwind 4 oxide compiler against `stylesheet` (the user's `main.css` entrypoint) and passes the rendered HTML strings in as `htmlContents`. Tailwind scans the rendered output for utility classes, not the source files. It keeps every utility class that appears in the rendered HTML and drops the rest.
 
-`writeCss` hashes the compiled CSS (xxh64), writes `main.<hash>.css` to `<outputDir>`, and returns the public `href`. The hash means cache-busting is automatic.
+A user stylesheet opts into the bundled aid theme (dark-mode token auto-derivation, default component styles) with `@import "aid/theme"`.
 
-### 8. Parallel writes
+### 8. CSS write
 
-Every HTML page, every sidechain export, and `llms.txt` write in parallel. HTML writes substitute `__AID_STYLESHEET_HREF__` with the hashed CSS href at write time, so the file only hits disk once.
+`writeCss` hashes the compiled CSS (xxh64), writes `main.<hash>.css` to `<outputDir>`, and returns the public `href`. The filename changes whenever the CSS changes, so browsers never serve a stale cached stylesheet.
+
+### 9. Parallel writes
+
+aid writes every HTML page, every sidechain export, `llms.txt`, and the search index in parallel. Each HTML write replaces `__AID_STYLESHEET_HREF__` with the hashed CSS href, so aid writes each page to disk once.
 
 ## Asset registry
 
-Every write to `<outputDir>` is registered (by destination path) with an `AssetRegistry`. Two writers targeting the same path with different sources (e.g. a `static/logo.svg` and a colocated `docs/logo.svg`) throw with both source labels. Same source registering twice is a no-op (idempotent).
+The pipeline registers every write to `<outputDir>` with an `AssetRegistry`, keyed by destination path. If two writers target the same path with different sources (for example a `static/logo.svg` and a colocated `docs/logo.svg`), the registry throws and names both sources. Registering the same source twice is a no-op.
 
 This catches:
 
-- Static asset clashing with a route (`static/api.json` vs an OpenAPI route at `/api`)
+- A static asset colliding with a route (`static/api.json` vs an OpenAPI route at `/api`)
 - A `.md` sidechain colliding with a same-named asset
 - Two pages each copying a different `logo.svg` to the same output directory
 
 ## Deployment
 
-`<outputDir>` is a self-contained static bundle. Deploy to any HTTP host that serves files: S3, GitHub Pages, Cloudflare Pages, Netlify, nginx. aid has no deploy helper and no platform-specific output mode.
+`<outputDir>` is a self-contained static bundle. Deploy it to any HTTP host that serves files: S3, GitHub Pages, Cloudflare Pages, Netlify, nginx. aid has no deploy helper and no platform-specific output mode.
 
-If `base_path` is non-`/`, the host must serve the output under that prefix (e.g. `aid build` with `base_path: "/docs"` → put `<outputDir>` behind `example.com/docs/`).
+If `base_path` is not `/`, the host must serve the output under that prefix. For example, with `base_path: "/docs"`, serve `<outputDir>` at `example.com/docs/`.
 
 ## Failure modes
 
 | Trigger | Error |
-|---|---|
-| Two sources → same route | `aid: route collision — both "<a>" and "<b>" resolve to <path>` |
-| Two writes → same output path | `aid: asset collision — both "<a>" and "<b>" target <path>` |
+| --- | --- |
+| Two sources resolve to the same route | `aid: route collision — both "<a>" and "<b>" resolve to <path>` |
+| Two writes target the same output path | `aid: asset collision — both "<a>" and "<b>" target <path>` |
 | Colocated image escapes `<contentDir>` | `aid: colocated asset "<x>" referenced from <page> escapes contentDir` |
 | Invalid frontmatter | Zod-formatted error with the offending key |
 | Unknown placeholder in `llms.txt` template | `aid: unknown llms.txt placeholder "{{<x>}}"` |
 
-All failures surface as thrown errors with non-zero exit on the CLI.
+Every failure throws, and the CLI exits non-zero.
