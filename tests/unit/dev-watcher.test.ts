@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import type { BuildContext } from "../../src/core/types"
 import { watchContent } from "../../src/dev/watcher"
+import { makeCtx } from "../helpers"
 
 let dir: string
 
@@ -15,24 +15,11 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true })
 })
 
-const makeCtx = (overrides: Partial<BuildContext> = {}): BuildContext =>
-  ({
-    cwd: dir,
-    contentDir: join(dir, "docs"),
-    staticDir: join(dir, "static"),
-    templatesDir: join(dir, "templates"),
-    outputDir: join(dir, "dist"),
-    ...overrides,
-  }) as BuildContext
+const ctx = () => makeCtx(dir, { dir: { templates: "templates" } })
 
 describe("watchContent", () => {
   test("skips inputs that do not exist", () => {
-    const handle = watchContent(
-      makeCtx(),
-      join(dir, "aid.yaml"),
-      [join(dir, "missing.css")],
-      () => {},
-    )
+    const handle = watchContent(ctx(), join(dir, "aid.yaml"), [join(dir, "missing.css")], () => {})
     handle.close()
   })
 
@@ -40,7 +27,7 @@ describe("watchContent", () => {
     await Bun.write(join(dir, "file"), "")
     expect(() =>
       watchContent(
-        makeCtx({ contentDir: join(dir, "file", "docs") }),
+        makeCtx(dir, { dir: { content: "file/docs" } }),
         join(dir, "aid.yaml"),
         [],
         () => {},
@@ -53,7 +40,7 @@ describe("watchContent", () => {
     const configPath = join(dir, "custom.yml")
     await Bun.write(configPath, "title: a\n")
     const changed = Promise.withResolvers<boolean>()
-    const handle = watchContent(makeCtx(), configPath, [], changed.resolve)
+    const handle = watchContent(ctx(), configPath, [], changed.resolve)
     try {
       await Bun.sleep(50)
       await Bun.write(configPath, "title: b\n")

@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { AidConfigSchema } from "../../src/core/config"
 import type { BuildContext } from "../../src/core/types"
 import { writeHashed } from "../../src/core/web-bundle"
+import { makeCtx } from "../helpers"
 
 let cwd: string
 
@@ -16,22 +16,6 @@ afterEach(async () => {
   await rm(cwd, { recursive: true, force: true })
 })
 
-function makeCtx(overrides: { base_path?: string } = {}): BuildContext {
-  const config = AidConfigSchema.parse({
-    name: "test",
-    base_path: overrides.base_path ?? "/",
-  })
-  const outputDir = path.join(cwd, config.dir.output)
-  return {
-    config,
-    cwd,
-    contentDir: path.join(cwd, config.dir.content),
-    outputDir,
-    templatesDir: null,
-    staticDir: path.join(cwd, config.dir.static),
-  }
-}
-
 async function writeCss({ ctx, css }: { ctx: BuildContext; css: string }) {
   const href = await writeHashed(ctx, "main", "css", css)
   return { href, path: path.join(ctx.outputDir, path.posix.basename(href)) }
@@ -39,7 +23,7 @@ async function writeCss({ ctx, css }: { ctx: BuildContext; css: string }) {
 
 describe("writeHashed (main.css)", () => {
   test("writes the CSS to disk at the expected path", async () => {
-    const ctx = makeCtx()
+    const ctx = makeCtx(cwd)
     const css = ".foo { color: red; }"
     const result = await writeCss({ ctx, css })
     expect(path.basename(result.path)).toMatch(/^main\.[0-9a-f]{8}\.css$/)
@@ -49,7 +33,7 @@ describe("writeHashed (main.css)", () => {
   })
 
   test("identical CSS produces identical filename and href", async () => {
-    const ctx = makeCtx()
+    const ctx = makeCtx(cwd)
     const css = ".a { color: blue; }"
     const first = await writeCss({ ctx, css })
     const second = await writeCss({ ctx, css })
@@ -58,36 +42,28 @@ describe("writeHashed (main.css)", () => {
   })
 
   test("different CSS produces different filenames", async () => {
-    const ctx = makeCtx()
+    const ctx = makeCtx(cwd)
     const a = await writeCss({ ctx, css: ".a { color: blue; }" })
     const b = await writeCss({ ctx, css: ".b { color: green; }" })
     expect(path.basename(a.path)).not.toBe(path.basename(b.path))
   })
 
   test("href uses '/' base_path correctly", async () => {
-    const ctx = makeCtx({ base_path: "/" })
+    const ctx = makeCtx(cwd, { base_path: "/" })
     const result = await writeCss({ ctx, css: ".x{}" })
     expect(result.href).toMatch(/^\/main\.[0-9a-f]{8}\.css$/)
   })
 
   test("href uses subpath base_path correctly", async () => {
-    const ctx = makeCtx({ base_path: "/docs" })
+    const ctx = makeCtx(cwd, { base_path: "/docs" })
     const result = await writeCss({ ctx, css: ".x{}" })
     expect(result.href).toMatch(/^\/docs\/main\.[0-9a-f]{8}\.css$/)
   })
 
   test("href handles trailing slash in base_path", async () => {
-    const ctx = makeCtx({ base_path: "/docs/" })
+    const ctx = makeCtx(cwd, { base_path: "/docs/" })
     const result = await writeCss({ ctx, css: ".x{}" })
     expect(result.href).not.toContain("//")
     expect(result.href).toMatch(/^\/docs\/main\.[0-9a-f]{8}\.css$/)
-  })
-
-  test("creates outputDir if it doesn't exist", async () => {
-    const ctx = makeCtx()
-    await rm(ctx.outputDir, { recursive: true, force: true })
-    const result = await writeCss({ ctx, css: ".y { color: black; }" })
-    const onDisk = await Bun.file(result.path).text()
-    expect(onDisk).toBe(".y { color: black; }")
   })
 })

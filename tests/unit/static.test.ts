@@ -3,9 +3,8 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { AssetRegistry } from "../../src/core/assets"
-import { AidConfigSchema } from "../../src/core/config"
 import { copyStaticAssets } from "../../src/core/static"
-import type { BuildContext } from "../../src/core/types"
+import { makeCtx } from "../helpers"
 
 let cwd: string
 
@@ -17,26 +16,14 @@ afterEach(async () => {
   await rm(cwd, { recursive: true, force: true })
 })
 
-function makeCtx(): BuildContext {
-  const config = AidConfigSchema.parse({ name: "test" })
-  return {
-    config,
-    cwd,
-    contentDir: path.join(cwd, config.dir.content),
-    outputDir: path.join(cwd, config.dir.output),
-    templatesDir: null,
-    staticDir: path.join(cwd, config.dir.static),
-  }
-}
-
 describe("copyStaticAssets", () => {
   test("no-ops when the static directory doesn't exist", async () => {
-    const ctx = makeCtx()
+    const ctx = makeCtx(cwd)
     await expect(copyStaticAssets(ctx, new AssetRegistry())).resolves.toBeUndefined()
   })
 
   test("copies a single top-level file verbatim", async () => {
-    const ctx = makeCtx()
+    const ctx = makeCtx(cwd)
     await Bun.write(path.join(ctx.staticDir, "logo.svg"), "<svg/>")
 
     await copyStaticAssets(ctx, new AssetRegistry())
@@ -45,7 +32,7 @@ describe("copyStaticAssets", () => {
   })
 
   test("preserves nested directory structure", async () => {
-    const ctx = makeCtx()
+    const ctx = makeCtx(cwd)
     await Bun.write(path.join(ctx.staticDir, "img", "icons", "star.svg"), "<svg>star</svg>")
     await Bun.write(path.join(ctx.staticDir, "robots.txt"), "User-agent: *")
 
@@ -57,7 +44,7 @@ describe("copyStaticAssets", () => {
   })
 
   test("overwrites existing destination files", async () => {
-    const ctx = makeCtx()
+    const ctx = makeCtx(cwd)
     await Bun.write(path.join(ctx.outputDir, "logo.svg"), "<old/>")
     await Bun.write(path.join(ctx.staticDir, "logo.svg"), "<new/>")
 

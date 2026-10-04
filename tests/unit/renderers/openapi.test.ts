@@ -23,6 +23,12 @@ async function write(name: string, body: string): Promise<string> {
   return p
 }
 
+async function renderFixture(name: string, body: string) {
+  const sourcePath = await write(name, body)
+  const route: Route = { source: sourcePath, path: "/api", kind: "openapi" }
+  return renderOpenApi({ route, sourcePath })
+}
+
 describe("parseOpenApi", () => {
   test("upgrades Swagger 2.0 to OpenAPI 3.1", async () => {
     const swagger = `swagger: "2.0"\ninfo:\n  title: Old\n  version: "1"\npaths:\n  /x:\n    get:\n      responses:\n        "200":\n          description: ok\n`
@@ -77,12 +83,6 @@ describe("sniffOpenApi", () => {
 })
 
 describe("renderOpenApi", () => {
-  async function renderFixture(name: string, body: string) {
-    const sourcePath = await write(name, body)
-    const route: Route = { source: sourcePath, path: "/api", kind: "openapi" }
-    return renderOpenApi({ route, sourcePath })
-  }
-
   test("info.title becomes the page title and is in the rendered <h1>", async () => {
     const page = await renderFixture(
       "api.yaml",
@@ -111,7 +111,7 @@ describe("renderOpenApi", () => {
     expect(page.html).toMatch(/<script type="application\/json" id="aid-openapi-spec">/)
   })
 
-  test("emits a .json side-channel export with the normalized 3.1 doc", async () => {
+  test("embeds and exports a Swagger 2.0 source as the normalized 3.1 doc", async () => {
     const page = await renderFixture(
       "api.yaml",
       `swagger: "2.0"\ninfo:\n  title: Old\n  version: "1"\npaths:\n  /x:\n    get:\n      responses:\n        "200":\n          description: ok\n`,
@@ -125,6 +125,10 @@ describe("renderOpenApi", () => {
     const parsed = JSON.parse(exp.body) as { openapi?: string; swagger?: string }
     expect(parsed.openapi).toMatch(/^3\.1/)
     expect(parsed.swagger).toBeUndefined()
+    const embedded = page.html.match(
+      /<script type="application\/json" id="aid-openapi-spec">([\s\S]*?)<\/script>/,
+    )
+    expect(JSON.parse(embedded?.[1] ?? "{}")).toEqual(parsed)
   })
 
   test("hasMermaid: false, hasOpenApi: true", async () => {
@@ -138,12 +142,6 @@ describe("renderOpenApi", () => {
 })
 
 describe("renderOpenApi — search tokens", () => {
-  async function renderFixture(name: string, body: string) {
-    const sourcePath = await write(name, body)
-    const route: Route = { source: sourcePath, path: "/api", kind: "openapi" }
-    return renderOpenApi({ route, sourcePath })
-  }
-
   test("extras: empty spec produces an empty extras dict (title-only index entry)", async () => {
     const page = await renderFixture(
       "api.yaml",

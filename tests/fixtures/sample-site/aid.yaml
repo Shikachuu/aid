@@ -4,29 +4,5 @@ name: "Sample Site"
 description: "Fixture used by aid's integration tests."
 version: "0.0.1"
 
-base_path: "/"
-
-dir:
-  content: "docs"
-  output: "dist"
-  templates: ""
-
-theme:
-  dark_mode: "auto"
-
-ai_targets:
-  - chatgpt
-  - claude
-
-search:
-  enabled: true
-  typo_tolerance: 0.2
-  weights:
-    markdown: 1.0
-    html: 1.0
-    openapi: 2.0
-    proto: 1.5
-
 dev:
   port: 3001
-  host: "localhost"

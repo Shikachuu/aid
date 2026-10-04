@@ -2,9 +2,8 @@ import { afterEach, beforeEach, expect, test } from "bun:test"
 import { mkdtemp, rm, symlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { AidConfigSchema } from "../../src/core/config"
 import { build } from "../../src/core/pipeline"
-import type { BuildContext } from "../../src/core/types"
+import { makeSite } from "../helpers"
 
 let cwd: string
 
@@ -16,22 +15,8 @@ afterEach(async () => {
   await rm(cwd, { recursive: true, force: true })
 })
 
-async function makeCtx(): Promise<BuildContext> {
-  const config = AidConfigSchema.parse({ name: "test" })
-  const ctx: BuildContext = {
-    config,
-    cwd,
-    contentDir: path.join(cwd, config.dir.content),
-    outputDir: path.join(cwd, config.dir.output),
-    templatesDir: null,
-    staticDir: path.join(cwd, config.dir.static),
-  }
-  await Bun.write(path.join(cwd, "main.css"), `@import "tailwindcss";\n@import "aid/theme";\n`)
-  return ctx
-}
-
 test("blocks colocated <img src> that escapes contentDir", async () => {
-  const ctx = await makeCtx()
+  const ctx = await makeSite(cwd)
   // A 'secret' sibling outside contentDir.
   await Bun.write(path.join(cwd, "secret.txt"), "TOP SECRET")
   await Bun.write(path.join(ctx.contentDir, "index.md"), "# Attack\n\n![](../secret.txt)\n")
@@ -41,7 +26,7 @@ test("blocks colocated <img src> that escapes contentDir", async () => {
 })
 
 test("blocks a colocated symlink that resolves outside contentDir", async () => {
-  const ctx = await makeCtx()
+  const ctx = await makeSite(cwd)
   await Bun.write(path.join(cwd, "secret.txt"), "TOP SECRET")
   await Bun.write(path.join(ctx.contentDir, "index.md"), "# Attack\n\n![](./link.txt)\n")
   await symlink(path.join(cwd, "secret.txt"), path.join(ctx.contentDir, "link.txt"))
@@ -50,7 +35,7 @@ test("blocks a colocated symlink that resolves outside contentDir", async () => 
 })
 
 test("copies a colocated asset whose name starts with ..", async () => {
-  const ctx = await makeCtx()
+  const ctx = await makeSite(cwd)
   await Bun.write(path.join(ctx.contentDir, "..hero.svg"), "<svg>dots</svg>")
   await Bun.write(path.join(ctx.contentDir, "index.md"), "# Dots\n\n![](./..hero.svg)\n")
   await build(ctx)
@@ -58,7 +43,7 @@ test("copies a colocated asset whose name starts with ..", async () => {
 })
 
 test("hard-errors when static/ and a colocated asset target the same path", async () => {
-  const ctx = await makeCtx()
+  const ctx = await makeSite(cwd)
   await Bun.write(path.join(ctx.staticDir, "hero.svg"), "<svg>static</svg>")
   await Bun.write(path.join(ctx.contentDir, "hero.svg"), "<svg>colocated</svg>")
   await Bun.write(path.join(ctx.contentDir, "index.md"), "# Collide\n\n![](./hero.svg)\n")
@@ -66,7 +51,7 @@ test("hard-errors when static/ and a colocated asset target the same path", asyn
 })
 
 test("hard-errors when two routes collide", async () => {
-  const ctx = await makeCtx()
+  const ctx = await makeSite(cwd)
   await Bun.write(path.join(ctx.contentDir, "products.md"), "# A\n")
   await Bun.write(path.join(ctx.contentDir, "products", "index.md"), "# B\n")
   await expect(build(ctx)).rejects.toThrow(/route collision/)

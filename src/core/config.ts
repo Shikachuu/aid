@@ -140,15 +140,10 @@ export async function loadConfig(file: string): Promise<AidConfig> {
 }
 
 /**
- * Load the config at `file` (relative to `dir`) and resolve every configured
- * directory against `dir`. Both default to the current working directory.
+ * Resolve every configured directory in `config` against `cwd`. An empty
+ * `dir.templates` means no override templates.
  */
-export async function loadBuildContext(
-  dir: string | undefined,
-  file: string,
-): Promise<BuildContext> {
-  const cwd = path.resolve(dir ?? ".")
-  const config = await loadConfig(path.resolve(cwd, file))
+export function buildContext(config: AidConfig, cwd: string): BuildContext {
   return {
     config,
     cwd,
@@ -157,4 +152,16 @@ export async function loadBuildContext(
     templatesDir: config.dir.templates === "" ? null : path.join(cwd, config.dir.templates),
     staticDir: path.join(cwd, config.dir.static),
   }
+}
+
+/**
+ * Load the config at `file` (relative to `dir`) and build its context with
+ * {@link buildContext}. `dir` defaults to the current working directory.
+ */
+export async function loadBuildContext(
+  dir: string | undefined,
+  file: string,
+): Promise<BuildContext> {
+  const cwd = path.resolve(dir ?? ".")
+  return buildContext(await loadConfig(path.resolve(cwd, file)), cwd)
 }

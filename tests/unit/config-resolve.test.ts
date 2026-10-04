@@ -1,91 +1,63 @@
-import { describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { findUserConfig, parseConfigFile } from "../../src/lint/config-resolve"
 
-const tmp = (): string => mkdtempSync(join(tmpdir(), "aid-cfg-"))
+let dir: string
+
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), "aid-cfg-"))
+})
+
+afterEach(() => {
+  rmSync(dir, { recursive: true, force: true })
+})
 
 describe("findUserConfig", () => {
   test("returns null when no candidates exist", async () => {
-    const dir = tmp()
-    try {
-      expect(await findUserConfig(dir, [".markdownlint.json"])).toBeNull()
-    } finally {
-      rmSync(dir, { recursive: true, force: true })
-    }
+    expect(await findUserConfig(dir, [".markdownlint.json"])).toBeNull()
   })
 
   test("walks up to parent directories", async () => {
-    const root = tmp()
-    const sub = join(root, "a", "b")
+    const sub = join(dir, "a", "b")
     mkdirSync(sub, { recursive: true })
-    await Bun.write(join(root, ".markdownlint.json"), "{}")
-    try {
-      const found = await findUserConfig(sub, [".markdownlint.json"])
-      expect(found).toBe(join(root, ".markdownlint.json"))
-    } finally {
-      rmSync(root, { recursive: true, force: true })
-    }
+    await Bun.write(join(dir, ".markdownlint.json"), "{}")
+    expect(await findUserConfig(sub, [".markdownlint.json"])).toBe(join(dir, ".markdownlint.json"))
   })
 
   test("stops at .git boundary", async () => {
-    const root = tmp()
-    const sub = join(root, "repo", "src")
+    const sub = join(dir, "repo", "src")
     mkdirSync(sub, { recursive: true })
-    mkdirSync(join(root, "repo", ".git"), { recursive: true })
-    await Bun.write(join(root, ".markdownlint.json"), "{}")
-    try {
-      const found = await findUserConfig(sub, [".markdownlint.json"])
-      expect(found).toBeNull()
-    } finally {
-      rmSync(root, { recursive: true, force: true })
-    }
+    mkdirSync(join(dir, "repo", ".git"), { recursive: true })
+    await Bun.write(join(dir, ".markdownlint.json"), "{}")
+    expect(await findUserConfig(sub, [".markdownlint.json"])).toBeNull()
   })
 })
 
 describe("parseConfigFile", () => {
+  const parse = async (name: string, body: string) => {
+    const path = join(dir, name)
+    await Bun.write(path, body)
+    return parseConfigFile(path)
+  }
+
   test("parses JSON", async () => {
-    const dir = tmp()
-    const path = join(dir, "c.json")
-    await Bun.write(path, '{"a":1}')
-    try {
-      expect(await parseConfigFile(path)).toEqual({ a: 1 })
-    } finally {
-      rmSync(dir, { recursive: true, force: true })
-    }
+    expect(await parse("c.json", '{"a":1}')).toEqual({ a: 1 })
   })
 
   test("parses JSON with comments", async () => {
-    const dir = tmp()
-    const path = join(dir, "c.jsonc")
-    await Bun.write(path, '// comment\n{"a":1 /* inline */}')
-    try {
-      expect(await parseConfigFile(path)).toEqual({ a: 1 })
-    } finally {
-      rmSync(dir, { recursive: true, force: true })
-    }
+    expect(await parse("c.jsonc", '// comment\n{"a":1 /* inline */}')).toEqual({ a: 1 })
   })
 
   test("parses JSONC with trailing commas", async () => {
-    const dir = tmp()
-    const path = join(dir, "c.jsonc")
-    await Bun.write(path, '{"a": [1, 2,], "b": "// not a comment",}')
-    try {
-      expect(await parseConfigFile(path)).toEqual({ a: [1, 2], b: "// not a comment" })
-    } finally {
-      rmSync(dir, { recursive: true, force: true })
-    }
+    expect(await parse("c.jsonc", '{"a": [1, 2,], "b": "// not a comment",}')).toEqual({
+      a: [1, 2],
+      b: "// not a comment",
+    })
   })
 
   test("parses YAML", async () => {
-    const dir = tmp()
-    const path = join(dir, "c.yaml")
-    await Bun.write(path, "a: 1\nb: hello\n")
-    try {
-      expect(await parseConfigFile(path)).toEqual({ a: 1, b: "hello" })
-    } finally {
-      rmSync(dir, { recursive: true, force: true })
-    }
+    expect(await parse("c.yaml", "a: 1\nb: hello\n")).toEqual({ a: 1, b: "hello" })
   })
 })

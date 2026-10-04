@@ -165,7 +165,7 @@ describe("renderMarkdown", () => {
     expect(page.html).toContain("language-ts")
   })
 
-  test("relative <img src> is rewritten via copyAsset and the callback is invoked", async () => {
+  test("relative <img src> is rewritten via copyAsset in both html and .md outputs", async () => {
     const sourcePath = path.join(dir, "page.md")
     await Bun.write(sourcePath, "# T\n\n![alt](./hero.png)\n")
     await Bun.write(path.join(dir, "hero.png"), "binary")
@@ -179,6 +179,9 @@ describe("renderMarkdown", () => {
     expect(calls).toEqual([path.join(dir, "hero.png")])
     expect(page.html).toContain('src="/page/hero.png"')
     expect(page.html).not.toContain("./hero.png")
+    const [md] = page.exports
+    expect(md?.body).toContain("/page/hero.png")
+    expect(md?.body).not.toContain("./hero.png")
   })
 
   test("missing relative <img src> leaves src untouched and surfaces a warning", async () => {
@@ -232,20 +235,6 @@ describe("renderMarkdown", () => {
     expect(md?.body).not.toContain("title: Hidden")
     expect(md?.body).toMatch(/^# Body Heading/)
     expect(md?.body).toContain("Prose.")
-  })
-
-  test(".md export rewrites relative image URLs through copyAsset", async () => {
-    const sourcePath = path.join(dir, "page.md")
-    await Bun.write(sourcePath, "# T\n\n![alt](./hero.png)\n")
-    await Bun.write(path.join(dir, "hero.png"), "binary")
-    const route: Route = { source: sourcePath, path: "/page", kind: "markdown" }
-    const copyAsset = async () => "/page/hero.png"
-    const page = await renderMarkdown({ route, sourcePath, copyAsset })
-    const [md] = page.exports
-    expect(md?.body).toContain("/page/hero.png")
-    expect(md?.body).not.toContain("./hero.png")
-    // HTML branch sees the same rewritten URL — single source of truth.
-    expect(page.html).toContain('src="/page/hero.png"')
   })
 
   test(".md export preserves relative URLs when copyAsset is absent", async () => {

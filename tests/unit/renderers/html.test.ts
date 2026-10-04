@@ -99,8 +99,9 @@ describe("renderHtml", () => {
     const sourcePath = path.join(dir, "fragment.html")
     await Bun.write(sourcePath, `<p>Just a fragment.</p>`)
     const route: Route = { source: sourcePath, path: "/fragment", kind: "html" }
-    await expect(renderHtml({ route, sourcePath })).rejects.toThrow(/fragment\.html/)
-    await expect(renderHtml({ route, sourcePath })).rejects.toThrow(/must be a full HTML document/)
+    await expect(renderHtml({ route, sourcePath })).rejects.toThrow(
+      /fragment\.html must be a full HTML document/,
+    )
   })
 
   test(".md sidechain is emitted with text/markdown content type", async () => {
@@ -156,7 +157,7 @@ describe("renderHtml", () => {
     expect(page.html).toContain("/already-absolute.png")
   })
 
-  test("invalid <title> (long content is still a string) is fine; non-string description from a malformed meta is dropped", async () => {
+  test("<meta name=description> without content leaves description undefined", async () => {
     // <meta name="description"> without content shouldn't crash; description stays undefined.
     const page = await renderFixture(
       "page.html",

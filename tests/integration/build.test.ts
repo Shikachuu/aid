@@ -2,9 +2,10 @@ import { afterEach, beforeEach, expect, test } from "bun:test"
 import { cp, mkdtemp, readdir, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { loadConfig } from "../../src/core/config"
+import MiniSearch from "minisearch"
+import { loadBuildContext } from "../../src/core/config"
 import { build } from "../../src/core/pipeline"
-import type { BuildContext } from "../../src/core/types"
+import { SEARCH_OPTIONS } from "../../src/core/search-options"
 
 let cwd: string
 
@@ -26,15 +27,7 @@ afterEach(async () => {
 })
 
 test("produces dist/index.html linking a hashed main CSS for the sample fixture", async () => {
-  const config = await loadConfig(path.join(cwd, "aid.yaml"))
-  const ctx: BuildContext = {
-    config,
-    cwd,
-    contentDir: path.join(cwd, config.dir.content),
-    outputDir: path.join(cwd, config.dir.output),
-    templatesDir: config.dir.templates === "" ? null : path.join(cwd, config.dir.templates),
-    staticDir: path.join(cwd, config.dir.static),
-  }
+  const ctx = await loadBuildContext(cwd, "aid.yaml")
 
   await build(ctx)
 
@@ -190,29 +183,19 @@ test("produces dist/index.html linking a hashed main CSS for the sample fixture"
   const searchIndexSrc = await Bun.file(path.join(ctx.outputDir, searchIndexFilename)).text()
   expect(searchIndexSrc.startsWith("window.__AID_SEARCH__=")).toBe(true)
   expect(searchIndexSrc.endsWith(";")).toBe(true)
-  const payload = JSON.parse(searchIndexSrc.slice("window.__AID_SEARCH__=".length, -1)) as {
+  const indexJson = searchIndexSrc.slice("window.__AID_SEARCH__=".length, -1)
+  const payload = JSON.parse(indexJson) as {
     storedFields: Record<string, { type: string; title: string; url: string }>
   }
   const stored = Object.values(payload.storedFields)
   // Every routed markdown/html/openapi page is in the index.
-  const titles = stored.map((d) => d.title).sort()
+  const titles = stored.map((d) => d.title)
   expect(titles).toContain("Sample Site")
   expect(titles).toContain("About the Fixture")
   expect(titles).toContain("Sample API")
   // OpenAPI extras enrichment reaches the index: a query for `listPets` should
   // hit the API page.
-  const { default: MiniSearch } = await import("minisearch")
-  const ms = (
-    MiniSearch as unknown as {
-      loadJSON: (
-        json: string,
-        options: { fields: string[]; storeFields: string[] },
-      ) => { search: (q: string) => Array<{ title: unknown }> }
-    }
-  ).loadJSON(searchIndexSrc.slice("window.__AID_SEARCH__=".length, -1), {
-    fields: ["title", "headings", "body", "extras"],
-    storeFields: ["type", "title", "url"],
-  })
+  const ms = MiniSearch.loadJSON(indexJson, SEARCH_OPTIONS)
   const hits = ms.search("listPets")
   expect(hits.length).toBeGreaterThan(0)
   expect(hits[0]?.title).toBe("Sample API")
