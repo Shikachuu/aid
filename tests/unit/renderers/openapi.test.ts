@@ -122,7 +122,6 @@ describe("renderOpenApi", () => {
       throw new Error("missing export")
     }
     expect(exp.suffix).toBe(".json")
-    expect(exp.contentType).toBe("application/json")
     const parsed = JSON.parse(exp.body) as { openapi?: string; swagger?: string }
     expect(parsed.openapi).toMatch(/^3\.1/)
     expect(parsed.swagger).toBeUndefined()

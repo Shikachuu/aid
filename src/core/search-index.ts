@@ -1,5 +1,6 @@
 import path from "node:path"
 import MiniSearch from "minisearch"
+import { SEARCH_OPTIONS } from "./search-options"
 import type { BuildContext, RenderedPage } from "./types"
 
 /** Result of {@link buildSearchIndex}. */
@@ -11,15 +12,6 @@ export type SearchIndexResult = {
   /** JS source bytes. Assigns `window.__AID_SEARCH__` to the serialized MiniSearch index. */
   source: string
 }
-
-/** Indexed text fields. Stored on each document and tokenized by MiniSearch. */
-export const SEARCH_FIELDS = ["title", "headings", "body", "extras"]
-
-/** Fields retained on each search hit. Drives result rendering and per-format weighting. */
-export const SEARCH_STORE_FIELDS = ["type", "title", "url"]
-
-/** Title/heading boosts applied at index build time. Per-format weights are applied at query time. */
-export const SEARCH_FIELD_BOOST = { title: 3, headings: 2 }
 
 /**
  * Build the cross-format MiniSearch index from rendered pages. Returns `null`
@@ -33,11 +25,7 @@ export function buildSearchIndex(
   if (!ctx.config.search.enabled) {
     return null
   }
-  const ms = new MiniSearch({
-    fields: SEARCH_FIELDS,
-    storeFields: SEARCH_STORE_FIELDS,
-    searchOptions: { boost: SEARCH_FIELD_BOOST },
-  })
+  const ms = new MiniSearch(SEARCH_OPTIONS)
   ms.addAll(
     pages.map((p) => ({
       id: p.route.path,

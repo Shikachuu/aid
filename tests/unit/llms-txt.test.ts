@@ -71,7 +71,6 @@ function makePage(args: {
     exports: [
       {
         suffix: kind === "openapi" ? ".json" : kind === "proto" ? ".proto" : ".md",
-        contentType: "",
         body: "",
       },
     ],

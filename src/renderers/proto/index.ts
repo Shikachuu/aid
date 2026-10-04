@@ -37,14 +37,14 @@ export const renderProto = async (args: RenderProtoArgs): Promise<RenderedPage> 
       title,
       protoSiblingHref,
       machineUrl: `${args.route.path}.proto`,
-    }) as never,
+    }),
   )
 
   return {
     route: args.route,
     html,
     searchTokens: extractSearchTokens(ast, title),
-    exports: [{ suffix: ".proto", contentType: "text/plain; charset=utf-8", body: source }],
+    exports: [{ suffix: ".proto", body: source }],
     hasMermaid: false,
     hasOpenApi: false,
     hasProto: true,

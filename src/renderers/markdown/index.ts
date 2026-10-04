@@ -114,7 +114,6 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
     exports: [
       {
         suffix: ".md",
-        contentType: "text/markdown; charset=utf-8",
         body: mdBody,
       },
     ],

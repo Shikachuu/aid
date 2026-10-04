@@ -8,15 +8,7 @@ import {
   aidWebJs,
 } from "../web/_bundled"
 import type { BuildContext } from "./types"
-
-/**
- * Subpath of Scalar's stylesheet inside `node_modules`. Resolved lazily —
- * inside a `bun build --compile` binary there is no node_modules to resolve
- * against, and we take the embedded-bytes path instead, so eager resolution
- * at module load would throw before we ever reach the branch decision.
- */
-const SCALAR_CSS_SPECIFIER = "@scalar/api-reference/style.css"
-const PROTO_UI_CSS_SPECIFIER = "@aid/proto-ui/styles.css"
+import { AID_ROOT, bundleWebEntry, WEB_CSS, WEB_JS, type WebJsEntry } from "./web-entries"
 
 /** Result of writing the compiled web bundle(s) to disk. */
 export type BuildWebBundleResult = {
@@ -38,12 +30,6 @@ export type BuildWebBundleResult = {
   /** Public href for the proto-ui stylesheet, or `null` when the site has no Proto pages. */
   protoCssHref: string | null
 }
-
-const aidProjectRoot = path.join(import.meta.dir, "../..")
-const baseEntry = path.join(aidProjectRoot, "src/web/index.ts")
-const mermaidEntry = path.join(aidProjectRoot, "src/web/mermaid-entry.ts")
-const openapiEntry = path.join(aidProjectRoot, "src/web/openapi-entry.ts")
-const protoEntry = path.join(aidProjectRoot, "src/web/proto-entry.ts")
 
 /**
  * Materialise the browser-side runtime into `outputDir`. There are two
@@ -73,33 +59,30 @@ export async function buildWebBundle(
 ): Promise<BuildWebBundleResult> {
   // Inside a `bun build --compile` binary the source tree is gone, so fall
   // back to the bytes embedded at compile time.
-  const useSource = await Bun.file(baseEntry).exists()
+  const useSource = await Bun.file(path.join(AID_ROOT, WEB_JS.base.source)).exists()
 
-  const js = (name: string, entry: string, embedded: string) =>
+  const js = (entry: WebJsEntry, embedded: string) =>
     useSource
-      ? buildAndWrite(ctx, name, entry)
-      : writeHashed(ctx, name, "js", requireEmbedded(name, embedded))
-  const css = async (name: string, specifier: string, embedded: string) =>
+      ? buildAndWrite(ctx, entry)
+      : writeHashed(ctx, entry.name, "js", requireEmbedded(entry.name, embedded))
+  // Resolve the specifier lazily: a compiled binary has no node_modules to resolve against.
+  const css = async (entry: (typeof WEB_CSS)[keyof typeof WEB_CSS], embedded: string) =>
     writeHashed(
       ctx,
-      name,
+      entry.name,
       "css",
       useSource
-        ? await Bun.file(Bun.resolveSync(specifier, import.meta.dir)).text()
-        : requireEmbedded(`${name}.css`, embedded),
+        ? await Bun.file(Bun.resolveSync(entry.specifier, AID_ROOT)).text()
+        : requireEmbedded(`${entry.name}.css`, embedded),
     )
 
   return {
-    baseHref: await js("aid-web", baseEntry, aidWebJs),
-    mermaidHref: include.mermaid ? await js("aid-mermaid", mermaidEntry, aidMermaidJs) : null,
-    openapiHref: include.openapi ? await js("aid-openapi", openapiEntry, aidOpenapiJs) : null,
-    openapiCssHref: include.openapi
-      ? await css("aid-openapi", SCALAR_CSS_SPECIFIER, aidOpenapiCss)
-      : null,
-    protoHref: include.proto ? await js("aid-proto", protoEntry, aidProtoJs) : null,
-    protoCssHref: include.proto
-      ? await css("aid-proto", PROTO_UI_CSS_SPECIFIER, aidProtoCss)
-      : null,
+    baseHref: await js(WEB_JS.base, aidWebJs),
+    mermaidHref: include.mermaid ? await js(WEB_JS.mermaid, aidMermaidJs) : null,
+    openapiHref: include.openapi ? await js(WEB_JS.openapi, aidOpenapiJs) : null,
+    openapiCssHref: include.openapi ? await css(WEB_CSS.openapi, aidOpenapiCss) : null,
+    protoHref: include.proto ? await js(WEB_JS.proto, aidProtoJs) : null,
+    protoCssHref: include.proto ? await css(WEB_CSS.proto, aidProtoCss) : null,
   }
 }
 
@@ -129,13 +112,10 @@ function requireEmbedded(name: string, bytes: string): string {
   return bytes
 }
 
-async function buildAndWrite(ctx: BuildContext, name: string, entry: string): Promise<string> {
-  const result = await Bun.build({
-    entrypoints: [entry],
+async function buildAndWrite(ctx: BuildContext, entry: WebJsEntry): Promise<string> {
+  const { name } = entry
+  const output = await bundleWebEntry(entry, {
     outdir: ctx.outputDir,
-    target: "browser",
-    format: "esm",
-    minify: true,
     splitting: true,
     naming: {
       entry: `${name}.[hash].js`,
@@ -143,16 +123,5 @@ async function buildAndWrite(ctx: BuildContext, name: string, entry: string): Pr
       asset: `${name}.[name].[hash][ext]`,
     },
   })
-  if (!result.success) {
-    for (const log of result.logs) {
-      console.error(log)
-    }
-    throw new Error(`buildWebBundle: ${name} bundle failed`)
-  }
-  const entryOutput = result.outputs.find((o) => o.kind === "entry-point")
-  if (!entryOutput) {
-    throw new Error(`buildWebBundle: no entry-point output for ${name}`)
-  }
-  const filename = path.basename(entryOutput.path)
-  return path.posix.join(ctx.config.base_path, filename)
+  return path.posix.join(ctx.config.base_path, path.basename(output.path))
 }

@@ -1,7 +1,4 @@
-import { mkdtemp } from "node:fs/promises"
 import { createRequire } from "node:module"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
 import lcssDarwinArm64 from "../../../vendor/natives/lightningcss-darwin-arm64.bin" with {
   type: "file",
 }
@@ -14,6 +11,7 @@ import lcssLinuxArm64 from "../../../vendor/natives/lightningcss-linux-arm64-gnu
 import lcssLinuxX64 from "../../../vendor/natives/lightningcss-linux-x64-gnu.bin" with {
   type: "file",
 }
+import { extractEmbedded } from "./extract-embedded"
 
 type Pick = { stagedPath: string; subpkg: string }
 
@@ -72,9 +70,7 @@ const doInstall = async (): Promise<void> => {
   // Copy the staged bytes out as a real `.node` file. `process.dlopen` (which
   // `require()` invokes for `.node` files) needs a real filesystem path; the
   // `.node` extension is what tells the Node-API loader to treat it as such.
-  const dir = await mkdtemp(join(tmpdir(), "aid-lcss-"))
-  const nodeFile = join(dir, `${picked.subpkg}.node`)
-  await Bun.write(nodeFile, Bun.file(picked.stagedPath))
+  const nodeFile = await extractEmbedded(picked.stagedPath, "lcss", `${picked.subpkg}.node`)
 
   // Load the native bindings once via a real CJS require so process.dlopen
   // fires and we capture the exports.

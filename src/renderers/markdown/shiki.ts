@@ -32,7 +32,7 @@ const DEFAULT_LANGS: BundledLanguage[] = [
   "http",
 ]
 
-/** Default dual-theme pair — emits `--shiki-light` / `--shiki-dark` CSS variables. */
+/** Default dual-theme pair, rendered as `color: light-dark(<light>, <dark>)`. */
 const DEFAULT_THEMES: { light: BundledTheme; dark: BundledTheme } = {
   light: "github-light",
   dark: "github-dark",
@@ -40,9 +40,9 @@ const DEFAULT_THEMES: { light: BundledTheme; dark: BundledTheme } = {
 
 /**
  * Options passed to `@shikijs/rehype` via `unified().use(rehypeShiki, SHIKI_OPTIONS)`.
- * Dual-theme mode emits inline `--shiki-light` / `--shiki-dark` variables on every
- * span; CSS under `prefers-color-scheme: dark` flips which variable wins, so dark
- * mode works without a re-highlight on the client.
+ * `defaultColor: "light-dark()"` inlines `light-dark(<light>, <dark>)` on every
+ * span, so the page's `color-scheme` picks the theme without extra CSS or a
+ * re-highlight on the client.
  *
  * Unknown languages fall back to plaintext rather than throwing — a typo in a
  * fence info string should not fail the build.
@@ -50,7 +50,7 @@ const DEFAULT_THEMES: { light: BundledTheme; dark: BundledTheme } = {
 export const SHIKI_OPTIONS: RehypeShikiOptions = {
   themes: DEFAULT_THEMES,
   langs: DEFAULT_LANGS,
-  defaultColor: false,
+  defaultColor: "light-dark()",
   fallbackLanguage: "text",
   addLanguageClass: true,
 }

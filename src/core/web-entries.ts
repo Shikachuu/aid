@@ -1,0 +1,52 @@
+import path from "node:path"
+
+/** aid's project root, used to resolve web entry sources and CSS specifiers. */
+export const AID_ROOT = path.join(import.meta.dir, "../..")
+
+/**
+ * Browser bundles. `exportName` is the matching export in `src/web/_bundled.ts`,
+ * which `scripts/bundle-web.ts` generates for the compiled binary.
+ */
+export const WEB_JS = {
+  base: { name: "aid-web", source: "src/web/index.ts", exportName: "aidWebJs" },
+  mermaid: { name: "aid-mermaid", source: "src/web/mermaid-entry.ts", exportName: "aidMermaidJs" },
+  openapi: { name: "aid-openapi", source: "src/web/openapi-entry.ts", exportName: "aidOpenapiJs" },
+  proto: { name: "aid-proto", source: "src/web/proto-entry.ts", exportName: "aidProtoJs" },
+} as const
+
+/** Prebuilt stylesheets copied verbatim from their packages. */
+export const WEB_CSS = {
+  openapi: {
+    name: "aid-openapi",
+    specifier: "@scalar/api-reference/style.css",
+    exportName: "aidOpenapiCss",
+  },
+  proto: { name: "aid-proto", specifier: "@aid/proto-ui/styles.css", exportName: "aidProtoCss" },
+} as const
+
+export type WebJsEntry = (typeof WEB_JS)[keyof typeof WEB_JS]
+
+/** Bundle one browser entry as minified ESM and return its entry-point output. */
+export async function bundleWebEntry(
+  entry: WebJsEntry,
+  options: Partial<Bun.BuildConfig> = {},
+): Promise<Bun.BuildArtifact> {
+  const result = await Bun.build({
+    entrypoints: [path.join(AID_ROOT, entry.source)],
+    target: "browser",
+    format: "esm",
+    minify: true,
+    ...options,
+  })
+  if (!result.success) {
+    for (const log of result.logs) {
+      console.error(log)
+    }
+    throw new Error(`failed to bundle ${entry.source}`)
+  }
+  const output = result.outputs.find((o) => o.kind === "entry-point")
+  if (!output) {
+    throw new Error(`no entry-point output for ${entry.source}`)
+  }
+  return output
+}

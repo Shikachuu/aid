@@ -121,6 +121,7 @@ describe("renderMarkdown", () => {
     const page = await renderFixture("page.md", "# T\n\n```ts\nconst answer: number = 42\n```\n")
     expect(page.html).toContain('class="shiki')
     expect(page.html).toContain("language-ts")
+    expect(page.html).toContain("color:light-dark(")
     expect(page.html).toContain("--shiki-light:")
     expect(page.html).toContain("--shiki-dark:")
   })
@@ -227,7 +228,6 @@ describe("renderMarkdown", () => {
     expect(page.exports).toHaveLength(1)
     const [md] = page.exports
     expect(md?.suffix).toBe(".md")
-    expect(md?.contentType).toMatch(/^text\/markdown/)
     expect(md?.body).not.toContain("---")
     expect(md?.body).not.toContain("title: Hidden")
     expect(md?.body).toMatch(/^# Body Heading/)

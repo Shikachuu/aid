@@ -6,7 +6,7 @@
 
 | Area | Choice |
 | --- | --- |
-| Runtime | Bun >= 1.2 (mise-pinned to 1.3.13) |
+| Runtime | Bun >= 1.3.6 (mise-pinned to 1.3.13) |
 | Language | TypeScript, strict mode, ESM only |
 | Lint and format | Biome 2.4.x |
 | Styling | Tailwind 4 |

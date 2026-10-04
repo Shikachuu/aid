@@ -101,27 +101,6 @@
   }
 
   /*
-   * Shiki dual-theme bridge. `@shikijs/rehype` with `themes: { light, dark }`
-   * emits inline `style="--shiki-light:#…;--shiki-dark:#…"` on every span. We
-   * pick the light variable by default and flip to `--shiki-dark` under
-   * `prefers-color-scheme: dark`, so dark mode works without a re-highlight.
-   */
-
-  .shiki,
-  .shiki span {
-    color: var(--shiki-light);
-    background-color: var(--shiki-light-bg);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .shiki,
-    .shiki span {
-      color: var(--shiki-dark);
-      background-color: var(--shiki-dark-bg);
-    }
-  }
-
-  /*
    * Prose. Tailwind utilities do the visual work; CSS-variable references
    * pick up the theme tokens so user overrides flow through.
    */

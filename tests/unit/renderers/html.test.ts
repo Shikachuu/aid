@@ -111,7 +111,6 @@ describe("renderHtml", () => {
     expect(page.exports).toHaveLength(1)
     const [md] = page.exports
     expect(md?.suffix).toBe(".md")
-    expect(md?.contentType).toMatch(/^text\/markdown/)
     // Recognisable markdown for a simple h1 + paragraph.
     expect(md?.body).toContain("# Heading")
     expect(md?.body).toContain("Body.")

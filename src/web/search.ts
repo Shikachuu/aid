@@ -1,4 +1,5 @@
 import type { AsPlainObject, default as MiniSearch } from "minisearch"
+import { SEARCH_OPTIONS } from "../core/search-options"
 
 type SearchHit = { type: string; title: string; url: string }
 
@@ -89,11 +90,7 @@ function wireInput(input: HTMLInputElement, results: HTMLElement, indexHref: str
     if (data === undefined) {
       return
     }
-    ms = MiniSearchCtor.loadJS(data, {
-      fields: ["title", "headings", "body", "extras"],
-      storeFields: ["type", "title", "url"],
-      searchOptions: { boost: { title: 3, headings: 2 } },
-    })
+    ms = MiniSearchCtor.loadJS(data, SEARCH_OPTIONS)
     runQuery(input.value)
   }
 

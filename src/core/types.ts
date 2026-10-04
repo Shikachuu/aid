@@ -43,8 +43,6 @@ export type SearchTokens = {
 export type SideChannelExport = {
   /** URL suffix appended to the route, e.g. ".md", ".json", ".proto". */
   suffix: ".md" | ".json" | ".proto"
-  /** Content type for the response. */
-  contentType: string
   /** Body bytes / string. */
   body: string
 }

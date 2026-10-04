@@ -106,7 +106,6 @@ export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
     exports: [
       {
         suffix: ".md",
-        contentType: "text/markdown; charset=utf-8",
         body: mdBody,
       },
     ],

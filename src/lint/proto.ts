@@ -1,10 +1,8 @@
-import { chmod, mkdtemp } from "node:fs/promises"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
 import bufDarwinArm64 from "@bufbuild/buf-darwin-arm64/bin/buf" with { type: "file" }
 import bufDarwinX64 from "@bufbuild/buf-darwin-x64/bin/buf" with { type: "file" }
 import bufLinuxArm64 from "@bufbuild/buf-linux-aarch64/bin/buf" with { type: "file" }
 import bufLinuxX64 from "@bufbuild/buf-linux-x64/bin/buf" with { type: "file" }
+import { extractEmbedded } from "../core/internal/extract-embedded"
 import { findUserConfig } from "./config-resolve"
 import { bufDefault } from "./configs/buf.default"
 import type { Diagnostic, ToolResult } from "./diagnostics"
@@ -23,15 +21,6 @@ const pickEmbeddedBuf = (): string | null => {
   return null
 }
 
-// bunfs paths can be read but not exec'd by posix_spawn; extract to real FS.
-const extractEmbeddedBuf = async (embedded: string): Promise<string> => {
-  const dir = await mkdtemp(join(tmpdir(), "aid-buf-"))
-  const dst = join(dir, "buf")
-  await Bun.write(dst, Bun.file(embedded))
-  await chmod(dst, 0o755)
-  return dst
-}
-
 /**
  * Locate the `buf` binary. In compiled binaries the per-platform buf is
  * embedded via `with { type: "file" }` and extracted to a temp path on first
@@ -45,7 +34,9 @@ export const resolveBufBinary = async (): Promise<string | null> => {
   }
   const embedded = pickEmbeddedBuf()
   if (embedded !== null && (await Bun.file(embedded).exists())) {
-    cachedBin = embedded.startsWith("/$bunfs/") ? await extractEmbeddedBuf(embedded) : embedded
+    cachedBin = embedded.startsWith("/$bunfs/")
+      ? await extractEmbedded(embedded, "buf", "buf", 0o755)
+      : embedded
     return cachedBin
   }
   cachedBin = Bun.which("buf")
