@@ -2,6 +2,7 @@ import { defineCommand } from "citty"
 import { formatAll } from "../../fmt/orchestrate"
 import { parseFilter, printReport } from "../../lint/diagnostics"
 
+/** `aid fmt`. Use `--check` in CI. It writes nothing and exits 1 when any tool fails. */
 export const command = defineCommand({
   meta: {
     name: "fmt",

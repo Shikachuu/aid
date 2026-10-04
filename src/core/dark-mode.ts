@@ -15,7 +15,7 @@ const OKLCH_RE = /^oklch\(\s*([\d.]+%?)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+%
 /**
  * Walk every `@theme { ... }` block in the input CSS and derive a dark
  * counterpart for every `--color-*` token whose value is `oklch(...)`.
- * Lightness is inverted (L → 100 − L); chroma, hue, and alpha pass through.
+ * Lightness is inverted (L becomes 100 - L); chroma, hue, and alpha pass through.
  * `--color-*` tokens whose value is not oklch are skipped with a warning.
  * Non-color tokens are silently ignored.
  *

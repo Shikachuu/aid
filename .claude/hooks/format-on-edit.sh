@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Runs after Claude Code Edit/Write/MultiEdit. Formats just the touched file.
 # Exits 0 unconditionally so transient formatter errors never block the assistant.
 set -eo pipefail
 

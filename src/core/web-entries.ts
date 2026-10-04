@@ -1,6 +1,6 @@
 import path from "node:path"
 
-/** aid's project root, used to resolve web entry sources and CSS specifiers. */
+/** Root of aid's own source tree. Bundled sources and packages resolve against it. */
 export const AID_ROOT = path.join(import.meta.dir, "../..")
 
 /**
@@ -24,6 +24,7 @@ export const WEB_CSS = {
   proto: { name: "aid-proto", specifier: "@aid/proto-ui/styles.css", exportName: "aidProtoCss" },
 } as const
 
+/** One entry of {@link WEB_JS}. */
 export type WebJsEntry = (typeof WEB_JS)[keyof typeof WEB_JS]
 
 /** Bundle one browser entry as minified ESM and return its entry-point output. */

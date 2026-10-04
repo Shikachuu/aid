@@ -1,6 +1,6 @@
 import { type CommandDef, defineCommand, showUsage } from "citty"
 
-/** Build a `help` subcommand that renders root or sub-command usage via citty. */
+/** Build `aid help [command]`. It takes `root` so it can load the named subcommand lazily. */
 export const createHelp = (root: CommandDef) =>
   defineCommand({
     meta: {

@@ -1,34 +1,46 @@
 const RAW = Symbol.for("aid.jsx.raw")
 
+/** Marker type for `<>...</>`. It renders only its children. */
 export const Fragment = Symbol.for("aid.jsx.fragment")
 
+/** Anything a component may return or take as children. `null`, `undefined` and booleans render as nothing. */
 export type Child = string | number | bigint | boolean | null | undefined | Element | Child[]
 
-// Components may declare any specific Props shape — at the dispatcher boundary
-// we type-erase to a permissive callable. Variance bites here: a stricter prop
-// type cannot be assigned to a function expecting `Props`. `(_: never) => Child`
-// is the canonical "accepts any function returning Child" type.
+/**
+ * Any function component. The parameter is `never` because function parameters
+ * are contravariant, so a component with a stricter props type still fits.
+ */
 export type Component = (_: never) => Child
 
+/** A node built by `jsx()`. `render` turns it into HTML. */
 export type Element = {
   readonly __aid_jsx: true
   readonly type: string | Component | typeof Fragment | typeof RAW
   readonly props: Props
 }
 
+/** Props passed to an intrinsic tag or a component. */
 export type Props = Record<string, unknown> & { children?: Child }
 
+/** JSX factory the TypeScript `react-jsx` transform calls. The `key` argument is ignored. */
 export function jsx(type: Element["type"], props: Props, _key?: unknown): Element {
   return { __aid_jsx: true, type, props: props ?? {} }
 }
 
+/** Factory for elements with static children. Same as {@link jsx}. */
 export const jsxs = jsx
+/** Dev-mode factory from `jsx-dev-runtime`. Same as {@link jsx}. */
 export const jsxDEV = jsx
 
+/** Insert `html` without escaping. Only pass trusted or already-sanitized markup. */
 export function RawHtml({ html }: { html: string }): Element {
   return { __aid_jsx: true, type: RAW, props: { html } }
 }
 
+/**
+ * Render a node tree to an HTML string. Text and attribute values are escaped.
+ * `RawHtml` and `dangerouslySetInnerHTML` content are emitted as-is.
+ */
 export function render(node: Child): string {
   if (node == null || node === false || node === true) {
     return ""
@@ -64,6 +76,7 @@ export function render(node: Child): string {
   return ""
 }
 
+/** Render a full page, with the `<!doctype html>` prefix. */
 export function renderDocument(node: Child): string {
   return `<!doctype html>${render(node)}`
 }
@@ -124,6 +137,7 @@ const VOID_ELEMENTS = new Set([
   "wbr",
 ])
 
+/** Types TypeScript reads to check JSX against this runtime. Any tag and attribute is allowed. */
 export namespace JSX {
   export type Element = import("./jsx-runtime").Element
   export type IntrinsicAttributes = {

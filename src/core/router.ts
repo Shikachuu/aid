@@ -5,7 +5,7 @@ import type { BuildContext, PageKind, Route } from "./types"
 /**
  * Walk `ctx.contentDir` and produce a Route for every supported source file.
  * Segments starting with `_` are excluded (drafts, partials, includes).
- * `.md` → markdown; `.html` → html; `.proto` → proto; `.yaml`/`.yml`/`.json`
+ * `.md` is markdown, `.html` is html, and `.proto` is proto. `.yaml`/`.yml`/`.json`
  * are content-sniffed and become OpenAPI routes if they carry a top-level
  * `openapi:`/`swagger:` key, and are silently skipped otherwise.
  */
@@ -32,9 +32,16 @@ export async function buildRoutes(ctx: BuildContext): Promise<Route[]> {
     byPath.set(routePath, { source, path: routePath, kind })
   }
   const routes = [...byPath.values()]
-  // Route paths are unique after the collision check, so ties never occur.
   routes.sort((a, b) => (a.path < b.path ? -1 : 1))
   return routes
+}
+
+/**
+ * Path of a route's side-channel export, relative to the site root. It sits next
+ * to the route folder, so `/foo` with `.md` gives `/foo.md`. The root route gives `/index<suffix>`.
+ */
+export function exportPath(route: Route, suffix: string): string {
+  return `${route.path === "/" ? "/index" : route.path}${suffix}`
 }
 
 const KIND_BY_EXT: Record<string, PageKind> = {

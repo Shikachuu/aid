@@ -12,9 +12,6 @@
  * imports those `.bin` paths via `with { type: "file" }`, gets path strings
  * in dev, and gets embedded bytes inside the compiled binary. At runtime we
  * write the bytes back out as a real `.node` file and `process.dlopen` it.
- *
- * Wired into the `mise install` postinstall hook so dev runs and
- * cross-compilation see the same staged tree.
  */
 
 import { resolve } from "node:path"

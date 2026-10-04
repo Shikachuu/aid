@@ -1,11 +1,4 @@
 #!/usr/bin/env bun
-/**
- * Per-target release pipeline. Wipes `dist/`, regenerates the JSON schema,
- * bundles the browser glue, then cross-compiles the `aid` CLI for every
- * supported target. The compiled binary embeds the matching platform's
- * `@bufbuild/buf` and `@tailwindcss/oxide` native deps.
- */
-
 import { mkdir, rm } from "node:fs/promises"
 import { resolve } from "node:path"
 
@@ -14,15 +7,10 @@ const DIST = resolve(ROOT, "dist")
 const CLI_ENTRY = resolve(ROOT, "src", "cli", "index.ts")
 
 type Target = {
-  /** `bun build --target=` triple. */
   triple: string
-  /** Output suffix appended to `aid-`. */
   outSuffix: string
-  /** `@bufbuild/buf` subpackage embedded in the binary (matches a `with { type: "file" }` import). */
   bufSubpkg: string
-  /** `lightningcss-*` subpackage whose `.node` is embedded for this target. */
   lcssSubpkg: string
-  /** Values bun injects for build-time constant folding. */
   platform: "darwin" | "linux"
   arch: "arm64" | "x64"
 }
@@ -88,31 +76,23 @@ const run = async (cmd: string[], label: string): Promise<void> => {
   console.log(`[compile] ${label} done in ${elapsed}s`)
 }
 
-// 1. Clean dist tree.
-await rm(DIST, { recursive: true, force: true })
-await mkdir(resolve(DIST, "bin"), { recursive: true })
-console.log(`[compile] cleaned ${DIST}`)
+const cleanDist = async (): Promise<void> => {
+  await rm(DIST, { recursive: true, force: true })
+  await mkdir(resolve(DIST, "bin"), { recursive: true })
+  console.log(`[compile] cleaned ${DIST}`)
+}
 
-// 2. Schema — emit-schema.ts writes schemas/aid.schema.json; copy into dist/schemas.
-await run(["bun", "scripts/emit-schema.ts"], "emit-schema")
-const schemaSrc = resolve(ROOT, "schemas", "aid.schema.json")
-const schemaDst = resolve(DIST, "schemas", "aid.schema.json")
-await Bun.write(schemaDst, Bun.file(schemaSrc))
-console.log(`[compile] copied schema → ${schemaDst}`)
+const copySchema = async (): Promise<void> => {
+  const schemaSrc = resolve(ROOT, "schemas", "aid.schema.json")
+  const schemaDst = resolve(DIST, "schemas", "aid.schema.json")
+  await Bun.write(schemaDst, Bun.file(schemaSrc))
+  console.log(`[compile] copied schema -> ${schemaDst}`)
+}
 
-// 3. Web glue.
-await run(["bun", "scripts/bundle-web.ts"], "bundle-web")
-
-// 4. Cross-compile binaries.
-//
-// `with { type: "file" }` imports are NOT eliminated by dead-code analysis —
-// without help, every target embeds all four `@bufbuild/buf-*/bin/buf` files
-// (4× ~50 MB bloat) and all four `lightningcss-*/lightningcss.*.node` bindings
-// (~24 MB bloat). The `--external` flags below exclude every non-matching
-// platform's buf and lightningcss paths so each binary only carries its own.
-// `--define` is added for symmetry / future runtime branches; the externals do
-// the heavy lifting.
-for (const target of TARGETS) {
+// Bun does not dead-code-eliminate `with { type: "file" }` imports. Without the
+// `--external` flags every binary would embed all four `@bufbuild/buf-*/bin/buf`
+// files (about 200 MB) and all four lightningcss `.node` bindings (about 24 MB).
+const compileTarget = async (target: Target): Promise<void> => {
   const outfile = resolve(DIST, "bin", `aid-${target.outSuffix}`)
   const bufExternals = BUF_SUBPKGS.filter((pkg) => pkg !== target.bufSubpkg).flatMap((pkg) => [
     "--external",
@@ -141,10 +121,19 @@ for (const target of TARGETS) {
   )
 }
 
-// 5. Summary.
-console.log("\n[compile] artefacts:")
-const glob = new Bun.Glob("**/*")
-for await (const rel of glob.scan({ cwd: DIST, onlyFiles: true })) {
-  const abs = resolve(DIST, rel)
-  console.log(`  dist/${rel}  (${fmtBytes(Bun.file(abs).size)})`)
+const printArtefacts = async (): Promise<void> => {
+  console.log("\n[compile] artefacts:")
+  const glob = new Bun.Glob("**/*")
+  for await (const rel of glob.scan({ cwd: DIST, onlyFiles: true })) {
+    console.log(`  dist/${rel}  (${fmtBytes(Bun.file(resolve(DIST, rel)).size)})`)
+  }
 }
+
+await cleanDist()
+await run(["bun", "scripts/emit-schema.ts"], "emit-schema")
+await copySchema()
+await run(["bun", "scripts/bundle-web.ts"], "bundle-web")
+for (const target of TARGETS) {
+  await compileTarget(target)
+}
+await printArtefacts()

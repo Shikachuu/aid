@@ -1,26 +1,27 @@
 import type { Frontmatter } from "../renderers/markdown/frontmatter"
 import type { AidConfig } from "./config"
 
+/** Source format of a route. It picks the renderer. */
 export type PageKind = "markdown" | "html" | "openapi" | "proto"
 
+/** One page discovered under `contentDir` by `buildRoutes`. */
 export type Route = {
-  /** Source file path relative to repo root. */
+  /** Absolute path of the source file. */
   source: string
   /** Public route path (joined with config.base_path at render time). */
   path: string
-  /** Page kind drives renderer selection. */
   kind: PageKind
   /** Optional frontmatter (markdown only). */
   frontmatter?: Frontmatter
 }
 
+/** Renderer output for one route, before the Layout wraps it. */
 export type RenderedPage = {
   route: Route
   /** Final rendered HTML body (without the surrounding <html>/Layout chrome). */
   html: string
-  /** Tokens for the search index. */
   searchTokens: SearchTokens
-  /** Side-channel exports (`.md` / `.json`). */
+  /** Machine-readable variants written next to the page (`.md`, `.json`, `.proto`). */
   exports: SideChannelExport[]
   /** True iff the rendered body contains at least one mermaid diagram. Drives lazy <script> injection. */
   hasMermaid: boolean
@@ -28,10 +29,11 @@ export type RenderedPage = {
   hasOpenApi: boolean
   /** True iff the page is a Proto reference. Drives lazy proto-ui runtime injection. */
   hasProto: boolean
-  /** One-line summary used in llms.txt bullets and (later) <meta description>. */
+  /** One-line summary used in llms.txt bullets. */
   description?: string
 }
 
+/** Text a renderer extracts from a page for the search index. */
 export type SearchTokens = {
   title: string
   body: string
@@ -40,22 +42,23 @@ export type SearchTokens = {
   extras: Record<string, string[]>
 }
 
+/** A machine-readable variant of a page, served at the route path plus `suffix`. */
 export type SideChannelExport = {
-  /** URL suffix appended to the route, e.g. ".md", ".json", ".proto". */
   suffix: ".md" | ".json" | ".proto"
-  /** Body bytes / string. */
   body: string
 }
 
+/** One entry in the sidebar navigation tree. A node without `path` renders as a plain label. */
 export type NavNode = {
   label: string
   path?: string
   children?: NavNode[]
 }
 
+/** Validated config plus resolved absolute directories for one build. */
 export type BuildContext = {
   config: AidConfig
-  /** Repo root (where aid.yaml lives). */
+  /** Project directory. Every configured directory resolves against it. */
   cwd: string
   /** Resolved content root (cwd + config.dir.content). */
   contentDir: string

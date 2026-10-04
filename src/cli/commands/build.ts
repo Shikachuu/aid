@@ -18,7 +18,7 @@ export const projectArgs = {
   },
 } as const
 
-/** Build the static documentation site to the configured output directory. */
+/** `aid build`. Pass `--clean` to drop outputs left behind by deleted pages. */
 export const command = defineCommand({
   meta: {
     name: "build",

@@ -19,10 +19,8 @@ export type BuildWebBundleResult = {
   /** Public href for the Scalar bundle, or `null` when the site has no OpenAPI pages. */
   openapiHref: string | null
   /**
-   * Public href for Scalar's bundled stylesheet, or `null` when the site has no
-   * OpenAPI pages. Linked from the layout only on OpenAPI pages so prose pages stay
-   * lean. Scalar's UI is entirely styled by this file — without it, every icon
-   * renders at intrinsic size and the chrome is unstyled.
+   * Public href for Scalar's stylesheet, or `null` when the site has no OpenAPI pages.
+   * Scalar ships its UI unstyled without it, with every icon at intrinsic size.
    */
   openapiCssHref: string | null
   /** Public href for the proto-ui bundle, or `null` when the site has no Proto pages. */
@@ -32,46 +30,28 @@ export type BuildWebBundleResult = {
 }
 
 /**
- * Materialise the browser-side runtime into `outputDir`. There are two
- * entrypoints: the always-on base bundle (dark-mode toggle, search, AI
- * buttons) and an optional mermaid bundle that lazy-imports the diagram
- * library on `DOMContentLoaded`. We split them so prose-only pages never
- * fetch the mermaid library (or its diagram-type chunks) at all.
- *
- * Two source-resolution modes:
- *
- * - **Dev mode** (the repo is on disk): each entry is compiled via
- *   `Bun.build` with `splitting: true`. Mermaid's internal `await import(…)`
- *   calls produce a constellation of small chunks the browser only fetches
- *   when a `<pre class="mermaid">` actually appears.
- * - **Compiled binary** (`bun build --compile` output): there is no source
- *   tree, so we read pre-bundled bytes embedded at compile time via
- *   `src/web/_bundled.ts`, which `scripts/bundle-web.ts` populates.
- *
- * Either way the output is hashed via xxh64 (see {@link writeHashed}) so
- * filenames are content-addressable for cache-busting. Each optional bundle is
- * emitted only when its `include*` flag is set, so sites without diagrams,
- * OpenAPI, or Proto pages never pay for those runtimes.
+ * Write the browser runtime into `outputDir` and return the public hrefs. The
+ * base bundle is always written. Each optional bundle is written only when its
+ * `include` flag is set. Output comes from `Bun.build` when the source tree is
+ * on disk, and from the bytes embedded in `src/web/_bundled.ts` inside a
+ * compiled binary.
  */
 export async function buildWebBundle(
   ctx: BuildContext,
   include: { mermaid: boolean; openapi: boolean; proto: boolean },
 ): Promise<BuildWebBundleResult> {
-  // Inside a `bun build --compile` binary the source tree is gone, so fall
-  // back to the bytes embedded at compile time.
-  const useSource = await Bun.file(path.join(AID_ROOT, WEB_JS.base.source)).exists()
+  const hasSourceTree = await Bun.file(path.join(AID_ROOT, WEB_JS.base.source)).exists()
 
   const js = (entry: WebJsEntry, embedded: string) =>
-    useSource
+    hasSourceTree
       ? buildAndWrite(ctx, entry)
       : writeHashed(ctx, entry.name, "js", requireEmbedded(entry.name, embedded))
-  // Resolve the specifier lazily: a compiled binary has no node_modules to resolve against.
   const css = async (entry: (typeof WEB_CSS)[keyof typeof WEB_CSS], embedded: string) =>
     writeHashed(
       ctx,
       entry.name,
       "css",
-      useSource
+      hasSourceTree
         ? await Bun.file(Bun.resolveSync(entry.specifier, AID_ROOT)).text()
         : requireEmbedded(`${entry.name}.css`, embedded),
     )

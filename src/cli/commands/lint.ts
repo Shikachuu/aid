@@ -2,6 +2,7 @@ import { defineCommand } from "citty"
 import { parseFilter, printReport } from "../../lint/diagnostics"
 import { lintAll } from "../../lint/orchestrate"
 
+/** `aid lint`. It exits 1 when any tool fails, so CI can gate on it. */
 export const command = defineCommand({
   meta: {
     name: "lint",

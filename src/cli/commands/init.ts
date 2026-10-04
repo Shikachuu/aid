@@ -1,5 +1,6 @@
 import { defineCommand } from "citty"
 
+/** `aid init`. Not implemented yet, so it exits 1. */
 export const command = defineCommand({
   meta: {
     name: "init",

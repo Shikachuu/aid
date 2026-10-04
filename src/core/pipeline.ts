@@ -11,7 +11,7 @@ import { PageHtml } from "../theme/components/PageHtml"
 import { PageMarkdown } from "../theme/components/PageMarkdown"
 import { AssetRegistry } from "./assets"
 import { buildLlmsTxt } from "./llms-txt"
-import { buildRoutes } from "./router"
+import { buildRoutes, exportPath } from "./router"
 import { buildSearchIndex, type SearchIndexResult } from "./search-index"
 import { copyStaticAssets } from "./static"
 import { compileTailwind } from "./tailwind"
@@ -21,10 +21,8 @@ import { type BuildWebBundleResult, buildWebBundle, writeHashed } from "./web-bu
 const STYLESHEET_PLACEHOLDER = "__AID_STYLESHEET_HREF__"
 
 /**
- * Top-level build orchestrator. Copies static assets, bundles the browser
- * runtime, renders every route in parallel, asks Tailwind to scan the
- * rendered HTML in memory, writes the hashed CSS, and writes each page HTML
- * exactly once with the final stylesheet href substituted in.
+ * Build the whole site from `ctx` into `ctx.outputDir`. Throws when two outputs
+ * target the same path or a colocated asset escapes `contentDir`.
  */
 export async function build(ctx: BuildContext): Promise<void> {
   const registry = new AssetRegistry()
@@ -46,9 +44,6 @@ export async function build(ctx: BuildContext): Promise<void> {
     html: wrapInLayout(page, ctx, STYLESHEET_PLACEHOLDER, web, searchIndex),
   }))
 
-  // Side-channel exports — sibling `.md` for markdown/HTML pages and `.json`
-  // for OpenAPI/proto pages. Each renderer produces these on `page.exports[]`;
-  // the pipeline just writes them next to the HTML at `<route>.<suffix>`.
   const sideExports = rendered.flatMap((page) =>
     page.exports.map((e) => ({
       fsPath: outputPathForExport(page.route, e.suffix, ctx),
@@ -114,27 +109,11 @@ async function dispatchRenderer(
   }
 }
 
-/**
- * Build a per-page `copyAsset` callback. The callback enforces three rules:
- * (1) the resolved source must live inside `ctx.contentDir` — a `..`-escape
- * or a symlink pointing outside throws so an untrusted contributor cannot exfiltrate arbitrary files via a
- * colocated `<img>`; (2) the destination is registered with the shared
- * {@link AssetRegistry} before any copy, so a clash with a static asset or
- * another page surfaces as a hard error; (3) a non-existent source returns
- * `null`, which the rehype plugin surfaces as a non-fatal vfile message.
- */
 function makeCopyAsset(route: Route, ctx: BuildContext, registry: AssetRegistry): CopyAsset {
   const routeOutputDir = path.dirname(outputPathForRoute(route, ctx))
-  // The route's URL directory is the route path itself (every route resolves
-  // to `<route>/index.html`), or just the base_path for the root route.
-  const routeUrlDir =
-    route.path === "/" ? ctx.config.base_path : path.posix.join(ctx.config.base_path, route.path)
+  const routeUrlDir = path.posix.join(ctx.config.base_path, route.path)
   return async (absoluteSource) => {
-    if (!(await isInside(absoluteSource, ctx.contentDir))) {
-      throw new Error(
-        `aid: colocated asset "${absoluteSource}" referenced from ${route.source} escapes contentDir (${ctx.contentDir}). Use a top-level static/ asset or move the file under contentDir.`,
-      )
-    }
+    await assertInsideContent(absoluteSource, route, ctx)
     const src = Bun.file(absoluteSource)
     if (!(await src.exists())) {
       return null
@@ -147,16 +126,16 @@ function makeCopyAsset(route: Route, ctx: BuildContext, registry: AssetRegistry)
   }
 }
 
-/**
- * `true` iff `child` is a descendant of `parent`, both lexically and after
- * resolving symlinks. A `child` that does not exist is checked lexically only.
- */
-async function isInside(child: string, parent: string): Promise<boolean> {
-  const realChild = await realpathOrNull(child)
-  return (
-    isLexicallyInside(child, parent) &&
-    (realChild === null || isLexicallyInside(realChild, await realpath(parent)))
-  )
+async function assertInsideContent(source: string, route: Route, ctx: BuildContext): Promise<void> {
+  const realSource = await realpathOrNull(source)
+  const inside =
+    isLexicallyInside(source, ctx.contentDir) &&
+    (realSource === null || isLexicallyInside(realSource, await realpath(ctx.contentDir)))
+  if (!inside) {
+    throw new Error(
+      `aid: colocated asset "${source}" referenced from ${route.source} escapes contentDir (${ctx.contentDir}). Use a top-level static/ asset or move the file under contentDir.`,
+    )
+  }
 }
 
 async function realpathOrNull(p: string): Promise<string | null> {
@@ -180,16 +159,6 @@ function wrapInLayout(
   searchIndex: SearchIndexResult | null,
 ): string {
   const description = page.route.frontmatter?.description
-  // The OpenAPI and Proto renderers already produce fully-wrapped page bodies
-  // (PageOpenAPI / PageProto). Markdown and HTML pages both share the
-  // prose-style article chrome (toolbar + AI button slot) — same shell,
-  // different variant class so themes can target them separately.
-  const pageHtml =
-    page.route.kind === "openapi" || page.route.kind === "proto"
-      ? page.html
-      : page.route.kind === "html"
-        ? render(PageHtml({ bodyHtml: page.html, machineUrl: "" }))
-        : render(PageMarkdown({ bodyHtml: page.html, machineUrl: "" }))
   const search = searchIndex
     ? {
         indexHref: searchIndex.href,
@@ -211,21 +180,29 @@ function wrapInLayout(
       protoBundleHref: page.hasProto ? web.protoHref : null,
       protoStylesheetHref: page.hasProto ? web.protoCssHref : null,
       search,
-      bodyHtml: pageHtml,
+      bodyHtml: renderPageBody(page),
     }),
   )
 }
 
-/** Disk path for a route's rendered HTML, e.g. `/foo` → `<outputDir>/foo/index.html`. */
+function renderPageBody(page: RenderedPage): string {
+  switch (page.route.kind) {
+    case "openapi":
+    case "proto":
+      return page.html
+    case "html":
+      return render(PageHtml({ bodyHtml: page.html, machineUrl: "" }))
+    case "markdown":
+      return render(PageMarkdown({ bodyHtml: page.html, machineUrl: "" }))
+  }
+}
+
+/** Disk path for a route's rendered HTML, e.g. `/foo` gives `<outputDir>/foo/index.html`. */
 export function outputPathForRoute(route: Route, ctx: BuildContext): string {
   return path.join(ctx.outputDir, route.path, "index.html")
 }
 
-/**
- * Disk path for a side-channel export at a given suffix. Sibling to the
- * route's folder rather than nested inside it, so the URL `/foo` + `.md` →
- * file `<outputDir>/foo.md`. Root `/` collapses to `<outputDir>/index<suffix>`.
- */
+/** Disk path for a side-channel export. See {@link exportPath} for the layout. */
 export function outputPathForExport(route: Route, suffix: string, ctx: BuildContext): string {
-  return path.join(ctx.outputDir, route.path === "/" ? "index" : route.path) + suffix
+  return path.join(ctx.outputDir, exportPath(route, suffix))
 }

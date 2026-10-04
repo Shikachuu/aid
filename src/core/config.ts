@@ -30,6 +30,7 @@ const SearchWeights = z
   })
   .describe("Per-format search ranking weights, applied via MiniSearch boostDocument.")
 
+/** Zod schema for `aid.yaml`. `scripts/emit-schema.ts` derives the published JSON Schema from it. */
 export const AidConfigSchema = z
   .object({
     name: z.string().min(1).describe("Project display name. Required."),
@@ -132,6 +133,7 @@ export const AidConfigSchema = z
     "aid project configuration. Generated JSON Schema is published at https://aid.tools/schemas/v0/aid.schema.json.",
   )
 
+/** Parsed `aid.yaml` with every default applied. */
 export type AidConfig = z.infer<typeof AidConfigSchema>
 
 /** Read a YAML config file and validate it against {@link AidConfigSchema}. */

@@ -1,15 +1,4 @@
 #!/usr/bin/env bun
-/**
- * Emit `schemas/aid.schema.json` from the Zod source of truth in
- * `src/core/config.ts`. This file is the LSP-facing artifact and must stay in
- * sync with the Zod schema — CI runs this script with `--check` to fail PRs
- * that drift.
- *
- * Usage:
- *   bun run scripts/emit-schema.ts          # write schemas/aid.schema.json
- *   bun run scripts/emit-schema.ts --check  # exit 1 if generated output differs from committed file
- */
-
 import { resolve } from "node:path"
 import { z } from "zod"
 import { AidConfigSchema } from "../src/core/config"

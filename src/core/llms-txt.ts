@@ -1,5 +1,6 @@
 import path from "node:path"
 import type { AidConfig } from "./config"
+import { exportPath } from "./router"
 import type { BuildContext, RenderedPage } from "./types"
 
 const BUNDLED_DEFAULT = `# {{name}}
@@ -16,13 +17,13 @@ This documentation is available in machine-readable form. Append \`.md\` to a ma
 `
 
 const TEMPLATE_FILENAME = "llms.txt"
+const ROOT_GROUP = "Docs"
 const PLACEHOLDER_RE = /\{\{([\w-]+)(?::([\w-]+))?\}\}/g
 
 type Entry = {
   title: string
   description: string | undefined
   url: string
-  /** First non-empty segment of `route.path`, title-cased. Root files bucket as "Docs". */
   group: string
   optional: boolean
 }
@@ -75,23 +76,17 @@ function buildEntry(page: RenderedPage, config: AidConfig): Entry {
   }
 }
 
-/**
- * Produce the machine-readable URL for a page from its first side-channel
- * export (`.md`, `.json`, or `.proto`). Root `/` collapses to `/index<suffix>`
- * so it matches the file `outputPathForExport` writes. Absolute when
- * `config.base_url` is set; path-only otherwise.
- */
 function machineUrlFor(page: RenderedPage, config: AidConfig): string {
-  const suffix = page.exports[0]?.suffix ?? ""
-  const routePath = page.route.path === "/" ? "/index" : page.route.path
-  const withBase = path.posix.join(config.base_path, `${routePath}${suffix}`)
+  const withBase = path.posix.join(
+    config.base_path,
+    exportPath(page.route, page.exports[0]?.suffix ?? ""),
+  )
   return config.base_url ? new URL(withBase, config.base_url).toString() : withBase
 }
 
-/** Root files → "Docs". Otherwise: first path segment, title-cased ("getting-started" → "Getting Started"). */
 function groupLabelFor(routePath: string): string {
   const [first, ...rest] = routePath.split("/").filter(Boolean)
-  return first && rest.length > 0 ? titleCase(first) : "Docs"
+  return first && rest.length > 0 ? titleCase(first) : ROOT_GROUP
 }
 
 function titleCase(slug: string): string {
@@ -102,18 +97,19 @@ function titleCase(slug: string): string {
     .join(" ")
 }
 
+function compareGroups(a: string, b: string): number {
+  if (a === ROOT_GROUP) {
+    return -1
+  }
+  if (b === ROOT_GROUP) {
+    return 1
+  }
+  return a < b ? -1 : a > b ? 1 : 0
+}
+
 function renderGroupedToc(groups: Map<string, Entry[]>): string {
-  // `Docs` (the root bucket) pins first; remaining groups alphabetical.
-  const keys = [...groups.keys()].sort((a, b) => {
-    if (a === "Docs") {
-      return -1
-    }
-    if (b === "Docs") {
-      return 1
-    }
-    return a < b ? -1 : a > b ? 1 : 0
-  })
-  return keys
+  return [...groups.keys()]
+    .sort(compareGroups)
     .map((key) => `## ${key}\n\n${(groups.get(key) ?? []).map(renderBullet).join("\n")}`)
     .join("\n\n")
 }

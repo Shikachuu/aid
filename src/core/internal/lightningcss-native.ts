@@ -13,9 +13,9 @@ import lcssLinuxX64 from "../../../vendor/natives/lightningcss-linux-x64-gnu.bin
 }
 import { extractEmbedded } from "./extract-embedded"
 
-type Pick = { stagedPath: string; subpkg: string }
+type EmbeddedBinding = { stagedPath: string; subpkg: string }
 
-const pickEmbedded = (): Pick | null => {
+const pickEmbedded = (): EmbeddedBinding | null => {
   if (process.platform === "darwin") {
     if (process.arch === "arm64") {
       return { stagedPath: lcssDarwinArm64, subpkg: "lightningcss-darwin-arm64" }
@@ -34,23 +34,9 @@ const pickEmbedded = (): Pick | null => {
 let installPromise: Promise<void> | null = null
 
 /**
- * Make `require('lightningcss-<platform>')` resolvable inside a
- * `bun build --compile` binary. Bun special-cases the `.node` extension and
- * doesn't follow lightningcss's template-literal `require()` either, so the
- * native binding never reaches the bunfs through the normal paths.
- *
- * The pipeline `scripts/stage-natives.ts` copies each platform's `.node` to
- * `vendor/natives/<pkg>.bin` (a non-`.node` name keeps Bun's loader out of the
- * way). This module statically imports those `.bin` paths via
- * `with { type: "file" }`, picks the matching one at runtime, writes the bytes
- * back out as a real `.node` file in `tmpdir()` (bunfs paths can't be
- * `dlopen`'d directly), and intercepts `Module._resolveFilename` so any
- * `require('lightningcss-<platform>')` resolves to the extracted file. The
- * normal Node-API loader takes over from there. Idempotent.
- *
- * In dev (no bunfs) the static imports resolve to the staged `vendor/`
- * paths; the same write-out + resolver-hook flow runs. The hook only fires
- * for the exact subpackage specifier, so unrelated requires are untouched.
+ * Make lightningcss's `require('lightningcss-<platform>')` resolve inside a
+ * `bun build --compile` binary, where Bun does not follow that dynamic require.
+ * Call it before anything imports `lightningcss`. Idempotent.
  */
 export const installLightningcssShim = (): Promise<void> => {
   installPromise ??= doInstall()
@@ -67,20 +53,13 @@ const doInstall = async (): Promise<void> => {
     return
   }
 
-  // Copy the staged bytes out as a real `.node` file. `process.dlopen` (which
-  // `require()` invokes for `.node` files) needs a real filesystem path; the
-  // `.node` extension is what tells the Node-API loader to treat it as such.
+  // `process.dlopen` needs a real filesystem path with a `.node` extension.
   const nodeFile = await extractEmbedded(picked.stagedPath, "lcss", `${picked.subpkg}.node`)
 
-  // Load the native bindings once via a real CJS require so process.dlopen
-  // fires and we capture the exports.
   const cjsRequire = createRequire(import.meta.url)
   const bindings = cjsRequire(nodeFile) as unknown
 
-  // Patch `Module.prototype.require`. lightningcss's loader does
-  // `require('lightningcss-<platform>')`; the patch short-circuits that
-  // specifier to the pre-loaded bindings. We can't use `Module._resolveFilename`
-  // because Bun's compiled binary skips it.
+  // Bun's compiled binary skips `Module._resolveFilename`, so patch `require` itself.
   const moduleNs = cjsRequire("node:module") as ModuleNs
   const original = moduleNs.prototype.require
   moduleNs.prototype.require = function (this: unknown, id: string): unknown {

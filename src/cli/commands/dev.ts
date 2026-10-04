@@ -5,7 +5,7 @@ import { loadBuildContext, PortSchema } from "../../core/config"
 import { startDevSession } from "../../dev/session"
 import { projectArgs } from "./build"
 
-/** Start the local dev server with hot reload. */
+/** `aid dev`. `--port` and `--host` override `dev.port` and `dev.host` from the config. */
 export const command = defineCommand({
   meta: {
     name: "dev",

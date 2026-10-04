@@ -4,39 +4,26 @@ import { deriveDarkPalette } from "./dark-mode"
 import { findMatchingBrace } from "./internal/css-scan"
 import { installLightningcssShim } from "./internal/lightningcss-native"
 import type { BuildContext } from "./types"
+import { AID_ROOT } from "./web-entries"
 
-const aidProjectRoot = path.join(import.meta.dir, "../..")
-const bundledMainCssPath = path.join(aidProjectRoot, "src/theme/main.css")
+const bundledMainCssPath = path.join(AID_ROOT, "src/theme/main.css")
 const bundledTailwindcssEntry = Bun.resolveSync("tailwindcss/index.css", import.meta.dir)
 
 /**
- * Run `@tailwindcss/node` against the resolved entry stylesheet, driving class
- * discovery via synthesised `@source` directives. The user's `config.stylesheet`
- * (default `main.css`) replaces the bundled default when present; otherwise the
- * bundled `src/theme/main.css` is used. The prelude points Tailwind at the
- * bundled theme components, the user templates directory (if configured), and
- * the rendered HTML passed in `htmlContents`, so utilities used in any of those
- * become candidates.
- * A custom CSS resolver intercepts the `tailwindcss` import so the compile works
- * without `tailwindcss` being installed in the user's project — required for the
- * compiled-binary distribution model. Honours `theme.dark_mode`: `"off"` strips the dark `@media` block,
- * `"manual"` passes through unchanged. When dark_mode is `"auto"`, light @theme
- * oklch tokens are inverted to produce the dark palette automatically. Users can
- * opt into the bundled aid theme (defaults, components, Scalar bridge) by writing
- * `@import "aid/theme";` in their main.css; the bundled content is inlined into
- * the source before compile.
+ * Compile the site stylesheet. Uses `config.stylesheet` when it exists and the
+ * bundled `src/theme/main.css` otherwise. Tailwind scans the theme components,
+ * the templates directory, and `htmlContents` for class candidates. `tailwindcss`
+ * resolves to aid's own copy, so the user's project needs no install. An
+ * `@import "aid/theme";` pulls in the bundled theme, and `theme.dark_mode` decides
+ * whether the dark palette is derived, kept, or stripped.
  */
 export async function compileTailwind(
   ctx: BuildContext,
   htmlContents: readonly string[],
 ): Promise<string> {
-  // @tailwindcss/node minifies via lightningcss, whose native binding loader
-  // (`require(\`lightningcss-${platform}\`)`) isn't followed by `bun build
-  // --compile`. The shim must run BEFORE @tailwindcss/node is loaded — its
-  // own top-level `import { transform } from "lightningcss"` triggers
-  // lightningcss/node/index.js to resolve the binding at module-load time.
-  // We dynamically import both Tailwind packages here so the shim's
-  // `Module.prototype.require` hook is in place first.
+  // lightningcss resolves its native binding when it is first imported, and
+  // `@tailwindcss/node` imports it at load time. Install the shim first, then
+  // import Tailwind dynamically.
   await installLightningcssShim()
   const { compile } = await import("@tailwindcss/node")
   const { Scanner } = await import("@tailwindcss/oxide")
@@ -96,10 +83,7 @@ type SourceTarget = {
 }
 
 function collectSourceTargets(ctx: BuildContext): SourceTarget[] {
-  // Rendered HTML is passed to compileTailwind in memory via `htmlContents`;
-  // we no longer @source-scan `dist/**/*.html`. That avoids a temp-write pass
-  // and lets us emit each HTML file exactly once.
-  const targets: SourceTarget[] = [{ base: aidProjectRoot, pattern: "src/theme/**/*.{tsx,ts}" }]
+  const targets: SourceTarget[] = [{ base: AID_ROOT, pattern: "src/theme/**/*.{tsx,ts}" }]
   if (ctx.templatesDir !== null) {
     targets.push({ base: ctx.templatesDir, pattern: "**/*.{tsx,ts,html}" })
   }
@@ -113,18 +97,12 @@ function buildSourcePrelude(targets: SourceTarget[]): string {
 }
 
 function formatSourcePath(p: string): string {
-  // Tailwind's @source value is a glob string; normalise to POSIX separators so
-  // a Windows host doesn't produce `C:\foo\bar` (backslashes are glob escapes).
+  // Tailwind reads `@source` as a glob, where a backslash is an escape character.
   return p.replaceAll("\\", "/").replaceAll('"', '\\"')
 }
 
 const AID_THEME_IMPORT_RE = /@import\s+(?:url\(\s*)?["']aid\/theme["'](?:\s*\))?\s*;?/g
 
-// Replace `@import "aid/theme";` directives in the user's CSS with the bundled
-// theme content. The bundled CSS is embedded into the binary at build time, so
-// this works without a filesystem dependency — important for the eventual
-// `bun build --compile` distribution where bundled resources aren't real files
-// on disk.
 function inlineAidImports(css: string): string {
   return css.replaceAll(AID_THEME_IMPORT_RE, bundledMainCss)
 }
