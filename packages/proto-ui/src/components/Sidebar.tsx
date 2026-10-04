@@ -7,52 +7,27 @@ export type SidebarProps = {
 
 export const Sidebar = ({ ast, baseHref = "" }: SidebarProps) => (
   <nav className="proto-sidebar" aria-label="Proto entity navigation">
-    {ast.services.length > 0 ? (
-      <SidebarGroup label="Services">
-        {ast.services.map((s) => (
-          <SidebarLink key={s.fqn} href={`${baseHref}#${s.fqn}`} fqn={s.fqn} label={s.name} />
-        ))}
-      </SidebarGroup>
-    ) : null}
-    {ast.messages.length > 0 ? (
-      <SidebarGroup label="Messages">
-        {ast.messages.map((m) => (
-          <SidebarLink key={m.fqn} href={`${baseHref}#${m.fqn}`} fqn={m.fqn} label={m.name} />
-        ))}
-      </SidebarGroup>
-    ) : null}
-    {ast.enums.length > 0 ? (
-      <SidebarGroup label="Enums">
-        {ast.enums.map((e) => (
-          <SidebarLink key={e.fqn} href={`${baseHref}#${e.fqn}`} fqn={e.fqn} label={e.name} />
-        ))}
-      </SidebarGroup>
-    ) : null}
+    {(
+      [
+        ["Services", ast.services],
+        ["Messages", ast.messages],
+        ["Enums", ast.enums],
+      ] as const
+    )
+      .filter(([, entities]) => entities.length > 0)
+      .map(([label, entities]) => (
+        <div key={label} className="proto-sidebar-group">
+          <h3 className="proto-sidebar-group-label">{label}</h3>
+          <ul className="proto-sidebar-list">
+            {entities.map((e) => (
+              <li key={e.fqn} className="proto-sidebar-item">
+                <a className="proto-sidebar-link" href={`${baseHref}#${e.fqn}`} title={e.fqn}>
+                  {e.name}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
   </nav>
-)
-
-type SidebarGroupProps = {
-  label: string
-  children: React.ReactNode
-}
-
-const SidebarGroup = ({ label, children }: SidebarGroupProps) => (
-  <div className="proto-sidebar-group">
-    <h3 className="proto-sidebar-group-label">{label}</h3>
-    <ul className="proto-sidebar-list">{children}</ul>
-  </div>
-)
-
-type SidebarLinkProps = {
-  href: string
-  fqn: string
-  label: string
-}
-
-const SidebarLink = ({ href, fqn, label }: SidebarLinkProps) => (
-  <li className="proto-sidebar-item">
-    <a className="proto-sidebar-link" href={href} title={fqn}>
-      {label}
-    </a>
-  </li>
 )

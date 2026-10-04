@@ -69,13 +69,13 @@ test("produces dist/index.html linking a hashed main CSS for the sample fixture"
   const webMatches = entries.filter((e) => /^aid-web\.[a-z0-9]+\.js$/.test(e))
   expect(webMatches.length).toBe(1)
   const webFilename = webMatches[0] as string
-  expect(html).toContain(`<script type="module" src="/${webFilename}" defer>`)
+  expect(html).toContain(`<script type="module" src="/${webFilename}"></script>`)
   // Mermaid bundle is emitted only because the fixture has a mermaid block,
   // and the script tag for it is injected only on the pages that use it.
   const mermaidEntries = entries.filter((e) => /^aid-mermaid\.[a-z0-9]+\.js$/.test(e))
   expect(mermaidEntries.length).toBe(1)
   const mermaidFilename = mermaidEntries[0] as string
-  expect(html).toContain(`<script type="module" src="/${mermaidFilename}" defer>`)
+  expect(html).toContain(`<script type="module" src="/${mermaidFilename}"></script>`)
 
   // Top-level static/ is copied verbatim into the output root.
   expect(await Bun.file(path.join(ctx.outputDir, "logo.svg")).exists()).toBe(true)
@@ -148,7 +148,7 @@ test("produces dist/index.html linking a hashed main CSS for the sample fixture"
   expect(aboutHtml).toContain('src="/about/hero.svg"')
   expect(aboutHtml).not.toContain("./hero.svg")
   // Mermaid block in the HTML body triggers the mermaid bundle for this page.
-  expect(aboutHtml).toContain(`<script type="module" src="/${mermaidFilename}" defer>`)
+  expect(aboutHtml).toContain(`<script type="module" src="/${mermaidFilename}"></script>`)
   // .md sidechain: about.html → about.md with a sibling URL, containing the
   // converted body and the same image href as the HTML output.
   const aboutMdPath = path.join(ctx.outputDir, "about.md")

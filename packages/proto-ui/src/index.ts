@@ -6,7 +6,6 @@ export {
 } from "./hooks/useProtoAst"
 export type {
   ProtoAst,
-  ProtoEntity,
   ProtoEnum,
   ProtoEnumValue,
   ProtoField,

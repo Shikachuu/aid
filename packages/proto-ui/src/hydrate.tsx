@@ -1,8 +1,5 @@
 import { createRoot } from "react-dom/client"
-import type { ProtoReferenceProps } from "./components/ProtoReference"
-import { ProtoReference } from "./components/ProtoReference"
-
-export type CreateProtoReferenceOptions = ProtoReferenceProps
+import { ProtoReference, type ProtoReferenceProps } from "./components/ProtoReference"
 
 /**
  * Mount a `<ProtoReference/>` instance into the given DOM element. Returns an
@@ -12,7 +9,7 @@ export type CreateProtoReferenceOptions = ProtoReferenceProps
  */
 export const createProtoReference = (
   mount: Element,
-  options: CreateProtoReferenceOptions,
+  options: ProtoReferenceProps,
 ): (() => void) => {
   const root = createRoot(mount)
   root.render(<ProtoReference {...options} />)

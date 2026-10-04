@@ -7,15 +7,6 @@ export type TypeRefProps = {
 
 const WKT_DOCS_BASE = "https://protobuf.dev/reference/protobuf/google.protobuf/"
 
-const wellKnownSlug = (raw: string): string | null => {
-  const match = raw.match(/^\.?google\.protobuf\.(\w+)$/)
-  const slug = match?.[1]
-  if (!slug) {
-    return null
-  }
-  return slug.toLowerCase()
-}
-
 export const TypeRef = ({ reference, baseHref = "" }: TypeRefProps) => {
   if (reference.scalar) {
     return <span className="proto-type-scalar">{reference.raw}</span>
@@ -27,7 +18,7 @@ export const TypeRef = ({ reference, baseHref = "" }: TypeRefProps) => {
       </a>
     )
   }
-  const wkt = wellKnownSlug(reference.raw)
+  const wkt = /^\.?google\.protobuf\.(\w+)$/.exec(reference.raw)?.[1]?.toLowerCase()
   if (wkt) {
     return (
       <a

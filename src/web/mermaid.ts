@@ -7,42 +7,27 @@
  * rendered nodes.
  */
 export async function attachMermaid(): Promise<void> {
-  const elements = document.querySelectorAll<HTMLElement>("pre.mermaid")
+  const elements = [...document.querySelectorAll<HTMLElement>("pre.mermaid")]
   if (elements.length === 0) {
     return
   }
-  const originals = new WeakMap<HTMLElement, string>()
-  for (const el of elements) {
-    originals.set(el, el.textContent ?? "")
-  }
+  const sources = elements.map((el) => el.textContent)
+  const media = window.matchMedia("(prefers-color-scheme: dark)")
 
   const { default: mermaid } = await import("mermaid")
   const render = async () => {
-    for (const el of elements) {
+    elements.forEach((el, i) => {
       el.removeAttribute("data-processed")
-      const src = originals.get(el)
-      if (src !== undefined) {
-        el.textContent = src
-      }
-    }
-    mermaid.initialize({ startOnLoad: false, theme: currentTheme() })
+      el.textContent = sources[i] ?? ""
+    })
+    const attr = document.documentElement.dataset.aidTheme
+    const dark = attr === "dark" || (attr !== "light" && media.matches)
+    mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default" })
     await mermaid.run({ querySelector: "pre.mermaid", suppressErrors: true })
   }
 
   await render()
-  const media = window.matchMedia("(prefers-color-scheme: dark)")
   media.addEventListener("change", () => {
     void render()
   })
-}
-
-function currentTheme(): "default" | "dark" {
-  const attr = document.documentElement.dataset.aidTheme
-  if (attr === "dark") {
-    return "dark"
-  }
-  if (attr === "light") {
-    return "default"
-  }
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default"
 }

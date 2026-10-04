@@ -8,18 +8,8 @@ const indent = (text: string, level: number): string => {
     .join("\n")
 }
 
-const rulePrefix = (rule: ProtoMessage["fields"][number]["rule"]): string => {
-  if (rule === "repeated") {
-    return "repeated "
-  }
-  if (rule === "required") {
-    return "required "
-  }
-  if (rule === "optional") {
-    return "optional "
-  }
-  return ""
-}
+const rulePrefix = (rule: ProtoMessage["fields"][number]["rule"]): string =>
+  rule === "singular" ? "" : `${rule} `
 
 /**
  * Reconstruct a `.proto`-style declaration for a single entity. Lossy by design —
@@ -28,12 +18,7 @@ const rulePrefix = (rule: ProtoMessage["fields"][number]["rule"]): string => {
  */
 export const printMessage = (m: ProtoMessage): string => {
   const lines: string[] = [`message ${m.name} {`]
-  const oneofFields = new Set(m.fields.filter((f) => f.oneofName).map((f) => f.name))
-
-  for (const f of m.fields) {
-    if (oneofFields.has(f.name)) {
-      continue
-    }
+  for (const f of m.fields.filter((f) => !f.oneofName)) {
     if (f.mapKey) {
       lines.push(`  map<${f.mapKey.raw}, ${f.type.raw}> ${f.name} = ${f.number};`)
     } else {
@@ -42,11 +27,8 @@ export const printMessage = (m: ProtoMessage): string => {
   }
   for (const o of m.oneofs) {
     lines.push(`  oneof ${o.name} {`)
-    for (const fname of o.fieldNames) {
-      const f = m.fields.find((x) => x.name === fname)
-      if (f) {
-        lines.push(`    ${f.type.raw} ${f.name} = ${f.number};`)
-      }
+    for (const f of m.fields.filter((f) => f.oneofName === o.name)) {
+      lines.push(`    ${f.type.raw} ${f.name} = ${f.number};`)
     }
     lines.push("  }")
   }

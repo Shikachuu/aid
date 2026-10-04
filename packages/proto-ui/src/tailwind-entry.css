@@ -36,7 +36,6 @@
     @apply flex min-w-0 flex-col gap-8;
   }
 
-  .proto-empty,
   .proto-loading {
     @apply px-6 py-10 text-sm;
     color: var(--proto-color-muted);
@@ -290,13 +289,13 @@
     color: var(--proto-color-deprecated-fg);
   }
 
-  .proto-view-source {
-    @apply flex flex-col gap-2;
+  .proto-view-source-toggle {
+    @apply cursor-pointer list-none w-fit rounded px-2 py-1 text-xs before:content-['View_source'] [&::-webkit-details-marker]:hidden;
+    color: var(--proto-color-muted);
   }
 
-  .proto-view-source-toggle {
-    @apply cursor-pointer self-start rounded border-0 bg-transparent px-2 py-1 text-xs;
-    color: var(--proto-color-muted);
+  .proto-view-source[open] > .proto-view-source-toggle {
+    @apply mb-2 before:content-['Hide_source'];
   }
 
   .proto-view-source-toggle:hover {

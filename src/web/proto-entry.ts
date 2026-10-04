@@ -7,14 +7,8 @@ import { createProtoReference } from "@aid/proto-ui/hydrate"
  * sibling export; we read the URL, fetch the source via the React component's
  * built-in fetch lifecycle, and render the documentation client-side.
  */
-document.addEventListener("DOMContentLoaded", () => {
-  const mount = document.getElementById("aid-proto-mount")
-  if (!mount) {
-    return
-  }
-  const protoUrl = mount.getAttribute("data-proto-url")
-  if (!protoUrl) {
-    return
-  }
+const mount = document.getElementById("aid-proto-mount")
+const protoUrl = mount?.dataset.protoUrl
+if (mount && protoUrl) {
   createProtoReference(mount, { protoUrl })
-})
+}

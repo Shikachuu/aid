@@ -1,26 +1,19 @@
-/** Per-format ranking boosts surfaced to the client via a JSON-encoded data attribute. */
-export type SearchBoxWeights = Record<string, number>
-
 /** Props for {@link SearchBox}. */
 export type SearchBoxProps = {
-  /** Public href of the hashed search-index JS file. Omit to disable search entirely. */
-  indexHref?: string
+  /** Public href of the hashed search-index JS file. */
+  indexHref: string
   /** Fraction of term length allowed as edit distance (mirrors `search.typo_tolerance`). */
   typoTolerance: number
   /** Per-format ranking boosts applied at query time via MiniSearch's `boostDocument`. */
-  weights: SearchBoxWeights
+  weights: Record<string, number>
 }
 
 /**
- * Server-rendered search affordance. Renders nothing when `indexHref` is
- * undefined (search disabled). When enabled, the input carries data attributes
- * the client-side `attachSearch()` reads: the index URL, the typo-tolerance
+ * Server-rendered search affordance. The input carries data attributes the
+ * client-side `attachSearch()` reads: the index URL, the typo-tolerance
  * fraction, and the per-format weights as JSON.
  */
 export function SearchBox(props: SearchBoxProps) {
-  if (props.indexHref === undefined) {
-    return null
-  }
   const weightsJson = JSON.stringify(props.weights)
   return (
     <div class="aid-search">

@@ -18,7 +18,7 @@ export function PageOpenAPI({ title, specJson, machineUrl }: PageOpenApiProps) {
       <script type="application/json" id="aid-openapi-spec">
         <RawHtml html={escapeScriptJson(specJson)} />
       </script>
-      <div id="aid-openapi-mount" data-spec-source="#aid-openapi-spec" />
+      <div id="aid-openapi-mount" />
     </article>
   )
 }

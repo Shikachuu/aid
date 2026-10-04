@@ -9,17 +9,6 @@ const TAILWIND_ENTRY = path.join(SRC, "tailwind-entry.css")
 
 const REACT_EXTERNALS = ["react", "react-dom", "react-dom/client", "react/jsx-runtime"]
 
-// `@typescript/native-preview` ships the tsgo Go binary in platform-specific
-// subpackages; its `./sync` / `./async` JS exports are LSP-style snapshot APIs,
-// not a CLI-style emit entrypoint. Resolve the matching native binary and
-// spawn it directly — skips the bin/tsgo.js Node shim and a `bunx` lookup.
-const TSGO_EXE = ((): string => {
-  const subpkg = `@typescript/native-preview-${process.platform}-${process.arch}`
-  const pkgJson = Bun.resolveSync(`${subpkg}/package.json`, PACKAGE_ROOT)
-  const exe = path.join(path.dirname(pkgJson), "lib", "tsgo")
-  return process.platform === "win32" ? `${exe}.exe` : exe
-})()
-
 const run = async (label: string, fn: () => Promise<unknown>): Promise<void> => {
   const start = performance.now()
   process.stdout.write(`[build] ${label}…`)
@@ -32,12 +21,17 @@ const run = async (label: string, fn: () => Promise<unknown>): Promise<void> => 
   }
 }
 
-const bundleEntry = async (entry: string, outfile: string, externals: string[]): Promise<void> => {
+const bundleEntry = async (
+  entry: string,
+  outfile: string,
+  externals: string[],
+  target: "browser" | "node" = "browser",
+): Promise<void> => {
   const result = await Bun.build({
     entrypoints: [entry],
     outdir: path.dirname(outfile),
     naming: path.basename(outfile),
-    target: "browser",
+    target,
     format: "esm",
     minify: false,
     external: externals,
@@ -48,25 +42,6 @@ const bundleEntry = async (entry: string, outfile: string, externals: string[]):
       console.error(log)
     }
     throw new Error(`Bun.build failed for ${entry}`)
-  }
-}
-
-const bundleParser = async (): Promise<void> => {
-  const result = await Bun.build({
-    entrypoints: [path.join(SRC, "parser.ts")],
-    outdir: DIST,
-    naming: "parser.js",
-    target: "node",
-    format: "esm",
-    minify: false,
-    external: ["protobufjs"],
-    sourcemap: "linked",
-  })
-  if (!result.success) {
-    for (const log of result.logs) {
-      console.error(log)
-    }
-    throw new Error("Bun.build failed for parser.ts")
   }
 }
 
@@ -94,18 +69,7 @@ const compileStyles = async (): Promise<void> => {
 }
 
 const emitTypes = async (): Promise<void> => {
-  const proc = Bun.spawn(
-    [TSGO_EXE, "--emitDeclarationOnly", "--outDir", "dist", "--project", "."],
-    { cwd: PACKAGE_ROOT, stdout: "pipe", stderr: "pipe" },
-  )
-  const stdout = await new Response(proc.stdout).text()
-  const stderr = await new Response(proc.stderr).text()
-  const code = await proc.exited
-  if (code !== 0) {
-    console.error(stdout)
-    console.error(stderr)
-    throw new Error(`tsgo exited with code ${code}`)
-  }
+  await Bun.$`bun x tsgo --emitDeclarationOnly --outDir dist --project .`.cwd(PACKAGE_ROOT)
 }
 
 const main = async (): Promise<void> => {
@@ -117,7 +81,9 @@ const main = async (): Promise<void> => {
   await run("bundle hydrate.js", () =>
     bundleEntry(path.join(SRC, "hydrate.tsx"), path.join(DIST, "hydrate.js"), REACT_EXTERNALS),
   )
-  await run("bundle parser.js", bundleParser)
+  await run("bundle parser.js", () =>
+    bundleEntry(path.join(SRC, "parser.ts"), path.join(DIST, "parser.js"), ["protobufjs"], "node"),
+  )
   await run("compile styles.css", compileStyles)
   await run("emit .d.ts", emitTypes)
 }

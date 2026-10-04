@@ -30,67 +30,33 @@ export const ProtoReference = (props: ProtoReferenceProps) => {
   const { baseHref, className, fileSourceUrl } = props
   const rootClass = ["proto-root", className].filter(Boolean).join(" ")
 
-  if (result.status === "idle") {
-    return (
-      <div className={rootClass}>
-        <p className="proto-empty">Provide protoText, protoUrl, or ast.</p>
-      </div>
-    )
-  }
-  if (result.status === "loading") {
-    return (
-      <div className={rootClass}>
-        <p className="proto-loading">Loading proto documentation…</p>
-      </div>
-    )
-  }
-  if (result.status === "error") {
-    return (
-      <div className={rootClass}>
-        <pre className="proto-error">Failed to load proto: {result.error.message}</pre>
-      </div>
-    )
-  }
   return (
-    <ProtoReferenceContent
-      ast={result.ast}
-      baseHref={baseHref}
-      className={rootClass}
-      fileSourceUrl={fileSourceUrl}
-    />
+    <div className={rootClass}>
+      {result.status === "loading" ? (
+        <p className="proto-loading">Loading proto documentation…</p>
+      ) : result.status === "error" ? (
+        <pre className="proto-error">Failed to load proto: {result.error.message}</pre>
+      ) : (
+        <>
+          <Sidebar ast={result.ast} baseHref={baseHref} />
+          <main className="proto-main">
+            <PackageHeader
+              packageName={result.ast.package}
+              leadingComment={result.ast.packageLeadingComment}
+              fileSourceUrl={fileSourceUrl}
+            />
+            {result.ast.services.map((s) => (
+              <ServiceBlock key={s.fqn} service={s} baseHref={baseHref} />
+            ))}
+            {result.ast.messages.map((m) => (
+              <MessageBlock key={m.fqn} message={m} baseHref={baseHref} />
+            ))}
+            {result.ast.enums.map((e) => (
+              <EnumBlock key={e.fqn} enumEntity={e} />
+            ))}
+          </main>
+        </>
+      )}
+    </div>
   )
 }
-
-type ProtoReferenceContentProps = {
-  ast: ProtoAst
-  baseHref?: string
-  className: string
-  fileSourceUrl?: string
-}
-
-const ProtoReferenceContent = ({
-  ast,
-  baseHref,
-  className,
-  fileSourceUrl,
-}: ProtoReferenceContentProps) => (
-  <div className={className}>
-    <Sidebar ast={ast} baseHref={baseHref} />
-    <main className="proto-main">
-      <PackageHeader
-        packageName={ast.package}
-        leadingComment={ast.packageLeadingComment}
-        fileSourceUrl={fileSourceUrl}
-      />
-      {ast.services.map((s) => (
-        <ServiceBlock key={s.fqn} service={s} baseHref={baseHref} />
-      ))}
-      {ast.messages.map((m) => (
-        <MessageBlock key={m.fqn} message={m} baseHref={baseHref} />
-      ))}
-      {ast.enums.map((e) => (
-        <EnumBlock key={e.fqn} enumEntity={e} />
-      ))}
-    </main>
-  </div>
-)

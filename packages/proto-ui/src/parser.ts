@@ -7,8 +7,6 @@ export type ProtoTypeRef = {
   raw: string
   /** Resolved fully-qualified name (no leading dot) if a user-defined type, else null. */
   fqn: string | null
-  /** Kind of the resolved target, when fqn is non-null. */
-  targetKind: "message" | "enum" | null
   /** True when the type is a built-in scalar (int32, string, bytes, …). */
   scalar: boolean
 }
@@ -29,7 +27,6 @@ export type ProtoField = {
 export type ProtoOneOf = {
   name: string
   comment: string | null
-  fieldNames: string[]
 }
 
 export type ProtoEnumValue = {
@@ -79,36 +76,16 @@ export type ProtoService = {
   rpcs: ProtoRpc[]
 }
 
-export type ProtoEntity = ProtoMessage | ProtoEnum | ProtoService
-
 export type ProtoAst = {
   package: string | null
   packageLeadingComment: string | null
   syntax: ProtoSyntax
-  imports: string[]
   messages: ProtoMessage[]
   enums: ProtoEnum[]
   services: ProtoService[]
-  /** Cross-link resolution map: fully-qualified name (no leading dot) → entity. */
-  byFqn: ReadonlyMap<string, ProtoEntity>
 }
 
-const PROTO_SCALARS = new Set([
-  "double",
-  "float",
-  "int32",
-  "uint32",
-  "sint32",
-  "fixed32",
-  "sfixed32",
-  "int64",
-  "uint64",
-  "sint64",
-  "fixed64",
-  "bool",
-  "string",
-  "bytes",
-])
+const isScalar = (raw: string): boolean => Object.hasOwn(protobuf.types.basic, raw)
 
 /**
  * Parse a `.proto` source string into an aggregated, UI-friendly AST.
@@ -132,28 +109,24 @@ export const parseProto = (source: string): ProtoAst => {
   }
 
   const syntax = detectSyntax(source)
-  const byFqn = new Map<string, ProtoEntity>()
   const messages: ProtoMessage[] = []
   const enums: ProtoEnum[] = []
   const services: ProtoService[] = []
 
-  walkNamespace(result.root, byFqn, messages, enums, services, syntax)
+  walkNamespace(result.root, messages, enums, services, syntax)
 
   return {
     package: result.package ?? null,
     packageLeadingComment: result.package ? findPackageLeadingComment(source) : null,
     syntax,
-    imports: result.imports ?? [],
     messages,
     enums,
     services,
-    byFqn,
   }
 }
 
 const walkNamespace = (
   ns: protobuf.NamespaceBase,
-  byFqn: Map<string, ProtoEntity>,
   messages: ProtoMessage[],
   enums: ProtoEnum[],
   services: ProtoService[],
@@ -161,30 +134,18 @@ const walkNamespace = (
 ): void => {
   for (const child of ns.nestedArray) {
     if (child instanceof protobuf.Type) {
-      const msg = mapMessage(child, byFqn, syntax)
-      messages.push(msg)
+      messages.push(mapMessage(child, syntax))
     } else if (child instanceof protobuf.Enum) {
-      const e = mapEnum(child)
-      byFqn.set(e.fqn, e)
-      enums.push(e)
+      enums.push(mapEnum(child))
     } else if (child instanceof protobuf.Service) {
-      const svc = mapService(child)
-      byFqn.set(svc.fqn, svc)
-      services.push(svc)
-    } else if (isDescendable(child)) {
-      walkNamespace(child, byFqn, messages, enums, services, syntax)
+      services.push(mapService(child))
+    } else if (child instanceof protobuf.Namespace) {
+      walkNamespace(child, messages, enums, services, syntax)
     }
   }
 }
 
-const isDescendable = (obj: protobuf.ReflectionObject): obj is protobuf.NamespaceBase =>
-  "nestedArray" in obj && Array.isArray((obj as { nestedArray?: unknown }).nestedArray)
-
-const mapMessage = (
-  t: protobuf.Type,
-  byFqn: Map<string, ProtoEntity>,
-  syntax: ProtoSyntax,
-): ProtoMessage => {
+const mapMessage = (t: protobuf.Type, syntax: ProtoSyntax): ProtoMessage => {
   const fields: ProtoField[] = t.fieldsArray.map((f) => mapField(f, syntax))
 
   const oneofs: ProtoOneOf[] = []
@@ -192,26 +153,20 @@ const mapMessage = (
     if (o.isProto3Optional) {
       continue
     }
-    oneofs.push({
-      name: o.name,
-      comment: o.comment ?? null,
-      fieldNames: o.oneof.slice(),
-    })
+    oneofs.push({ name: o.name, comment: o.comment ?? null })
   }
 
   const nestedMessages: ProtoMessage[] = []
   const nestedEnums: ProtoEnum[] = []
   for (const child of t.nestedArray) {
     if (child instanceof protobuf.Type) {
-      nestedMessages.push(mapMessage(child, byFqn, syntax))
+      nestedMessages.push(mapMessage(child, syntax))
     } else if (child instanceof protobuf.Enum) {
-      const e = mapEnum(child)
-      byFqn.set(e.fqn, e)
-      nestedEnums.push(e)
+      nestedEnums.push(mapEnum(child))
     }
   }
 
-  const message: ProtoMessage = {
+  return {
     kind: "message",
     name: t.name,
     fqn: stripLeadingDot(t.fullName),
@@ -222,8 +177,6 @@ const mapMessage = (
     nestedMessages,
     nestedEnums,
   }
-  byFqn.set(message.fqn, message)
-  return message
 }
 
 const mapEnum = (e: protobuf.Enum): ProtoEnum => {
@@ -297,7 +250,7 @@ const detectRule = (
     if (f.required) {
       return "required"
     }
-    if (syntax === "proto3" && f.partOf?.isProto3Optional) {
+    if (f.partOf?.isProto3Optional) {
       return "optional"
     }
     if (syntax === "proto2") {
@@ -308,27 +261,16 @@ const detectRule = (
 }
 
 const makeTypeRef = (raw: string, resolved: protobuf.ReflectionObject | null): ProtoTypeRef => {
-  if (PROTO_SCALARS.has(raw)) {
-    return { raw, fqn: null, targetKind: null, scalar: true }
+  if (isScalar(raw)) {
+    return { raw, fqn: null, scalar: true }
   }
-  if (resolved) {
-    const fqn = stripLeadingDot(resolved.fullName)
-    const targetKind: ProtoTypeRef["targetKind"] =
-      resolved instanceof protobuf.Enum ? "enum" : "message"
-    return { raw, fqn, targetKind, scalar: false }
-  }
-  return { raw, fqn: null, targetKind: null, scalar: false }
+  return { raw, fqn: resolved ? stripLeadingDot(resolved.fullName) : null, scalar: false }
 }
 
 const stripLeadingDot = (fqn: string): string => (fqn.startsWith(".") ? fqn.slice(1) : fqn)
 
-const optionFlag = (options: Record<string, unknown> | undefined, name: string): boolean => {
-  if (!options) {
-    return false
-  }
-  const v = options[name]
-  return v === true || v === "true"
-}
+const optionFlag = (options: Record<string, unknown> | undefined, name: string): boolean =>
+  options?.[name] === true || options?.[name] === "true"
 
 const detectSyntax = (source: string): ProtoSyntax => {
   const syntaxMatch = source.match(/^\s*syntax\s*=\s*"([^"]+)"/m)

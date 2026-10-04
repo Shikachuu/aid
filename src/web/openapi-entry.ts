@@ -10,22 +10,14 @@ import { createApiReference } from "@scalar/api-reference"
  * `.aid-page-openapi` CSS variable bridge, so we explicitly hide Scalar's
  * own dark-mode toggle to avoid fighting `DarkToggle.tsx`.
  */
-document.addEventListener("DOMContentLoaded", () => {
-  const mount = document.getElementById("aid-openapi-mount")
-  const specEl = document.getElementById("aid-openapi-spec")
-  if (!mount || !specEl) {
-    return
-  }
-  const text = specEl.textContent ?? ""
-  if (text.length === 0) {
-    return
-  }
-  const content = JSON.parse(text) as Record<string, unknown>
+const mount = document.getElementById("aid-openapi-mount")
+const specEl = document.getElementById("aid-openapi-spec")
+if (mount && specEl?.textContent) {
   createApiReference(mount, {
-    content,
+    content: JSON.parse(specEl.textContent),
     hideDarkModeToggle: true,
     agent: { disabled: true },
     hideSearch: true,
     layout: "modern",
   })
-})
+}

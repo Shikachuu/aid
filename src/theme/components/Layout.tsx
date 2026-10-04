@@ -75,10 +75,10 @@ export function Layout(props: LayoutProps) {
           </main>
         </div>
         <Footer config={config} />
-        <script type="module" src={webBundleHref} defer />
-        {mermaidBundleHref ? <script type="module" src={mermaidBundleHref} defer /> : null}
-        {openapiBundleHref ? <script type="module" src={openapiBundleHref} defer /> : null}
-        {protoBundleHref ? <script type="module" src={protoBundleHref} defer /> : null}
+        <script type="module" src={webBundleHref} />
+        {mermaidBundleHref ? <script type="module" src={mermaidBundleHref} /> : null}
+        {openapiBundleHref ? <script type="module" src={openapiBundleHref} /> : null}
+        {protoBundleHref ? <script type="module" src={protoBundleHref} /> : null}
       </body>
     </html>
   )

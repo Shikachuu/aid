@@ -9,19 +9,12 @@ import { ViewSource } from "./ViewSource"
 export type MessageBlockProps = {
   message: ProtoMessage
   baseHref?: string
-  /** Heading level for nested message recursion (top-level uses default). */
-  depth?: number
 }
 
-const fieldsExcludingOneOfs = (m: ProtoMessage) => {
-  const oneofFieldNames = new Set(m.fields.filter((f) => f.oneofName).map((f) => f.name))
-  return m.fields.filter((f) => !oneofFieldNames.has(f.name))
-}
-
-export const MessageBlock = ({ message, baseHref, depth = 0 }: MessageBlockProps) => {
-  const visibleFields = fieldsExcludingOneOfs(message)
+export const MessageBlock = ({ message, baseHref }: MessageBlockProps) => {
+  const visibleFields = message.fields.filter((f) => !f.oneofName)
   return (
-    <section className="proto-message" data-depth={depth}>
+    <section className="proto-message">
       <EntityHeader
         kind="message"
         name={message.name}
@@ -72,20 +65,16 @@ export const MessageBlock = ({ message, baseHref, depth = 0 }: MessageBlockProps
           <h3 className="proto-oneof-name">oneof {o.name}</h3>
           <DocBlock raw={o.comment} />
           <ul className="proto-oneof-fields">
-            {o.fieldNames.map((fname) => {
-              const f = message.fields.find((x) => x.name === fname)
-              if (!f) {
-                return null
-              }
-              return (
-                <li key={fname} className="proto-oneof-field">
+            {message.fields
+              .filter((f) => f.oneofName === o.name)
+              .map((f) => (
+                <li key={f.name} className="proto-oneof-field">
                   <span className="proto-field-number">{f.number}</span>{" "}
                   <span className="proto-field-name">{f.name}</span>{" "}
                   <TypeRef reference={f.type} baseHref={baseHref} />
                   <DocBlock raw={f.comment} />
                 </li>
-              )
-            })}
+              ))}
           </ul>
         </section>
       ))}
@@ -93,7 +82,7 @@ export const MessageBlock = ({ message, baseHref, depth = 0 }: MessageBlockProps
       {message.nestedMessages.length > 0 || message.nestedEnums.length > 0 ? (
         <div className="proto-nested">
           {message.nestedMessages.map((nm) => (
-            <MessageBlock key={nm.fqn} message={nm} baseHref={baseHref} depth={depth + 1} />
+            <MessageBlock key={nm.fqn} message={nm} baseHref={baseHref} />
           ))}
           {message.nestedEnums.map((ne) => (
             <EnumBlock key={ne.fqn} enumEntity={ne} />

@@ -1,5 +1,4 @@
 import { DocBlock } from "./DocBlock"
-import { FileSourceLink } from "./FileSourceLink"
 
 export type PackageHeaderProps = {
   packageName: string | null
@@ -18,7 +17,16 @@ export const PackageHeader = ({
         <span className="proto-package-keyword">package</span> {packageName}
       </h1>
     ) : null}
-    {fileSourceUrl ? <FileSourceLink href={fileSourceUrl} /> : null}
+    {fileSourceUrl ? (
+      <a
+        className="proto-file-source-link"
+        href={fileSourceUrl}
+        target="_blank"
+        rel="noreferrer noopener"
+      >
+        View source
+      </a>
+    ) : null}
     <DocBlock raw={leadingComment} />
   </header>
 )

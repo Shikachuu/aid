@@ -5,6 +5,4 @@ import { attachMermaid } from "./mermaid"
  * `<pre class="mermaid">` block never load this bundle, keeping the prose
  * critical path under a kilobyte.
  */
-document.addEventListener("DOMContentLoaded", () => {
-  void attachMermaid()
-})
+void attachMermaid()

@@ -5,7 +5,7 @@ export function Nav({ tree }: { tree: NavNode[] }) {
     <nav class="aid-nav">
       <ul>
         {tree.map((node) => (
-          <NavItem node={node} />
+          <NavItem key={node.path ?? node.label} node={node} />
         ))}
       </ul>
     </nav>
@@ -19,7 +19,7 @@ function NavItem({ node }: { node: NavNode }) {
       {node.children && node.children.length > 0 ? (
         <ul>
           {node.children.map((child) => (
-            <NavItem node={child} />
+            <NavItem key={child.path ?? child.label} node={child} />
           ))}
         </ul>
       ) : null}

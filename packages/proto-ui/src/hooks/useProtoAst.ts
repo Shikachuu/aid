@@ -2,33 +2,29 @@ import { useEffect, useMemo, useState } from "react"
 import { type ProtoAst, parseProto } from "../parser"
 
 /**
- * Input to `useProtoAst`. Exactly one of `protoText`, `protoUrl`, or `ast` may
- * be supplied; omitting all three lands in the idle state. The discriminated
- * arms make mismatched combinations a type error rather than a runtime quirk.
+ * Input to `useProtoAst`. Exactly one of `protoText`, `protoUrl`, or `ast` must
+ * be supplied. The discriminated arms make mismatched combinations a type error.
  */
 export type UseProtoAstOptions =
-  | { protoText: string; protoUrl?: never; ast?: never; signal?: never }
-  | { protoUrl: string; protoText?: never; ast?: never; signal?: AbortSignal }
-  | { ast: ProtoAst; protoText?: never; protoUrl?: never; signal?: never }
-  | { protoText?: never; protoUrl?: never; ast?: never; signal?: never }
+  | { protoText: string; protoUrl?: never; ast?: never }
+  | { protoUrl: string; protoText?: never; ast?: never }
+  | { ast: ProtoAst; protoText?: never; protoUrl?: never }
 
 export type UseProtoAstResult =
-  | { status: "idle"; ast: null; error: null; source: null }
   | { status: "loading"; ast: null; error: null; source: null }
   | { status: "ready"; ast: ProtoAst; error: null; source: string | null }
   | { status: "error"; ast: null; error: Error; source: null }
 
-const IDLE: UseProtoAstResult = { status: "idle", ast: null, error: null, source: null }
 const LOADING: UseProtoAstResult = { status: "loading", ast: null, error: null, source: null }
 
 /**
  * Source-loading + parsing lifecycle hook. Pass `protoText` for inline source,
  * `protoUrl` for built-in fetch, or `ast` to skip both stages — useful when an
  * external loader (SWR, react-query, redux, a custom transport) has already
- * produced the AST. Transitions: `idle` → `loading` → (`ready` | `error`).
+ * produced the AST. Transitions: `loading` → (`ready` | `error`).
  */
 export const useProtoAst = (options: UseProtoAstOptions): UseProtoAstResult => {
-  const { protoText, protoUrl, ast, signal } = options
+  const { protoText, protoUrl, ast } = options
   const [fetched, setFetched] = useState<{ url: string; source: string } | null>(null)
   const [fetchError, setFetchError] = useState<Error | null>(null)
 
@@ -39,16 +35,6 @@ export const useProtoAst = (options: UseProtoAstOptions): UseProtoAstResult => {
       return
     }
     const controller = new AbortController()
-    const onParentAbort = () => {
-      controller.abort()
-    }
-    if (signal) {
-      if (signal.aborted) {
-        controller.abort()
-      } else {
-        signal.addEventListener("abort", onParentAbort, { once: true })
-      }
-    }
     setFetchError(null)
     const run = async () => {
       try {
@@ -61,21 +47,14 @@ export const useProtoAst = (options: UseProtoAstOptions): UseProtoAstResult => {
           setFetched({ url: protoUrl, source })
         }
       } catch (err: unknown) {
-        const error = err instanceof Error ? err : new Error(String(err))
-        if (controller.signal.aborted || error.name === "AbortError") {
-          return
+        if (!controller.signal.aborted) {
+          setFetchError(err instanceof Error ? err : new Error(String(err)))
         }
-        setFetchError(error)
       }
     }
     void run()
-    return () => {
-      controller.abort()
-      if (signal) {
-        signal.removeEventListener("abort", onParentAbort)
-      }
-    }
-  }, [protoUrl, signal])
+    return () => controller.abort()
+  }, [protoUrl])
 
   return useMemo<UseProtoAstResult>(() => {
     if (ast != null) {
@@ -87,13 +66,10 @@ export const useProtoAst = (options: UseProtoAstOptions): UseProtoAstResult => {
     if (fetchError) {
       return { status: "error", ast: null, error: fetchError, source: null }
     }
-    if (protoUrl) {
-      if (fetched && fetched.url === protoUrl) {
-        return parseSafe(fetched.source)
-      }
-      return LOADING
+    if (fetched && fetched.url === protoUrl) {
+      return parseSafe(fetched.source)
     }
-    return IDLE
+    return LOADING
   }, [ast, protoText, protoUrl, fetched, fetchError])
 }
 
