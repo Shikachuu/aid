@@ -1,6 +1,6 @@
 import path from "node:path"
 import rehypeShiki from "@shikijs/rehype"
-import type { ElementContent, Element as HastElement, Root as HastRoot } from "hast"
+import type { Element as HastElement, Root as HastRoot } from "hast"
 import type { Root as MdastRoot } from "mdast"
 import rehypeAutolinkHeadings from "rehype-autolink-headings"
 import rehypeSlug from "rehype-slug"
@@ -13,9 +13,10 @@ import { unified } from "unified"
 import { visit } from "unist-util-visit"
 import { VFile } from "vfile"
 import type { RenderedPage, Route, SearchTokens } from "../../core/types"
+import { hastText } from "../shared"
 import type { CopyAsset } from "./colocated-assets"
 import { colocatedAssetsMdastPlugin } from "./colocated-assets-mdast"
-import { extractFrontmatter, type Frontmatter } from "./frontmatter"
+import { extractFrontmatter } from "./frontmatter"
 import { HAS_MERMAID_FLAG, mermaidPlugin } from "./mermaid"
 import { SHIKI_OPTIONS } from "./shiki"
 
@@ -124,8 +125,6 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
   }
 }
 
-export type { Frontmatter }
-
 type TitleSink = { value: string }
 
 function resolveAndEnsureLeadingH1(opts: {
@@ -136,7 +135,7 @@ function resolveAndEnsureLeadingH1(opts: {
   return (tree: HastRoot): void => {
     const firstEl = tree.children.find((c): c is HastElement => c.type === "element")
     if (firstEl && firstEl.tagName === "h1") {
-      opts.sink.value = opts.frontmatterTitle ?? hastToString(firstEl)
+      opts.sink.value = opts.frontmatterTitle ?? hastText(firstEl)
       return
     }
     const title = opts.frontmatterTitle ?? opts.filenameTitle
@@ -155,24 +154,10 @@ function collectHeadings(opts: { sink: string[] }) {
   return (tree: HastRoot): void => {
     visit(tree, "element", (node) => {
       if (HEADING_TAGS.has(node.tagName)) {
-        opts.sink.push(hastToString(node))
+        opts.sink.push(hastText(node))
       }
     })
   }
 }
 
 const HEADING_TAGS = new Set(["h1", "h2", "h3", "h4", "h5", "h6"])
-
-function hastToString(node: HastElement | ElementContent): string {
-  if (node.type === "text") {
-    return node.value
-  }
-  if (node.type === "element") {
-    let out = ""
-    for (const child of node.children) {
-      out += hastToString(child)
-    }
-    return out
-  }
-  return ""
-}

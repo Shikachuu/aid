@@ -2,6 +2,7 @@ import path from "node:path"
 import type { RenderedPage, Route } from "../../core/types"
 import { render } from "../../jsx-runtime"
 import { PageOpenAPI } from "../../theme/components/PageOpenAPI"
+import { nonEmpty } from "../shared"
 import { parseOpenApi } from "./parser"
 
 /** Arguments for {@link renderOpenApi}. */
@@ -105,21 +106,11 @@ function extractSearchExtras(doc: Record<string, unknown>): Record<string, strin
       ? Object.keys(components.schemas as Record<string, unknown>)
       : []
 
-  const extras: Record<string, string[]> = {}
-  if (operationIds.length > 0) {
-    extras.operationIds = operationIds
-  }
-  if (paths.length > 0) {
-    extras.paths = paths
-  }
-  if (schemas.length > 0) {
-    extras.schemas = schemas
-  }
-  if (parameters.length > 0) {
-    extras.parameters = [...new Set(parameters)]
-  }
-  if (summaries.length > 0) {
-    extras.summaries = summaries
-  }
-  return extras
+  return nonEmpty({
+    operationIds,
+    paths,
+    schemas,
+    parameters: [...new Set(parameters)],
+    summaries,
+  })
 }

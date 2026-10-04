@@ -6,7 +6,7 @@ import type { BundledLanguage, BundledTheme } from "shiki"
  * Kept deliberately small — `shiki`'s grammar JSON adds up fast. Users can
  * grow the list later via a config knob.
  */
-export const DEFAULT_LANGS: BundledLanguage[] = [
+const DEFAULT_LANGS: BundledLanguage[] = [
   "ts",
   "tsx",
   "js",
@@ -33,7 +33,7 @@ export const DEFAULT_LANGS: BundledLanguage[] = [
 ]
 
 /** Default dual-theme pair — emits `--shiki-light` / `--shiki-dark` CSS variables. */
-export const DEFAULT_THEMES: { light: BundledTheme; dark: BundledTheme } = {
+const DEFAULT_THEMES: { light: BundledTheme; dark: BundledTheme } = {
   light: "github-light",
   dark: "github-dark",
 }

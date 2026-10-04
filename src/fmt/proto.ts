@@ -1,20 +1,10 @@
-import { findUserConfig } from "../lint/config-resolve"
-import { bufDefault } from "../lint/configs/buf.default"
 import type { ToolResult } from "../lint/diagnostics"
 import { resolveBufBinary } from "../lint/proto"
 
-const USER_CONFIGS = ["buf.yaml", "buf.yml"] as const
-
-const writeTempBufConfig = async (): Promise<string> => {
-  const tmp = process.env.TMPDIR ?? "/tmp"
-  const path = `${tmp}/aid-buf-fmt-${process.pid}-${Date.now()}.yaml`
-  await Bun.write(path, bufDefault)
-  return path
-}
-
 /**
- * Format `.proto` files via `buf format`. In `--check` mode, runs `buf format -d`
- * and reports files that would change. Skips silently when `buf` isn't installed.
+ * Format `.proto` files through `buf format`. In `check` mode, list the files
+ * whose diff is non-empty. Returns a `skipped` result when no `buf` binary is
+ * available.
  */
 export const formatProto = async (
   paths: string[],
@@ -34,39 +24,19 @@ export const formatProto = async (
       reason: "buf binary not available — install `@bufbuild/buf` or put `buf` on PATH",
     }
   }
-  const userConfig = await findUserConfig(dir, USER_CONFIGS)
-  const tempCfg = userConfig === null ? await writeTempBufConfig() : null
+  const mode = opts.check ? ["-d", "--exit-code"] : ["-w"]
   const wouldChange: string[] = []
   let ok = true
-
   for (const file of paths) {
-    if (opts.check) {
-      const args = ["format", "-d"]
-      if (tempCfg !== null) {
-        args.push("--config", tempCfg)
-      }
-      args.push(file)
-      const proc = Bun.spawn([bin, ...args], { stdout: "pipe", stderr: "pipe", cwd: dir })
-      const stdout = await new Response(proc.stdout).text()
-      await new Response(proc.stderr).text()
-      await proc.exited
-      if (stdout.trim().length > 0) {
-        wouldChange.push(file)
-        ok = false
-      }
-    } else {
-      const args = ["format", "-w"]
-      if (tempCfg !== null) {
-        args.push("--config", tempCfg)
-      }
-      args.push(file)
-      const proc = Bun.spawn([bin, ...args], { stdout: "pipe", stderr: "pipe", cwd: dir })
-      await new Response(proc.stdout).text()
-      await new Response(proc.stderr).text()
-      const exitCode = await proc.exited
-      if (exitCode !== 0) {
-        ok = false
-      }
+    const { stdout, exitCode } = await Bun.$`${bin} format ${mode} ${file}`
+      .cwd(dir)
+      .nothrow()
+      .quiet()
+    if (exitCode !== 0) {
+      ok = false
+    }
+    if (opts.check && stdout.length > 0) {
+      wouldChange.push(file)
     }
   }
   return { tool: "proto", ok, diagnostics: [], wouldChange: opts.check ? wouldChange : undefined }

@@ -1,7 +1,7 @@
 import { extname, resolve } from "node:path"
 import type { AidConfig } from "../core/config"
 import { RELOAD_CLIENT_SCRIPT, RELOAD_PATH } from "./reload"
-import { type DevState, serializeError } from "./state"
+import { type DevState, sseFrame } from "./state"
 
 export type StartDevServerArgs = {
   state: DevState
@@ -20,8 +20,8 @@ export type DevServerHandle = {
  * Long-running Bun.serve handler. Routes `/__aid/reload` to an SSE channel,
  * everything else to a path-traversal-safe lookup under `state.currentDir`.
  * `.html` responses are rewritten on the fly to inject the reload client
- * script. If `state.currentDir` is null and a build error is present, every
- * non-SSE request renders a minimal HTML page that hosts the error overlay.
+ * script. While `state.currentDir` is null, every non-SSE request gets a 503
+ * shell that only loads the reload client, which renders the error overlay.
  */
 export function startDevServer(args: StartDevServerArgs): DevServerHandle {
   const { state, config, host, port } = args
@@ -62,19 +62,24 @@ async function handle(req: Request, state: DevState, config: AidConfig): Promise
 
   const relative = stripBasePath(rawPath, config.base_path)
   if (relative === null) {
-    const target = normalizeBasePath(config.base_path)
-    return Response.redirect(target, 302)
+    return Response.redirect(withSlash(config.base_path), 302)
   }
 
   if (state.currentDir === null) {
-    return new Response(errorBootstrapPage(state), {
-      status: 503,
-      headers: { "Content-Type": "text/html; charset=utf-8" },
-    })
+    return htmlResponse(BOOTSTRAP_PAGE, 503)
   }
 
-  return serveFile(state.currentDir, relative)
+  const res = await serveFile(state.currentDir, relative)
+  if (res.headers.get("Content-Type")?.startsWith("text/html")) {
+    return htmlResponse(injectReloadScript(await res.text()), res.status)
+  }
+  return res
 }
+
+const BOOTSTRAP_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>aid dev</title></head><body><script>${RELOAD_CLIENT_SCRIPT}</script></body></html>`
+
+const htmlResponse = (html: string, status: number): Response =>
+  new Response(html, { status, headers: { "Content-Type": "text/html; charset=utf-8" } })
 
 function openSseStream(state: DevState): Response {
   let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null
@@ -84,8 +89,7 @@ function openSseStream(state: DevState): Response {
       state.sseClients.add(controller)
       controller.enqueue(new TextEncoder().encode(": connected\n\n"))
       if (state.errorState !== null) {
-        const frame = `event: error-detail\ndata: ${serializeError(state.errorState)}\n\n`
-        controller.enqueue(new TextEncoder().encode(frame))
+        controller.enqueue(sseFrame("error-detail", JSON.stringify(state.errorState)))
       }
     },
     cancel() {
@@ -105,7 +109,12 @@ function openSseStream(state: DevState): Response {
   })
 }
 
-async function serveFile(distDir: string, pathname: string): Promise<Response> {
+/**
+ * Serve `pathname` from `distDir`. Rejects paths that resolve outside
+ * `distDir`, and maps directory-style URLs (`/`, `/api/`, `/api`) to their
+ * `index.html`.
+ */
+export async function serveFile(distDir: string, pathname: string): Promise<Response> {
   const candidate = resolve(distDir, `.${pathname}`)
   if (candidate !== distDir && !candidate.startsWith(`${distDir}/`)) {
     return new Response("Bad Request", { status: 400 })
@@ -117,13 +126,6 @@ async function serveFile(distDir: string, pathname: string): Promise<Response> {
   const file = Bun.file(target)
   if (!(await file.exists())) {
     return new Response("Not Found", { status: 404 })
-  }
-  if (target.endsWith(".html")) {
-    const html = await file.text()
-    return new Response(injectReloadScript(html), {
-      status: 200,
-      headers: { "Content-Type": "text/html; charset=utf-8" },
-    })
   }
   return new Response(file)
 }
@@ -139,8 +141,12 @@ function injectReloadScript(html: string): string {
   return `${html}\n${tag}`
 }
 
+/** `basePath` with exactly one trailing slash appended when it lacks one. */
+export const withSlash = (basePath: string): string =>
+  basePath.endsWith("/") ? basePath : `${basePath}/`
+
 function stripBasePath(pathname: string, basePath: string): string | null {
-  const norm = basePath.endsWith("/") ? basePath : `${basePath}/`
+  const norm = withSlash(basePath)
   if (norm === "/") {
     return pathname
   }
@@ -154,39 +160,6 @@ function stripBasePath(pathname: string, basePath: string): string | null {
   return null
 }
 
-function normalizeBasePath(basePath: string): string {
-  return basePath.endsWith("/") ? basePath : `${basePath}/`
-}
-
-function errorBootstrapPage(state: DevState): string {
-  const message =
-    state.errorState === null ? "aid dev: build in progress…" : state.errorState.message
-  const file = state.errorState?.file ?? ""
-  const stack = state.errorState?.stack ?? ""
-  return `<!doctype html>
-<html><head><meta charset="utf-8"><title>aid dev: build failed</title></head>
-<body style="margin:0;background:#141418;color:#fafafa;font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;padding:32px;">
-<div style="font:600 18px/1.3 ui-sans-serif,system-ui,sans-serif;color:#ff6b6b;margin-bottom:12px;">aid: build failed</div>
-${file ? `<div style="color:#a1a1aa;margin-bottom:12px;">${escapeHtml(file)}</div>` : ""}
-<div style="white-space:pre-wrap;margin-bottom:16px;">${escapeHtml(message)}</div>
-${stack ? `<pre style="white-space:pre-wrap;color:#a1a1aa;font-size:12px;">${escapeHtml(stack)}</pre>` : ""}
-<script>${RELOAD_CLIENT_SCRIPT}</script>
-</body></html>`
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;")
-}
-
 function isAddrInUse(err: unknown): boolean {
-  if (err === null || typeof err !== "object") {
-    return false
-  }
-  const code = (err as { code?: unknown }).code
-  return code === "EADDRINUSE"
+  return (err as { code?: string } | null)?.code === "EADDRINUSE"
 }

@@ -3,6 +3,7 @@ import { type ProtoAst, type ProtoMessage, parseProto } from "@aid/proto-ui/pars
 import type { RenderedPage, Route, SearchTokens } from "../../core/types"
 import { render } from "../../jsx-runtime"
 import { PageProto } from "../../theme/components/PageProto"
+import { nonEmpty } from "../shared"
 
 /** Arguments for {@link renderProto}. */
 export type RenderProtoArgs = {
@@ -128,27 +129,10 @@ const extractSearchTokens = (ast: ProtoAst, title: string): SearchTokens => {
     }
   }
 
-  const extras: Record<string, string[]> = {}
-  if (messages.length > 0) {
-    extras.messages = messages
-  }
-  if (services.length > 0) {
-    extras.services = services
-  }
-  if (rpcs.length > 0) {
-    extras.rpcs = rpcs
-  }
-  if (enums.length > 0) {
-    extras.enums = enums
-  }
-  if (fieldNames.length > 0) {
-    extras.fields = [...new Set(fieldNames)]
-  }
-
   return {
     title,
     body: comments.join("\n\n"),
     headings: [],
-    extras,
+    extras: nonEmpty({ messages, services, rpcs, enums, fields: [...new Set(fieldNames)] }),
   }
 }

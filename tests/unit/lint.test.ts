@@ -80,7 +80,7 @@ describe("lintAll orchestrator", () => {
   test("centralized discovery + per-format dispatch", async () => {
     await Bun.write(join(dir, "doc.md"), "# Title\n\n\n\nbody\n")
     await Bun.write(join(dir, "x.ts"), "let x = 1\nconsole.log(x)\n")
-    const report = await lintAll({ dir, fix: false, filter: null, format: "pretty" })
+    const report = await lintAll({ dir, fix: false, filter: null })
     expect(report.ok).toBe(false)
     const tools = report.results.map((r) => r.tool)
     expect(tools).toContain("md")
@@ -90,7 +90,7 @@ describe("lintAll orchestrator", () => {
   test("filter restricts dispatch to a single tool", async () => {
     await Bun.write(join(dir, "doc.md"), "# Title\n\n\n\nbody\n")
     await Bun.write(join(dir, "x.ts"), "let x = 1\nconsole.log(x)\n")
-    const report = await lintAll({ dir, fix: false, filter: new Set(["md"]), format: "pretty" })
+    const report = await lintAll({ dir, fix: false, filter: new Set(["md"]) })
     expect(report.results.every((r) => r.tool === "md")).toBe(true)
   })
 })

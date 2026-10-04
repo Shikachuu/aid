@@ -1,7 +1,6 @@
 /** Error payload sent to the client overlay when a rebuild throws. */
 export type DevErrorPayload = {
   message: string
-  file?: string
   stack?: string
 }
 
@@ -17,20 +16,16 @@ export type DevState = {
   sseClients: Set<ReadableStreamDefaultController<Uint8Array>>
 }
 
-export function createDevState(buffers: { a: string; b: string }): DevState {
-  return {
-    currentDir: null,
-    buffers,
-    errorState: null,
-    sseClients: new Set(),
-  }
-}
-
 const encoder = new TextEncoder()
 
-/** Push an SSE `event: <event>` frame with a JSON or string data payload to every connected client. */
+/** Encode one SSE frame carrying `event` and a string `data` payload. */
+export function sseFrame(event: string, data: string): Uint8Array {
+  return encoder.encode(`event: ${event}\ndata: ${data}\n\n`)
+}
+
+/** Push an SSE frame to every connected client, dropping clients whose stream has closed. */
 export function broadcast(state: DevState, event: string, data: string): void {
-  const frame = encoder.encode(`event: ${event}\ndata: ${data}\n\n`)
+  const frame = sseFrame(event, data)
   for (const ctrl of state.sseClients) {
     try {
       ctrl.enqueue(frame)
@@ -38,11 +33,6 @@ export function broadcast(state: DevState, event: string, data: string): void {
       state.sseClients.delete(ctrl)
     }
   }
-}
-
-/** Format a `DevErrorPayload` as a JSON string suitable for an SSE data line. */
-export function serializeError(err: DevErrorPayload): string {
-  return JSON.stringify(err)
 }
 
 /** Turn an arbitrary thrown value into a `DevErrorPayload`. */

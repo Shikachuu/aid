@@ -1,9 +1,11 @@
-import type { ToolResult } from "../lint/diagnostics"
+import type { Diagnostic, ToolResult } from "../lint/diagnostics"
+import { applyFormat } from "./apply"
 
 /**
  * Canonicalize OpenAPI files: round-trip `.yaml`/`.yml` through `Bun.YAML` and
  * `.json` through `JSON.parse`/`JSON.stringify`. Spectral has no formatter, so
- * this is a structural reformat only.
+ * this is a structural reformat only. A file that fails to parse stays
+ * untouched and fails the run with an `openapi/parse` error.
  *
  * **Caveat:** YAML comments are not preserved by `Bun.YAML`.
  */
@@ -12,33 +14,21 @@ export const formatOpenApi = async (
   _dir: string,
   opts: { check: boolean },
 ): Promise<ToolResult> => {
-  if (paths.length === 0) {
-    return { tool: "openapi", ok: true, diagnostics: [] }
-  }
-  const wouldChange: string[] = []
-  let ok = true
-  for (const file of paths) {
-    const original = await Bun.file(file).text()
-    let formatted: string
+  const diagnostics: Diagnostic[] = []
+  const result = await applyFormat("openapi", paths, opts.check, (file, text) => {
     try {
-      if (file.endsWith(".json")) {
-        formatted = `${JSON.stringify(JSON.parse(original), null, 2)}\n`
-      } else {
-        formatted = Bun.YAML.stringify(Bun.YAML.parse(original))
-      }
-    } catch {
-      // skip files we can't parse
-      continue
+      return file.endsWith(".json")
+        ? `${JSON.stringify(JSON.parse(text), null, 2)}\n`
+        : Bun.YAML.stringify(Bun.YAML.parse(text))
+    } catch (err) {
+      diagnostics.push({
+        file,
+        severity: "error",
+        code: "openapi/parse",
+        message: err instanceof Error ? err.message : String(err),
+      })
+      return text
     }
-    if (formatted === original) {
-      continue
-    }
-    if (opts.check) {
-      wouldChange.push(file)
-      ok = false
-    } else {
-      await Bun.write(file, formatted)
-    }
-  }
-  return { tool: "openapi", ok, diagnostics: [], wouldChange: opts.check ? wouldChange : undefined }
+  })
+  return { ...result, ok: result.ok && diagnostics.length === 0, diagnostics }
 }

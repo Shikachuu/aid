@@ -11,8 +11,11 @@ export type Diagnostic = {
   message: string
 }
 
-/** Tools that the lint/fmt orchestrator can dispatch to. */
-export type Tool = "md" | "openapi" | "biome" | "proto"
+/** Tools that `aid lint` and `aid fmt` dispatch to, in report order. */
+export const KNOWN_TOOLS = ["md", "openapi", "biome", "proto"] as const
+
+/** One of the tools in `KNOWN_TOOLS`. */
+export type Tool = (typeof KNOWN_TOOLS)[number]
 
 /** The result of running one tool over its discovered files. */
 export type ToolResult = {
@@ -27,6 +30,21 @@ export type ToolResult = {
   wouldChange?: string[]
 }
 
+/** Aggregate result of a lint or fmt run; `ok` is false when any tool failed. */
+export type Report = { ok: boolean; results: ToolResult[] }
+
+/**
+ * Parse a `--filter` value such as `md,biome` into a tool set. Unknown names
+ * are dropped; `null` (run every tool) is returned when nothing valid remains.
+ */
+export const parseFilter = (raw: string | undefined): Set<Tool> | null => {
+  const tools = (raw ?? "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part): part is Tool => (KNOWN_TOOLS as readonly string[]).includes(part))
+  return tools.length === 0 ? null : new Set(tools)
+}
+
 const ANSI = {
   reset: "\x1b[0m",
   dim: "\x1b[2m",
@@ -36,10 +54,10 @@ const ANSI = {
   bold: "\x1b[1m",
 } as const
 
-const useColor = () => process.stdout.isTTY === true
+const colorEnabled = () => process.stdout.isTTY === true
 
 const colorize = (s: string, code: keyof typeof ANSI): string =>
-  useColor() ? `${ANSI[code]}${s}${ANSI.reset}` : s
+  colorEnabled() ? `${ANSI[code]}${s}${ANSI.reset}` : s
 
 const severityColor = (s: Severity): keyof typeof ANSI =>
   s === "error" ? "red" : s === "warn" ? "yellow" : "blue"
@@ -97,3 +115,10 @@ export const renderPretty = (results: ToolResult[]): string => {
 
 /** Render results as JSON for piping into other tools or CI parsers. */
 export const renderJson = (results: ToolResult[]): string => JSON.stringify({ results }, null, 2)
+
+/** Write `report` to stdout as `pretty` or `json`, then exit 0 when it passed and 1 otherwise. */
+export const printReport = (report: Report, format: string): never => {
+  const out = format === "json" ? renderJson(report.results) : renderPretty(report.results)
+  process.stdout.write(`${out}\n`)
+  process.exit(report.ok ? 0 : 1)
+}

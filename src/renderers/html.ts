@@ -10,7 +10,8 @@ import { visit } from "unist-util-visit"
 import { VFile } from "vfile"
 import type { RenderedPage, Route, SearchTokens } from "../core/types"
 import { type CopyAsset, colocatedAssetsPlugin } from "./markdown/colocated-assets"
-import { type Frontmatter, FrontmatterSchema } from "./markdown/frontmatter"
+import type { Frontmatter } from "./markdown/frontmatter"
+import { hastText } from "./shared"
 
 /** Arguments for {@link renderHtml}. */
 export type RenderHtmlArgs = {
@@ -60,12 +61,8 @@ export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
     )
   }
 
-  const frontmatter = FrontmatterSchema.parse(extractHeadMetadata(headEl))
-  const filenameTitle = path.basename(args.sourcePath, path.extname(args.sourcePath))
-  const title =
-    typeof frontmatter.title === "string" && frontmatter.title.length > 0
-      ? frontmatter.title
-      : filenameTitle
+  const frontmatter = extractHeadMetadata(headEl)
+  const title = frontmatter.title ?? path.basename(args.sourcePath, path.extname(args.sourcePath))
 
   // Wrap the body's children in a fresh hast root — Layout supplies <html>,
   // <head>, and <body>, so everything above <body> would be redundant chrome.
@@ -91,10 +88,8 @@ export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
   const html = unified().use(rehypeStringify).stringify(bodyTree)
 
   // .md output — hast → mdast via rehype-remark, then stringify with remark.
-  // structuredClone() so rehype-remark's transformer can't mutate the tree
-  // we just serialised (defensive — matches the markdown renderer pattern).
   const mdProcessor = unified().use(rehypeRemark).use(remarkStringify)
-  const mdast = (await mdProcessor.run(structuredClone(bodyTree))) as MdastRoot
+  const mdast = (await mdProcessor.run(bodyTree)) as MdastRoot
   const mdBody = mdProcessor.stringify(mdast)
 
   const searchTokens: SearchTokens = {
@@ -134,17 +129,17 @@ function findChildElement(parent: HastElement | HastRoot, tagName: string): Hast
   return null
 }
 
-function extractHeadMetadata(head: HastElement | null): Record<string, unknown> {
+function extractHeadMetadata(head: HastElement | null): Frontmatter {
+  const out: Frontmatter = {}
   if (!head) {
-    return {}
+    return out
   }
-  const out: Record<string, unknown> = {}
   for (const child of head.children) {
     if (child.type !== "element") {
       continue
     }
     if (child.tagName === "title") {
-      const text = elementTextContent(child)
+      const text = hastText(child).trim()
       if (text.length > 0) {
         out.title = text
       }
@@ -161,27 +156,6 @@ function extractHeadMetadata(head: HastElement | null): Record<string, unknown> 
   return out
 }
 
-function elementTextContent(node: HastElement): string {
-  let out = ""
-  for (const child of node.children) {
-    if (child.type === "text") {
-      out += child.value
-    } else if (child.type === "element") {
-      out += elementTextContent(child)
-    }
-  }
-  return out.trim()
-}
-
 function hasClass(node: HastElement, cls: string): boolean {
-  const value = node.properties?.className
-  if (Array.isArray(value)) {
-    return value.includes(cls)
-  }
-  if (typeof value === "string") {
-    return value.split(/\s+/).includes(cls)
-  }
-  return false
+  return (node.properties?.className as string[] | undefined)?.includes(cls) ?? false
 }
-
-export type { Frontmatter }

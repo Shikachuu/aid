@@ -52,13 +52,6 @@ export const resolveBufBinary = async (): Promise<string | null> => {
   return cachedBin
 }
 
-const writeTempBufConfig = async (): Promise<string> => {
-  const tmp = process.env.TMPDIR ?? "/tmp"
-  const path = `${tmp}/aid-buf-${process.pid}-${Date.now()}.yaml`
-  await Bun.write(path, bufDefault)
-  return path
-}
-
 type BufJsonError = {
   path?: string
   start_line?: number
@@ -93,7 +86,7 @@ const parseBufOutput = (stdout: string): Diagnostic[] => {
   return out
 }
 
-/** Run `buf lint` over the project. Skips silently when buf isn't installed. */
+/** Run `buf lint` over the project. Returns a `skipped` result when no `buf` binary is available. */
 export const lintProto = async (paths: string[], dir: string): Promise<ToolResult> => {
   if (paths.length === 0) {
     return { tool: "proto", ok: true, diagnostics: [] }
@@ -108,17 +101,11 @@ export const lintProto = async (paths: string[], dir: string): Promise<ToolResul
       reason: "buf binary not available — install `@bufbuild/buf` or put `buf` on PATH",
     }
   }
-  const userConfig = await findUserConfig(dir, USER_CONFIGS)
-  const tempCfg = userConfig === null ? await writeTempBufConfig() : null
-  const args = ["lint", "--error-format=json"]
-  if (tempCfg !== null) {
-    args.push("--config", tempCfg)
-  }
-  args.push(dir)
-  const proc = Bun.spawn([bin, ...args], { stdout: "pipe", stderr: "pipe", cwd: dir })
-  const stdout = await new Response(proc.stdout).text()
-  await new Response(proc.stderr).text()
-  const exitCode = await proc.exited
-  const diagnostics = parseBufOutput(stdout)
+  const config = (await findUserConfig(dir, USER_CONFIGS)) === null ? ["--config", bufDefault] : []
+  const { stdout, exitCode } = await Bun.$`${bin} lint --error-format=json ${config} ${dir}`
+    .cwd(dir)
+    .nothrow()
+    .quiet()
+  const diagnostics = parseBufOutput(stdout.toString())
   return { tool: "proto", ok: exitCode === 0 && diagnostics.length === 0, diagnostics }
 }

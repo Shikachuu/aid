@@ -1,10 +1,11 @@
 import { build } from "../core/pipeline"
 import type { BuildContext } from "../core/types"
-import { broadcast, type DevState, serializeError, toErrorPayload } from "./state"
+import { broadcast, type DevErrorPayload, type DevState, toErrorPayload } from "./state"
 
+/** Outcome of one `rebuild`, with its wall-clock duration for the console log. */
 export type RebuildResult =
-  | { ok: true; durationMs: number; outputDir: string }
-  | { ok: false; durationMs: number; error: ReturnType<typeof toErrorPayload> }
+  | { ok: true; durationMs: number }
+  | { ok: false; durationMs: number; error: DevErrorPayload }
 
 /**
  * Run a full build into the inactive buffer. On success, flip `state.currentDir`
@@ -16,21 +17,19 @@ export type RebuildResult =
 export async function rebuild(state: DevState, ctx: BuildContext): Promise<RebuildResult> {
   const target = state.currentDir === state.buffers.a ? state.buffers.b : state.buffers.a
   const start = performance.now()
+  const elapsed = () => Math.round(performance.now() - start)
   try {
     await Bun.$`rm -rf ${target}`.quiet()
-    const rebuildCtx: BuildContext = { ...ctx, outputDir: target }
-    await build(rebuildCtx)
+    await build({ ...ctx, outputDir: target })
     state.currentDir = target
     state.errorState = null
     broadcast(state, "clear-error", "")
     broadcast(state, "reload", "")
-    const durationMs = Math.round(performance.now() - start)
-    return { ok: true, durationMs, outputDir: target }
+    return { ok: true, durationMs: elapsed() }
   } catch (err) {
     const error = toErrorPayload(err)
     state.errorState = error
-    broadcast(state, "error-detail", serializeError(error))
-    const durationMs = Math.round(performance.now() - start)
-    return { ok: false, durationMs, error }
+    broadcast(state, "error-detail", JSON.stringify(error))
+    return { ok: false, durationMs: elapsed(), error }
   }
 }

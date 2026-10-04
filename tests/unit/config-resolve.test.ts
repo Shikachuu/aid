@@ -67,6 +67,17 @@ describe("parseConfigFile", () => {
     }
   })
 
+  test("parses JSONC with trailing commas", async () => {
+    const dir = tmp()
+    const path = join(dir, "c.jsonc")
+    await Bun.write(path, '{"a": [1, 2,], "b": "// not a comment",}')
+    try {
+      expect(await parseConfigFile(path)).toEqual({ a: [1, 2], b: "// not a comment" })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   test("parses YAML", async () => {
     const dir = tmp()
     const path = join(dir, "c.yaml")

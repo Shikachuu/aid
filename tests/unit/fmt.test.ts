@@ -60,6 +60,19 @@ describe("formatOpenApi", () => {
     const second = await Bun.file(file).text()
     expect(second).toBe(first)
   })
+
+  test("reports an unparseable spec as an error and leaves it untouched", async () => {
+    const file = join(dir, "openapi.json")
+    const original = '{"openapi": "3.0.0",'
+    await Bun.write(file, original)
+    const result = await formatOpenApi([file], dir, { check: true })
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ file, severity: "error", code: "openapi/parse" }),
+    ])
+    expect(result.wouldChange).toEqual([])
+    expect(await Bun.file(file).text()).toBe(original)
+  })
 })
 
 describe("formatWithBiome", () => {
@@ -89,7 +102,7 @@ describe("formatAll orchestrator", () => {
   test("end-to-end format pass over a mixed project", async () => {
     await Bun.write(join(dir, "doc.md"), "# Title\n\n\n\nbody\n")
     await Bun.write(join(dir, "x.ts"), "const   x = 1\n")
-    const report = await formatAll({ dir, check: false, filter: null, format: "pretty" })
+    const report = await formatAll({ dir, check: false, filter: null })
     expect(report.results.length).toBeGreaterThan(0)
   })
 })

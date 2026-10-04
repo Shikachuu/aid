@@ -1,9 +1,7 @@
 import type { Element as HastElement, Root as HastRoot } from "hast"
 import { SKIP, visit } from "unist-util-visit"
 import type { VFile } from "vfile"
-
-const LANGUAGE_CLASS_PREFIX = "language-"
-const MERMAID_LANGUAGE_CLASS = "language-mermaid"
+import { hastText } from "../shared"
 
 /** Key set on the rendered file's `data` map when a page contains at least one mermaid diagram. */
 export const HAS_MERMAID_FLAG = "aidHasMermaid"
@@ -31,7 +29,7 @@ export function mermaidPlugin() {
       if (!hasMermaidLanguageClass(code)) {
         return
       }
-      const text = extractText(code)
+      const text = hastText(code)
       parent.children[index] = {
         type: "element",
         tagName: "pre",
@@ -51,33 +49,11 @@ function isCodeElement(node: { type: string }): node is HastElement {
   return node.type === "element" && (node as HastElement).tagName === "code"
 }
 
+// The first `language-*` class decides the fence's language.
 function hasMermaidLanguageClass(node: HastElement): boolean {
   const classes = node.properties?.className
-  if (!Array.isArray(classes)) {
-    return false
-  }
-  for (const cls of classes) {
-    if (typeof cls !== "string") {
-      continue
-    }
-    if (cls === MERMAID_LANGUAGE_CLASS) {
-      return true
-    }
-    if (cls.startsWith(LANGUAGE_CLASS_PREFIX)) {
-      return false
-    }
-  }
-  return false
-}
-
-function extractText(node: HastElement): string {
-  let out = ""
-  for (const child of node.children) {
-    if (child.type === "text") {
-      out += child.value
-    } else if (child.type === "element") {
-      out += extractText(child)
-    }
-  }
-  return out
+  const lang = Array.isArray(classes)
+    ? classes.find((cls) => typeof cls === "string" && cls.startsWith("language-"))
+    : undefined
+  return lang === "language-mermaid"
 }

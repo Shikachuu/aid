@@ -6,13 +6,31 @@ import type { Diagnostic, Severity, ToolResult } from "./diagnostics"
 
 const USER_CONFIGS = ["biome.json", "biome.jsonc"] as const
 
+type ProjectKey = ReturnType<Biome["openProject"]>["projectKey"]
+
 /** Resolve the active Biome configuration: user's `biome.json[c]` if present, else the bundled default. */
-export const resolveBiomeConfig = async (dir: string): Promise<Configuration> => {
+const resolveBiomeConfig = async (dir: string): Promise<Configuration> => {
   const path = await findUserConfig(dir, USER_CONFIGS)
   if (path === null) {
     return biomeDefault as unknown as Configuration
   }
   return (await parseConfigFile(path)) as Configuration
+}
+
+/** Open a Biome project for `dir` with the resolved config, run `fn`, and always shut Biome down. */
+export const withBiome = async <T>(
+  dir: string,
+  fn: (biome: Biome, projectKey: ProjectKey) => Promise<T>,
+): Promise<T> => {
+  const config = await resolveBiomeConfig(dir)
+  const biome = new Biome()
+  try {
+    const { projectKey } = biome.openProject(dir)
+    biome.applyConfiguration(projectKey, config)
+    return await fn(biome, projectKey)
+  } finally {
+    biome.shutdown()
+  }
 }
 
 const offsetToLineCol = (source: string, byteOffset: number): { line: number; col: number } => {
@@ -43,11 +61,11 @@ const mapBiomeSeverity = (s: BiomeDiagnostic["severity"]): Severity => {
 
 const toDiagnostic = (d: BiomeDiagnostic, file: string, source: string): Diagnostic => {
   const span = d.location.span
-  const { line, col } = span ? offsetToLineCol(source, span[0]) : { line: 0, col: 0 }
+  const pos = span ? offsetToLineCol(source, span[0]) : undefined
   return {
     file,
-    line: span ? line : undefined,
-    col: span ? col : undefined,
+    line: pos?.line,
+    col: pos?.col,
     severity: mapBiomeSeverity(d.severity),
     code: d.category ?? "biome",
     message: d.description,
@@ -66,11 +84,7 @@ export const lintWithBiome = async (
   if (paths.length === 0) {
     return { tool: "biome", ok: true, diagnostics: [] }
   }
-  const config = await resolveBiomeConfig(dir)
-  const biome = new Biome()
-  try {
-    const { projectKey } = biome.openProject(dir)
-    biome.applyConfiguration(projectKey, config)
+  return withBiome(dir, async (biome, projectKey) => {
     const diagnostics: Diagnostic[] = []
     let ok = true
     for (const file of paths) {
@@ -91,7 +105,5 @@ export const lintWithBiome = async (
       }
     }
     return { tool: "biome", ok, diagnostics }
-  } finally {
-    biome.shutdown()
-  }
+  })
 }

@@ -1,8 +1,7 @@
-import path from "node:path"
 import type { Image, Root as MdastRoot } from "mdast"
 import { visit } from "unist-util-visit"
 import type { VFile } from "vfile"
-import { type ColocatedAssetsOptions, isRelative } from "./colocated-assets"
+import { type AssetRef, type ColocatedAssetsOptions, copyColocated } from "./colocated-assets"
 
 /**
  * Remark plugin that rewrites mdast `image` node URLs pointing at files **next
@@ -14,24 +13,10 @@ import { type ColocatedAssetsOptions, isRelative } from "./colocated-assets"
  */
 export function colocatedAssetsMdastPlugin(opts: ColocatedAssetsOptions) {
   return async (tree: MdastRoot, file: VFile): Promise<void> => {
-    const tasks: Promise<void>[] = []
+    const refs: AssetRef[] = []
     visit(tree, "image", (node: Image) => {
-      const src = node.url
-      if (typeof src !== "string" || !isRelative(src)) {
-        return
-      }
-      const absSrc = path.resolve(opts.sourceDir, src)
-      tasks.push(
-        (async () => {
-          const href = await opts.copyAsset(absSrc)
-          if (href == null) {
-            file.message(`colocated image not found: ${src}`, { place: node.position })
-            return
-          }
-          node.url = href
-        })(),
-      )
+      refs.push({ src: node.url, place: node.position, set: (href) => (node.url = href) })
     })
-    await Promise.all(tasks)
+    await copyColocated(opts, file, refs)
   }
 }

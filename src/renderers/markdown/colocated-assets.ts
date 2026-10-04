@@ -28,49 +28,44 @@ export type ColocatedAssetsOptions = {
  */
 export function colocatedAssetsPlugin(opts: ColocatedAssetsOptions) {
   return async (tree: HastRoot, file: VFile): Promise<void> => {
-    const tasks: Promise<void>[] = []
+    const refs: AssetRef[] = []
     visit(tree, "element", (node: HastElement) => {
-      if (node.tagName !== "img") {
-        return
-      }
       const src = node.properties?.src
-      if (typeof src !== "string" || !isRelative(src)) {
-        return
+      if (node.tagName === "img" && typeof src === "string") {
+        refs.push({ src, place: node.position, set: (href) => (node.properties.src = href) })
       }
-      const absSrc = path.resolve(opts.sourceDir, src)
-      tasks.push(
-        (async () => {
-          const href = await opts.copyAsset(absSrc)
-          if (href == null) {
-            file.message(`colocated image not found: ${src}`, { place: node.position })
-            return
-          }
-          node.properties.src = href
-        })(),
-      )
     })
-    await Promise.all(tasks)
+    await copyColocated(opts, file, refs)
   }
 }
 
-const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i
+/** One asset reference found in a tree: its source, position, and a setter for the new href. */
+export type AssetRef = { src: string; place?: HastElement["position"]; set: (href: string) => void }
 
 /**
- * `true` for paths the plugin should rewrite: not absolute, not URL-like, not a
- * fragment. Matches `./foo.png`, `../bar/baz.svg`, and bare `foo.png` alike.
+ * Copy every relative `ref` through `opts.copyAsset` and point it at the
+ * returned public href. A missing asset leaves the ref untouched and adds a
+ * warning to `file`.
  */
-export function isRelative(src: string): boolean {
-  if (src.length === 0) {
-    return false
-  }
-  if (src.startsWith("/")) {
-    return false
-  }
-  if (src.startsWith("#")) {
-    return false
-  }
-  if (SCHEME_RE.test(src)) {
-    return false
-  }
-  return true
+export async function copyColocated(
+  opts: ColocatedAssetsOptions,
+  file: VFile,
+  refs: AssetRef[],
+): Promise<void> {
+  await Promise.all(
+    refs
+      .filter((ref) => RELATIVE_RE.test(ref.src))
+      .map(async (ref) => {
+        const href = await opts.copyAsset(path.resolve(opts.sourceDir, ref.src))
+        if (href == null) {
+          file.message(`colocated image not found: ${ref.src}`, { place: ref.place })
+        } else {
+          ref.set(href)
+        }
+      }),
+  )
 }
+
+// Relative means non-empty and not absolute (`/x`), not a fragment (`#x`), and
+// not scheme-prefixed (`https:`, `data:`).
+const RELATIVE_RE = /^(?![/#]|[a-z][a-z0-9+.-]*:)./i

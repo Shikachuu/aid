@@ -1,14 +1,17 @@
 import path from "node:path"
 import type { BuildContext } from "../core/types"
 import { rebuild } from "./loop"
-import { startDevServer } from "./server"
-import { broadcast, createDevState, serializeError } from "./state"
-import { type ChangeBatch, watchContent } from "./watcher"
+import { startDevServer, withSlash } from "./server"
+import { broadcast, type DevState } from "./state"
+import { watchContent } from "./watcher"
 
+/** Inputs for `startDevSession`. */
 export type StartDevSessionArgs = {
   ctx: BuildContext
   host: string
   port: number
+  /** Config file the session watches; a change to it ends the session. */
+  configPath: string
 }
 
 /**
@@ -19,17 +22,19 @@ export type StartDevSessionArgs = {
  * sends SIGINT.
  */
 export async function startDevSession(args: StartDevSessionArgs): Promise<void> {
-  const { ctx, host, port } = args
+  const { ctx, host, port, configPath } = args
 
   const aidDir = path.join(ctx.cwd, ".aid")
   const devDir = path.join(aidDir, "dev")
-  const buffers = { a: path.join(devDir, "build-a"), b: path.join(devDir, "build-b") }
 
   await Bun.write(path.join(aidDir, ".gitignore"), "*\n")
 
-  const state = createDevState(buffers)
-
-  const stylesheetPath = path.join(ctx.cwd, ctx.config.stylesheet)
+  const state: DevState = {
+    currentDir: null,
+    buffers: { a: path.join(devDir, "build-a"), b: path.join(devDir, "build-b") },
+    errorState: null,
+    sseClients: new Set(),
+  }
 
   const initial = await rebuild(state, ctx)
   if (initial.ok) {
@@ -39,44 +44,45 @@ export async function startDevSession(args: StartDevSessionArgs): Promise<void> 
   }
 
   const server = startDevServer({ state, config: ctx.config, host, port })
+  console.log(
+    `[aid] dev server listening at http://${host}:${server.port}${withSlash(ctx.config.base_path)}`,
+  )
 
-  const url = buildUrl(host, server.port, ctx.config.base_path)
-  console.log(`[aid] dev server listening at ${url}`)
-
-  let inFlight: Promise<unknown> | null = null
+  let running = false
   let queued = false
 
   const runRebuild = async () => {
-    if (inFlight !== null) {
+    if (running) {
       queued = true
       return
     }
+    running = true
     do {
       queued = false
-      inFlight = rebuild(state, ctx)
-      const result = (await inFlight) as Awaited<ReturnType<typeof rebuild>>
-      inFlight = null
+      const result = await rebuild(state, ctx)
       if (result.ok) {
         console.log(`[aid] rebuilt in ${result.durationMs}ms`)
       } else {
         console.error(`[aid] build failed (${result.durationMs}ms): ${result.error.message}`)
       }
     } while (queued)
+    running = false
   }
 
-  const onChange = (batch: ChangeBatch) => {
-    if (batch.configChanged) {
-      const message = "aid.yaml changed. Restart `aid dev` to pick up the new configuration."
-      console.log(`[aid] ${message}`)
-      broadcast(state, "error-detail", serializeError({ message }))
-      handle.close()
-      server.stop()
-      process.exit(0)
-    }
-    void runRebuild()
-  }
-
-  const handle = watchContent(ctx, [stylesheetPath], onChange)
+  const handle = watchContent(
+    ctx,
+    configPath,
+    [path.join(ctx.cwd, ctx.config.stylesheet)],
+    (configChanged) => {
+      if (configChanged) {
+        const message = `${path.basename(configPath)} changed. Restart \`aid dev\` to pick up the new configuration.`
+        console.log(`[aid] ${message}`)
+        broadcast(state, "error-detail", JSON.stringify({ message }))
+        shutdown()
+      }
+      void runRebuild()
+    },
+  )
 
   const shutdown = () => {
     handle.close()
@@ -85,9 +91,4 @@ export async function startDevSession(args: StartDevSessionArgs): Promise<void> 
   }
   process.on("SIGINT", shutdown)
   process.on("SIGTERM", shutdown)
-}
-
-function buildUrl(host: string, port: number, basePath: string): string {
-  const norm = basePath.endsWith("/") ? basePath : `${basePath}/`
-  return `http://${host}:${port}${norm}`
 }

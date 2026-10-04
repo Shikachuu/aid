@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
-import { extname, resolve } from "node:path"
+import { resolve } from "node:path"
+import { serveFile } from "../src/dev/server"
 
 const ROOT = resolve(import.meta.dir, "..")
 
@@ -42,25 +43,7 @@ const DIST = resolve(SAMPLE_PROJECT, "dist")
 
 const server = Bun.serve({
   port: 3000,
-  async fetch(req) {
-    const pathname = decodeURIComponent(new URL(req.url).pathname)
-    // Block path traversal — reject anything that escapes DIST after resolving.
-    const candidate = resolve(DIST, `.${pathname}`)
-    if (candidate !== DIST && !candidate.startsWith(`${DIST}/`)) {
-      return new Response("Bad Request", { status: 400 })
-    }
-    // Directory-style URLs (`/`, `/api/`, `/api`) serve `index.html`. Files
-    // with a known extension (.css, .js, .svg, …) serve the file itself.
-    const target =
-      pathname === "/" || pathname.endsWith("/") || extname(pathname) === ""
-        ? resolve(candidate, "index.html")
-        : candidate
-    const file = Bun.file(target)
-    if (!(await file.exists())) {
-      return new Response("Not Found", { status: 404 })
-    }
-    return new Response(file)
-  },
+  fetch: (req) => serveFile(DIST, decodeURIComponent(new URL(req.url).pathname)),
 })
 
 console.log(`[server] listening on http://localhost:${server.port}/`)

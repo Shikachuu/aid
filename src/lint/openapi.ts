@@ -8,7 +8,7 @@ import type { Diagnostic, Severity, ToolResult } from "./diagnostics"
 const USER_CONFIGS = [".spectral.yaml", ".spectral.yml", ".spectral.json"] as const
 
 /** Resolve the active Spectral ruleset: user's `.spectral.*` if present, else the bundled `spectral:oas`. */
-export const resolveSpectralRuleset = async (dir: string): Promise<RulesetDefinition> => {
+const resolveSpectralRuleset = async (dir: string): Promise<RulesetDefinition> => {
   const path = await findUserConfig(dir, USER_CONFIGS)
   if (path === null) {
     return oas as unknown as RulesetDefinition

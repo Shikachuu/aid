@@ -1,3 +1,4 @@
+import path from "node:path"
 import { defineCommand } from "citty"
 import { z } from "zod"
 import { loadBuildContext, PortSchema } from "../../core/config"
@@ -27,6 +28,6 @@ export const command = defineCommand({
       ? z.coerce.number().pipe(PortSchema).parse(args.port)
       : ctx.config.dev.port
     const host = args.host || ctx.config.dev.host
-    await startDevSession({ ctx, host, port })
+    await startDevSession({ ctx, host, port, configPath: path.resolve(ctx.cwd, args.file) })
   },
 })
