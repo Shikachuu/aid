@@ -27,23 +27,19 @@ export type RenderHtmlArgs = {
 }
 
 /**
- * Parse a full HTML document into a RenderedPage. `<head>` is dropped (Layout
- * owns the document chrome); `<title>` and `<meta name="description">` are
- * promoted onto `route.frontmatter` so downstream code (Layout title,
- * llms.txt, search) treats HTML pages uniformly with markdown. Returned `html`
- * is the body subtree serialised as HTML — no `<html>`/`<head>`/`<body>`
- * wrapper. The `.md` sidechain is produced by converting the same rewritten
- * body subtree through rehype-remark, so colocated image hrefs match between
- * the two outputs.
+ * Parse a full HTML document into a RenderedPage. Layout owns the document
+ * chrome, so `<head>` is dropped. `<title>` and `<meta name="description">`
+ * move onto `route.frontmatter`, so Layout, llms.txt and search treat HTML
+ * pages like markdown pages. The returned `html` is the body content without
+ * any `<html>`, `<head>` or `<body>` wrapper. The `.md` export comes from the
+ * same rewritten body tree, so colocated image hrefs match in both outputs.
  *
- * Body-fragment inputs are rejected — v0.1 requires a full HTML document.
+ * Throws on body fragments: the source must contain `<html>` and `<body>`.
  */
 export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
   const source = await Bun.file(args.sourcePath).text()
-  // rehype-parse silently fabricates missing <html>/<body> wrappers, so a
-  // structural post-parse check would never fire. Sniff the raw source instead
-  // — both opening tags must be present for the input to qualify as a "full
-  // HTML document" per v0.1's contract.
+  // rehype-parse fabricates missing <html> and <body> wrappers, so only the raw
+  // source can tell a fragment from a full document.
   if (!HTML_TAG_RE.test(source) || !BODY_TAG_RE.test(source)) {
     throw new Error(
       `aid: HTML page ${args.sourcePath} must be a full HTML document with <html> and <body>. Body fragments are not supported in v0.1.`,
@@ -64,8 +60,6 @@ export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
   const frontmatter = extractHeadMetadata(headEl)
   const title = frontmatter.title ?? path.basename(args.sourcePath, path.extname(args.sourcePath))
 
-  // Wrap the body's children in a fresh hast root — Layout supplies <html>,
-  // <head>, and <body>, so everything above <body> would be redundant chrome.
   const bodyTree: HastRoot = { type: "root", children: bodyEl.children as RootContent[] }
 
   if (args.copyAsset) {
@@ -83,14 +77,8 @@ export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
     }
   })
 
-  // HTML output — read-only stringify, so the tree stays intact for the
-  // .md branch below.
   const html = unified().use(rehypeStringify).stringify(bodyTree)
-
-  // .md output — hast → mdast via rehype-remark, then stringify with remark.
-  const mdProcessor = unified().use(rehypeRemark).use(remarkStringify)
-  const mdast = (await mdProcessor.run(bodyTree)) as MdastRoot
-  const mdBody = mdProcessor.stringify(mdast)
+  const mdBody = await toMarkdown(bodyTree)
 
   const searchTokens: SearchTokens = {
     title,
@@ -114,6 +102,11 @@ export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
     hasProto: false,
     description: frontmatter.description,
   }
+}
+
+async function toMarkdown(tree: HastRoot): Promise<string> {
+  const processor = unified().use(rehypeRemark).use(remarkStringify)
+  return processor.stringify((await processor.run(tree)) as MdastRoot)
 }
 
 const HTML_TAG_RE = /<html(\s|>)/i

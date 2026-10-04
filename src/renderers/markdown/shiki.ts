@@ -1,11 +1,7 @@
 import type { RehypeShikiOptions } from "@shikijs/rehype"
 import type { BundledLanguage, BundledTheme } from "shiki"
 
-/**
- * Default fenced-code languages compiled into the build-time highlighter.
- * Kept deliberately small — `shiki`'s grammar JSON adds up fast. Users can
- * grow the list later via a config knob.
- */
+/** Each shiki grammar is a large JSON file, so the build-time highlighter loads only these. */
 const DEFAULT_LANGS: BundledLanguage[] = [
   "ts",
   "tsx",
@@ -32,20 +28,18 @@ const DEFAULT_LANGS: BundledLanguage[] = [
   "http",
 ]
 
-/** Default dual-theme pair, rendered as `color: light-dark(<light>, <dark>)`. */
 const DEFAULT_THEMES: { light: BundledTheme; dark: BundledTheme } = {
   light: "github-light",
   dark: "github-dark",
 }
 
 /**
- * Options passed to `@shikijs/rehype` via `unified().use(rehypeShiki, SHIKI_OPTIONS)`.
- * `defaultColor: "light-dark()"` inlines `light-dark(<light>, <dark>)` on every
- * span, so the page's `color-scheme` picks the theme without extra CSS or a
- * re-highlight on the client.
+ * Options for `@shikijs/rehype`. `defaultColor: "light-dark()"` inlines
+ * `light-dark(<light>, <dark>)` on every span, so the page's `color-scheme`
+ * picks the theme without extra CSS or a client-side re-highlight.
  *
- * Unknown languages fall back to plaintext rather than throwing — a typo in a
- * fence info string should not fail the build.
+ * Unknown languages fall back to plain text, so a typo in a fence info string
+ * does not fail the build.
  */
 export const SHIKI_OPTIONS: RehypeShikiOptions = {
   themes: DEFAULT_THEMES,

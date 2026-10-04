@@ -7,7 +7,6 @@ import type { Diagnostic, Severity, ToolResult } from "./diagnostics"
 
 const USER_CONFIGS = [".spectral.yaml", ".spectral.yml", ".spectral.json"] as const
 
-/** Resolve the active Spectral ruleset: user's `.spectral.*` if present, else the bundled `spectral:oas`. */
 const resolveSpectralRuleset = async (dir: string): Promise<RulesetDefinition> => {
   const path = await findUserConfig(dir, USER_CONFIGS)
   if (path === null) {
@@ -18,7 +17,7 @@ const resolveSpectralRuleset = async (dir: string): Promise<RulesetDefinition> =
 
 const mapSeverity = (s: number): Severity => (s === 0 ? "error" : s === 1 ? "warn" : "info")
 
-/** Lint a list of OpenAPI files (.yaml/.yml/.json) via Spectral. */
+/** Lint OpenAPI files with Spectral, using the user's `.spectral.*` ruleset or the bundled `spectral:oas`. */
 export const lintOpenApi = async (paths: string[], dir: string): Promise<ToolResult> => {
   if (paths.length === 0) {
     return { tool: "openapi", ok: true, diagnostics: [] }

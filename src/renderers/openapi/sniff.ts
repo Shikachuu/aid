@@ -4,11 +4,10 @@ const YAML_RE = /^(openapi|swagger)\s*:\s*['"]?\d/m
 const JSON_RE = /"(openapi|swagger)"\s*:\s*"\d/
 
 /**
- * Cheap content-sniff for OpenAPI / Swagger specs. Reads at most the first
- * 64 KiB and runs a regex prescreen — a top-level `openapi: "3.x"` or
- * `swagger: "2.0"` key (in YAML or JSON). Returns `false` for any other
- * `.yaml` / `.yml` / `.json` file so data files in the content tree are
- * silently skipped by the router. Never parses the full document.
+ * Tell OpenAPI and Swagger specs apart from other YAML and JSON files without
+ * parsing them. Matches an `openapi:` or `swagger:` version key in the first
+ * 64 KiB. The router skips files that return `false`, so data files in the
+ * content tree never become pages.
  */
 export async function sniffOpenApi(absPath: string): Promise<boolean> {
   const prefix = await Bun.file(absPath).slice(0, PREFIX_BYTES).text()

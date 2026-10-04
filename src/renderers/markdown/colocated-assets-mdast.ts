@@ -4,8 +4,8 @@ import type { VFile } from "vfile"
 import { type AssetRef, type ColocatedAssetsOptions, copyColocated } from "./colocated-assets"
 
 /**
- * Remark plugin that rewrites mdast `image` node URLs pointing at files **next
- * to** the markdown source (relative paths like `./hero.png` or
+ * Remark plugin that rewrites mdast `image` node URLs pointing at files next
+ * to the markdown source (relative paths like `./hero.png` or
  * `../diagrams/x.svg`) by delegating the copy to the supplied
  * {@link ColocatedAssetsOptions.copyAsset} callback. Runs once at the mdast
  * stage so both the HTML and `.md` outputs see the rewritten public href.

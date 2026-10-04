@@ -13,16 +13,12 @@ export type RenderProtoArgs = {
 }
 
 /**
- * Render a `.proto` source as a hydration shell. The page itself contains only
- * a mount div with `data-proto-url` pointing at the `.proto` sibling export;
- * the bundled `aid-proto.js` (`@aid/proto-ui/hydrate`) fetches the source and
- * renders the full UI client-side. Server-side we still parse the AST so we
- * can populate `searchTokens` (RPC + message names, comment text) and emit a
- * meaningful `<meta description>`.
+ * Render a `.proto` source as a hydration shell. The page holds a mount div
+ * whose `data-proto-url` points at the `.proto` export, and `aid-proto.js`
+ * fetches that file and renders the UI in the browser. The build still parses
+ * the AST to fill `searchTokens` and the page description.
  *
- * The `.proto` file is also written as a sidechain next to the HTML — humans
- * and agents read the same canonical artefact. No `.json` AST export: the
- * `.proto` is itself the agent input.
+ * The only export is the `.proto` source itself, which agents read as is.
  */
 export const renderProto = async (args: RenderProtoArgs): Promise<RenderedPage> => {
   const source = await Bun.file(args.sourcePath).text()

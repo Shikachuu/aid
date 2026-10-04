@@ -13,13 +13,11 @@ export type RenderOpenApiArgs = {
 }
 
 /**
- * Parse an OpenAPI spec and produce a `RenderedPage` whose body is the
- * `PageOpenAPI` shell: an `aid-page-openapi` article with the normalized 3.1
- * spec embedded as `<script type="application/json">` plus an empty mount
- * point. The browser-side `aid-openapi` bundle picks the spec out of the
- * script tag and hands it to Scalar. Theming flows through the existing
- * `:where(.aid-page-openapi)` Scalar token bridge in `main.css` — no per-page
- * styling here.
+ * Render an OpenAPI spec as a `PageOpenAPI` shell. The page embeds the
+ * normalized 3.1 spec as `<script type="application/json">` next to an empty
+ * mount point, and the browser-side `aid-openapi` bundle hands it to Scalar.
+ * Operation ids, paths, schema names, parameter names and summaries go into
+ * `searchTokens.extras`, so a search for `getPets` finds this page.
  */
 export async function renderOpenApi(args: RenderOpenApiArgs): Promise<RenderedPage> {
   const source = await Bun.file(args.sourcePath).text()
@@ -55,13 +53,6 @@ export async function renderOpenApi(args: RenderOpenApiArgs): Promise<RenderedPa
 
 const HTTP_VERBS = new Set(["get", "post", "put", "patch", "delete", "head", "options", "trace"])
 
-/**
- * Walk a normalized OpenAPI 3.1 document once and bucket the human-meaningful
- * identifiers — operationIds, path strings, schema names, parameter names, and
- * operation summaries — into `searchTokens.extras`. The search-index emitter
- * flattens every bucket into one indexed field, so a query for `getPets` or
- * `petId` lands on the OpenAPI page that defines it.
- */
 function extractSearchExtras(doc: Record<string, unknown>): Record<string, string[]> {
   const operationIds: string[] = []
   const paths: string[] = []

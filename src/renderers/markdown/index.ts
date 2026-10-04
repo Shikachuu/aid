@@ -34,14 +34,12 @@ export type RenderMarkdownArgs = {
 }
 
 /**
- * Parse a markdown file into a RenderedPage. Frontmatter is YAML, validated by
- * a Zod schema; GFM is enabled; headings get slugged ids and an appended `#`
- * anchor link. The body's first H1 is the page heading — if absent, the
- * renderer prepends one using the frontmatter title or filename so the page
- * chrome is consistent. Returned `html` is body content only; Layout +
- * PageMarkdown wrapping happens in the pipeline. The `.md` sidechain export
- * (frontmatter-stripped, with relative image URLs rewritten to the same public
- * hrefs the HTML uses) is appended to `exports`.
+ * Parse a markdown file into a RenderedPage, with GFM enabled. Headings get
+ * slug ids and an appended `#` anchor link. When the body does not start with
+ * an H1, the renderer prepends one from the frontmatter title or the file
+ * name. The returned `html` is body content only, and the pipeline wraps it in
+ * Layout and PageMarkdown. The `.md` export drops the frontmatter and uses the
+ * same rewritten image hrefs as the HTML.
  */
 export async function renderMarkdown(args: RenderMarkdownArgs): Promise<RenderedPage> {
   const source = await Bun.file(args.sourcePath).text()
@@ -51,22 +49,9 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
   const titleSink = { value: frontmatter?.title ?? filenameTitle }
   const headings: string[] = []
 
-  // Shared mdast: parse + GFM + (optional) image URL rewrite. Forking after
-  // this point means HTML and .md outputs see the same public hrefs and the
-  // copyAsset side effects fire exactly once.
-  let mdastProcessor = unified().use(remarkParse).use(remarkGfm)
-  if (args.copyAsset) {
-    mdastProcessor = mdastProcessor.use(colocatedAssetsMdastPlugin, {
-      sourceDir: path.dirname(args.sourcePath),
-      copyAsset: args.copyAsset,
-    })
-  }
-
   const file = new VFile({ value: body })
-  const mdast = (await mdastProcessor.run(mdastProcessor.parse(file), file)) as MdastRoot
+  const mdast = await buildMdast(file, args)
 
-  // HTML branch: preserves the existing plugin order so the rendered body
-  // stays byte-equivalent with the pre-fork output.
   const htmlProcessor = unified()
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(resolveAndEnsureLeadingH1, {
@@ -90,14 +75,11 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
     .use(rehypeShiki, SHIKI_OPTIONS)
     .use(rehypeStringify, { allowDangerousHtml: true })
 
-  // Clone the mdast for the HTML branch — remark-rehype and friends mutate it
-  // and the MD branch still needs the original.
-  const htmlTree = await htmlProcessor.run(structuredClone(mdast), file)
+  const htmlTree = await htmlProcessor.run(mdast, file)
   const html = htmlProcessor.stringify(htmlTree as HastRoot, file)
 
-  // MD branch: serialize the rewritten mdast back to markdown. `remark-gfm`
-  // is included so the stringifier knows how to emit table/strikethrough nodes
-  // that `remark-gfm` introduces during parsing.
+  // The stringifier needs `remark-gfm` to emit the table and strikethrough
+  // nodes that parsing produced.
   const mdBody = unified().use(remarkGfm).use(remarkStringify).stringify(mdast)
 
   const searchTokens: SearchTokens = {
@@ -122,6 +104,17 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
     hasProto: false,
     description: frontmatter?.description,
   }
+}
+
+async function buildMdast(file: VFile, args: RenderMarkdownArgs): Promise<MdastRoot> {
+  let processor = unified().use(remarkParse).use(remarkGfm)
+  if (args.copyAsset) {
+    processor = processor.use(colocatedAssetsMdastPlugin, {
+      sourceDir: path.dirname(args.sourcePath),
+      copyAsset: args.copyAsset,
+    })
+  }
+  return (await processor.run(processor.parse(file), file)) as MdastRoot
 }
 
 type TitleSink = { value: string }

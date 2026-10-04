@@ -11,7 +11,7 @@ export type WatchHandle = { close: () => void }
  * `<cwd>/.aid/` are filtered out so our own writes can't loop back. Events
  * whose target file has the same mtime as the last time we saw it are also
  * dropped, because Bun's recursive `fs.watch` on macOS emits events for reads
- * as well as writes. Calls `onChange` once per ~100ms debounce window, with
+ * as well as writes. Calls `onChange` once per 100 ms debounce window, with
  * `configChanged` true when the config file was among the changes.
  *
  * Inputs that do not exist yet (no `templates/`, for example) are skipped.
@@ -45,14 +45,10 @@ export function watchContent(
     if (absPath.startsWith(`${ignoreRoot}${path.sep}`) || absPath === ignoreRoot) {
       return
     }
-    let mtime: number | null = null
-    try {
-      mtime = (await Bun.file(absPath).stat()).mtimeMs
-    } catch {
-      // File deleted — treat as a real change.
+    const mtime = await statMtime(absPath)
+    if (mtime === null) {
       seenMtimes.delete(absPath)
-    }
-    if (mtime !== null) {
+    } else {
       const prev = seenMtimes.get(absPath)
       if (prev !== undefined && mtime <= prev) {
         return
@@ -109,5 +105,13 @@ export function watchContent(
         w.close()
       }
     },
+  }
+}
+
+const statMtime = async (absPath: string): Promise<number | null> => {
+  try {
+    return (await Bun.file(absPath).stat()).mtimeMs
+  } catch {
+    return null
   }
 }

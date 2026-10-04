@@ -3,6 +3,7 @@ import type { AidConfig } from "../core/config"
 import { RELOAD_CLIENT_SCRIPT, RELOAD_PATH } from "./reload"
 import { type DevState, sseFrame } from "./state"
 
+/** Inputs for {@link startDevServer}. */
 export type StartDevServerArgs = {
   state: DevState
   config: AidConfig
@@ -10,8 +11,9 @@ export type StartDevServerArgs = {
   port: number
 }
 
+/** Lets the session read the bound port and stop the server on shutdown. */
 export type DevServerHandle = {
-  /** Resolved listening port (useful when callers ask for a random one). */
+  /** Bound port, which differs from the requested one when the caller passes 0. */
   port: number
   stop: () => void
 }
@@ -141,7 +143,7 @@ function injectReloadScript(html: string): string {
   return `${html}\n${tag}`
 }
 
-/** `basePath` with exactly one trailing slash appended when it lacks one. */
+/** Normalize `basePath` to the trailing-slash form that the server redirects to and the session prints. */
 export const withSlash = (basePath: string): string =>
   basePath.endsWith("/") ? basePath : `${basePath}/`
 

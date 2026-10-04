@@ -3,7 +3,7 @@ import type { ToolResult } from "../lint/diagnostics"
 import { runMarkdownlint } from "../lint/markdown"
 import { applyFormat } from "./apply"
 
-/** Apply markdownlint's fixable rules to the given files. */
+/** Apply markdownlint's fixable rules, with the same config resolution as `aid lint`. */
 export const formatMarkdown = async (
   paths: string[],
   dir: string,

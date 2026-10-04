@@ -2,10 +2,10 @@ import { existsSync } from "node:fs"
 import { dirname, join, resolve as resolvePath } from "node:path"
 
 /**
- * Walk from `startDir` upward to the filesystem root, returning the first path
- * where any of `candidates` exists. Stops early when a `.git/` directory is
- * found at the same level as a candidate (so config-resolution doesn't escape
- * the repo). Returns `null` if no candidate is found.
+ * Walk from `startDir` upward and return the first path where any of
+ * `candidates` exists. The walk stops after the first directory that contains
+ * `.git`, so it never picks up a config from outside the repo. Returns `null`
+ * when no candidate is found.
  */
 export const findUserConfig = async (
   startDir: string,

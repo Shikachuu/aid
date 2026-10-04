@@ -18,8 +18,8 @@ export type StartDevSessionArgs = {
  * Run the dev server end-to-end: prepare the double-buffered output dirs under
  * `.aid/dev/`, write `.aid/.gitignore`, kick off the initial build, start
  * Bun.serve, and begin watching the filesystem. Returns once the server is
- * listening; the watcher and server keep the process alive until the user
- * sends SIGINT.
+ * listening. The watcher and server keep the process alive until SIGINT,
+ * SIGTERM, or a change to the config file.
  */
 export async function startDevSession(args: StartDevSessionArgs): Promise<void> {
   const { ctx, host, port, configPath } = args

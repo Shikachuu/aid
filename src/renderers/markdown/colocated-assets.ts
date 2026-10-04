@@ -5,26 +5,25 @@ import type { VFile } from "vfile"
 
 /**
  * Callback invoked once per relative `<img src>` discovered in a rendered
- * page. Implementations copy the file to its destination, returning the
- * public href to substitute. Returning `null` means "no such file" — the
- * plugin then attaches a warning to the VFile and leaves the src untouched.
+ * page. Implementations copy the file and return the public href to
+ * substitute. Returning `null` means the file does not exist: the plugin then
+ * adds a warning to the VFile and leaves the src untouched.
  */
 export type CopyAsset = (absoluteSource: string) => Promise<string | null>
 
 /** Inputs for {@link colocatedAssetsPlugin}. */
 export type ColocatedAssetsOptions = {
-  /** Absolute directory of the markdown source — relative srcs resolve against this. */
+  /** Absolute directory of the source file. Relative srcs resolve against it. */
   sourceDir: string
-  /** Per-asset copy callback supplied by the pipeline. */
   copyAsset: CopyAsset
 }
 
 /**
- * Rehype plugin that detects `<img src>` values pointing at files **next to**
- * the markdown source (relative paths like `./hero.png` or `../diagrams/x.svg`)
+ * Rehype plugin that detects `<img src>` values pointing at files next to the
+ * source file (relative paths like `./hero.png` or `../diagrams/x.svg`)
  * and delegates the actual copy to {@link CopyAsset}. The returned public href
  * replaces the original src. Absolute URLs, fragment links, and scheme-prefixed
- * sources (`https:`, `data:`, …) pass through untouched.
+ * sources such as `https:` and `data:` pass through untouched.
  */
 export function colocatedAssetsPlugin(opts: ColocatedAssetsOptions) {
   return async (tree: HastRoot, file: VFile): Promise<void> => {
@@ -54,7 +53,7 @@ export async function copyColocated(
 ): Promise<void> {
   await Promise.all(
     refs
-      .filter((ref) => RELATIVE_RE.test(ref.src))
+      .filter((ref) => isRelativeSrc(ref.src))
       .map(async (ref) => {
         const href = await opts.copyAsset(path.resolve(opts.sourceDir, ref.src))
         if (href == null) {
@@ -66,6 +65,7 @@ export async function copyColocated(
   )
 }
 
-// Relative means non-empty and not absolute (`/x`), not a fragment (`#x`), and
-// not scheme-prefixed (`https:`, `data:`).
-const RELATIVE_RE = /^(?![/#]|[a-z][a-z0-9+.-]*:)./i
+const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i
+
+const isRelativeSrc = (src: string): boolean =>
+  src.length > 0 && !src.startsWith("/") && !src.startsWith("#") && !SCHEME_RE.test(src)

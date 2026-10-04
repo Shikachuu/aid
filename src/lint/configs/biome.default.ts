@@ -1,7 +1,6 @@
 /**
  * Default Biome configuration applied when the user has no `biome.json[c]`.
- * Mirrors the repo's own settings minus the `files.includes` block — discovery
- * is handled by `aid` itself, not Biome's path matcher.
+ * It has no `files.includes` block, because `aid` discovers files itself.
  */
 export const biomeDefault = {
   $schema: "https://biomejs.dev/schemas/2.4.15/schema.json",

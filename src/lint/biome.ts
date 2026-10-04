@@ -8,7 +8,6 @@ const USER_CONFIGS = ["biome.json", "biome.jsonc"] as const
 
 type ProjectKey = ReturnType<Biome["openProject"]>["projectKey"]
 
-/** Resolve the active Biome configuration: user's `biome.json[c]` if present, else the bundled default. */
 const resolveBiomeConfig = async (dir: string): Promise<Configuration> => {
   const path = await findUserConfig(dir, USER_CONFIGS)
   if (path === null) {
@@ -72,10 +71,7 @@ const toDiagnostic = (d: BiomeDiagnostic, file: string, source: string): Diagnos
   }
 }
 
-/**
- * Lint code via Biome's WASM JS API. Supports CSS/JSON/JS/TS files; the
- * orchestrator's glob already pre-filters supported extensions.
- */
+/** Lint CSS, JSON, JS and TS files with Biome's WASM API. With `opts.fix`, write the safe fixes back to disk. */
 export const lintWithBiome = async (
   paths: string[],
   dir: string,

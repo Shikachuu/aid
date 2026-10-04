@@ -14,7 +14,11 @@ const DEFAULT_IGNORES = new Set([
   ".vercel",
 ])
 
-/** Glob patterns each tool walks. The OpenAPI patterns are convention-based. */
+/**
+ * Glob patterns each tool walks. OpenAPI specs share extensions with other
+ * YAML and JSON files, so only `openapi.*`, `*.openapi.*` and files under an
+ * `openapi/` directory count.
+ */
 export const PATTERNS: Record<Tool, readonly string[]> = {
   md: ["**/*.md", "**/*.markdown"],
   openapi: [

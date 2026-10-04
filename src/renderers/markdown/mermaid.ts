@@ -8,12 +8,11 @@ export const HAS_MERMAID_FLAG = "aidHasMermaid"
 
 /**
  * Rehype plugin that rewrites ```mermaid``` fenced code blocks into
- * `<pre class="mermaid">{raw text}</pre>`. The `<code>` child is dropped so
- * the client-side mermaid runtime can read `textContent` directly. Must run
- * **before** the shiki plugin — otherwise shiki sees the fence first and
- * highlights it as plain text. Also flags `file.data.aidHasMermaid = true`
- * when any block is rewritten, so the pipeline can decide whether to inject
- * the mermaid bundle script.
+ * `<pre class="mermaid">{raw text}</pre>`. It drops the `<code>` child so the
+ * client-side mermaid runtime can read `textContent` directly. Must run before
+ * the shiki plugin, or shiki highlights the fence as plain text first. Sets
+ * {@link HAS_MERMAID_FLAG} on `file.data` when it rewrites any block, so the
+ * pipeline knows to inject the mermaid bundle.
  */
 export function mermaidPlugin() {
   return (tree: HastRoot, file: VFile): void => {
@@ -26,7 +25,7 @@ export function mermaidPlugin() {
       if (!code) {
         return
       }
-      if (!hasMermaidLanguageClass(code)) {
+      if (fenceLanguage(code) !== "language-mermaid") {
         return
       }
       const text = hastText(code)
@@ -49,11 +48,11 @@ function isCodeElement(node: { type: string }): node is HastElement {
   return node.type === "element" && (node as HastElement).tagName === "code"
 }
 
-// The first `language-*` class decides the fence's language.
-function hasMermaidLanguageClass(node: HastElement): boolean {
+function fenceLanguage(node: HastElement): string | undefined {
   const classes = node.properties?.className
-  const lang = Array.isArray(classes)
-    ? classes.find((cls) => typeof cls === "string" && cls.startsWith("language-"))
-    : undefined
-  return lang === "language-mermaid"
+  if (!Array.isArray(classes)) {
+    return undefined
+  }
+  const first = classes.find((cls) => typeof cls === "string" && cls.startsWith("language-"))
+  return first === undefined ? undefined : String(first)
 }

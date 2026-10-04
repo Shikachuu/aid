@@ -1,7 +1,7 @@
-/** Severity levels surfaced by the unified diagnostic format. */
+/** Severity shared by every tool. Pretty output colors and counts by it. */
 export type Severity = "error" | "warn" | "info"
 
-/** A single lint or fmt diagnostic in `aid`'s normalized shape. */
+/** One finding from markdownlint, Spectral, Biome or buf, normalized so both reporters print every tool the same way. */
 export type Diagnostic = {
   file: string
   line?: number
@@ -14,17 +14,16 @@ export type Diagnostic = {
 /** Tools that `aid lint` and `aid fmt` dispatch to, in report order. */
 export const KNOWN_TOOLS = ["md", "openapi", "biome", "proto"] as const
 
-/** One of the tools in `KNOWN_TOOLS`. */
+/** Tool name as accepted by `--filter` and printed in reports. */
 export type Tool = (typeof KNOWN_TOOLS)[number]
 
-/** The result of running one tool over its discovered files. */
+/** Outcome of one tool's run. A single `ok: false` fails the whole report. */
 export type ToolResult = {
   tool: Tool
   ok: boolean
   diagnostics: Diagnostic[]
-  /** True if the tool was supposed to run but couldn't (e.g. buf binary missing). */
+  /** True when the tool had files to check but could not run, for example without a `buf` binary. */
   skipped?: boolean
-  /** Human-readable reason a tool was skipped. */
   reason?: string
   /** Files that would change in `--check` mode (fmt only). */
   wouldChange?: string[]

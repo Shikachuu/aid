@@ -7,7 +7,7 @@ import { applyFormat } from "./apply"
  * this is a structural reformat only. A file that fails to parse stays
  * untouched and fails the run with an `openapi/parse` error.
  *
- * **Caveat:** YAML comments are not preserved by `Bun.YAML`.
+ * `Bun.YAML` does not keep comments, so formatting a YAML spec drops them.
  */
 export const formatOpenApi = async (
   paths: string[],

@@ -6,19 +6,18 @@ export type DevErrorPayload = {
 
 /** Shared, mutable dev session state. Server, watcher, and rebuild loop all see the same instance. */
 export type DevState = {
-  /** Subdir currently served. Null while the very first build is in flight or failed. */
+  /** Subdir currently served. Null while the first build is in flight or after it failed. */
   currentDir: string | null
-  /** The two double-buffered output directories. */
+  /** `rebuild` writes into whichever buffer `currentDir` does not point at. */
   buffers: { a: string; b: string }
-  /** Latest error, if any. Cleared on the next successful build. */
+  /** Last rebuild error, replayed to SSE clients that connect later. Cleared on the next successful build. */
   errorState: DevErrorPayload | null
-  /** Connected SSE clients. */
   sseClients: Set<ReadableStreamDefaultController<Uint8Array>>
 }
 
 const encoder = new TextEncoder()
 
-/** Encode one SSE frame carrying `event` and a string `data` payload. */
+/** Encode one SSE frame. `data` must be a single line, which holds for JSON payloads and the empty string. */
 export function sseFrame(event: string, data: string): Uint8Array {
   return encoder.encode(`event: ${event}\ndata: ${data}\n\n`)
 }
@@ -35,7 +34,7 @@ export function broadcast(state: DevState, event: string, data: string): void {
   }
 }
 
-/** Turn an arbitrary thrown value into a `DevErrorPayload`. */
+/** Normalize a thrown value for the overlay, keeping the stack when it is an `Error`. */
 export function toErrorPayload(err: unknown): DevErrorPayload {
   if (err instanceof Error) {
     return { message: err.message, stack: err.stack }

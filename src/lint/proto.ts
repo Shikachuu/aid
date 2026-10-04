@@ -60,8 +60,8 @@ const parseBufOutput = (stdout: string): Diagnostic[] => {
     if (trimmed.length === 0) {
       continue
     }
-    try {
-      const j = JSON.parse(trimmed) as BufJsonError
+    const j = tryParseJson(trimmed)
+    if (j !== null) {
       out.push({
         file: j.path ?? "",
         line: j.start_line,
@@ -70,11 +70,17 @@ const parseBufOutput = (stdout: string): Diagnostic[] => {
         code: j.type ?? "buf",
         message: j.message ?? "",
       })
-    } catch {
-      // ignore non-JSON lines
     }
   }
   return out
+}
+
+const tryParseJson = (line: string): BufJsonError | null => {
+  try {
+    return JSON.parse(line) as BufJsonError
+  } catch {
+    return null
+  }
 }
 
 /** Run `buf lint` over the project. Returns a `skipped` result when no `buf` binary is available. */

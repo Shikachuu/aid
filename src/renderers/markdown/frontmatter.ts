@@ -2,8 +2,8 @@ import { z } from "zod"
 
 /**
  * Schema for the YAML frontmatter block at the top of a markdown source. Known
- * keys (`title`, `description`) are typed; unknown keys pass through so users
- * can stash arbitrary metadata without us policing it.
+ * keys are typed. Unknown keys pass through, so users can keep their own
+ * metadata there.
  */
 export const FrontmatterSchema = z
   .object({
@@ -16,6 +16,7 @@ export const FrontmatterSchema = z
   })
   .catchall(z.unknown())
 
+/** Page metadata that `route.frontmatter` carries to Layout, llms.txt and search. */
 export type Frontmatter = z.infer<typeof FrontmatterSchema>
 
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
@@ -28,9 +29,10 @@ export type ExtractedFrontmatter = {
 
 /**
  * Pull the leading `---`-delimited YAML block off a markdown source, parse it
- * with `Bun.YAML`, and validate against {@link FrontmatterSchema}. Returns
- * `undefined` when no block is present. Throws on malformed YAML or schema
- * violations — the build should fail loud rather than silently drop fields.
+ * with `Bun.YAML`, and validate it against {@link FrontmatterSchema}.
+ * `frontmatter` is `undefined` when the block is missing or empty. Throws on
+ * malformed YAML or schema violations, so the build fails instead of dropping
+ * fields.
  */
 export function extractFrontmatter(source: string): ExtractedFrontmatter {
   const match = source.match(FRONTMATTER_RE)

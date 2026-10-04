@@ -2,9 +2,9 @@
 export const RELOAD_PATH = "/__aid/reload"
 
 /**
- * Client-side dev runtime: connects to the SSE channel, reloads the page on
- * `reload` events, and renders a fullscreen overlay on `error` events. The
- * overlay is removed on the next successful reload.
+ * Client script injected into every served HTML page. It reloads the page on
+ * `reload`, shows a fullscreen overlay on `error-detail`, and removes the
+ * overlay on `clear-error`.
  */
 export const RELOAD_CLIENT_SCRIPT = `
 (function() {
