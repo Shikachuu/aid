@@ -1,33 +1,35 @@
-# Research: Frontend-Only Search Library for aid
+# Research: frontend-only search library for aid
 
-_Date: 2026-05-10 — May 2026_
+Status: historical research brief. The project chose Bun and TypeScript; see docs/BUILD.md for the current design.
 
-## Problem Statement
+_Date: 2026-05-10_
 
-aid needs a **cross-format search** feature that:
+## Problem statement
 
-1. Runs entirely in the browser — no server.
+aid needs a cross-format search feature that:
+
+1. Runs in the browser with no server.
 2. Supports full-text BM25-style ranking (not substring).
-3. Has typo tolerance (Levenshtein) — users will misspell "OpenAPI" as "openpai".
-4. Loads a precomputed index emitted at compile time by the aid binary (Go or Rust).
-5. Lets users configure **per-document-type** weights in `aid.yaml` (e.g., boost OpenAPI hits over markdown body text).
-6. Scales to 100–5000+ pages with **no in-browser indexing pass**.
+3. Has Levenshtein typo tolerance. Users will type "openpai" for "OpenAPI".
+4. Loads a precomputed index that `aid build` writes.
+5. Lets users configure per-document-type weights in `aid.yaml` (for example, to boost OpenAPI hits over markdown body text).
+6. Scales to 100 to 5000+ pages without building the index in the browser.
 
-## Candidates Evaluated
+## Candidates evaluated
 
 | Library      | Bundle (gz) | Typo tolerance              | Per-format weight         | Build-time index emit       | Last release      | Verdict                              |
 | ------------ | ----------- | --------------------------- | ------------------------- | --------------------------- | ----------------- | ------------------------------------ |
-| **MiniSearch** | **~5.8KB** | **Levenshtein, query-time** | **Yes via `boostDocument`** | **JSON format documented + stable** | 2024–25 active   | **WINNER**                           |
-| Pagefind     | ~100KB total | No (prefix fallback only) | No                        | Native Rust crate, binary chunks | Apr 2026     | Runner-up — drops typo tolerance     |
-| Orama        | ~22KB core  | Levenshtein                 | Hacky (custom sorter)     | Yes (plugin)                | Dec 2025          | Bigger + worse per-doc weighting     |
-| FlexSearch   | 4.5–16KB    | **Phonetic only**           | Awkward                   | Multi-chunk export          | 2024–25           | "openpai → openapi" misses (phonetic)|
-| Fuse.js      | ~4KB        | Bitap fuzzy                 | No                        | No                          | Apr 2026          | Not real full-text; ~800ms@10k items |
+| MiniSearch   | ~5.8KB      | Levenshtein, query-time     | Yes via `boostDocument`   | JSON format documented + stable | 2024-25 active | Winner                              |
+| Pagefind     | ~100KB total | No (prefix fallback only) | No                        | Native Rust crate, binary chunks | Apr 2026     | Runner-up, no typo tolerance         |
+| Orama        | ~22KB core  | Levenshtein                 | Needs a custom sorter     | Yes (plugin)                | Dec 2025          | Bigger + worse per-doc weighting     |
+| FlexSearch   | 4.5-16KB    | Phonetic only               | Awkward                   | Multi-chunk export          | 2024-25           | Misses "openpai" for "openapi" (phonetic) |
+| Fuse.js      | ~4KB        | Bitap fuzzy                 | No                        | No                          | Apr 2026          | Not real full-text; ~800 ms at 10k items |
 | Lunr.js      | ~9KB        | `~1` operator               | No                        | Yes                         | 2020 (dead)       | Skip                                 |
-| Stork        | ~30KB WASM  | Limited                     | No                        | Yes (binary)                | Jan 2023 (dead)   | Skip — sunset                        |
-| TinySearch   | ~49KB WASM  | **No**                      | No                        | Embedded                    | Sep 2025          | Set membership only, no ranking      |
+| Stork        | ~30KB WASM  | Limited                     | No                        | Yes (binary)                | Jan 2023 (dead)   | Skip, discontinued                   |
+| TinySearch   | ~49KB WASM  | No                          | No                          | Embedded                    | Sep 2025          | Set membership only, no ranking      |
 | Elasticlunr  | ~12KB       | Limited                     | No                        | Yes                         | 2016 (dead)       | Skip                                 |
 
-## Why MiniSearch Wins
+## Why MiniSearch won
 
 1. **Per-document-type weighting is a one-liner.** The `boostDocument(id, term, storedFields) => number` query-time callback has access to stored fields:
 
@@ -39,17 +41,19 @@ aid needs a **cross-format search** feature that:
    });
    ```
 
-   No competitor offers this cleanly.
+   Orama needs a custom sorter for this, and the other candidates have no per-document boost.
 
-2. **Index format is documented and stable.** The MiniSearch CHANGELOG explicitly states the JSON format was stabilized "to facilitate tools that create a serialized index in other languages." A Go or Rust port of the emitter is a few-hundred-LoC, one-time investment.
+2. **Index format is documented and stable.** The MiniSearch CHANGELOG says the maintainer stabilized the JSON format "to facilitate tools that create a serialized index in other languages."
 
-3. **True Levenshtein typo tolerance.** `fuzzy: 0.2` allows up to 20% of term length as edit distance. Catches "openpai → openapi" (transposition), "petsore → PetStore", etc.
+3. **True Levenshtein typo tolerance.** `fuzzy: 0.2` allows up to 20% of term length as edit distance. It matches "openpai" to "openapi" (a transposition) and "petsore" to "PetStore".
 
-4. **Smallest real full-text engine** at ~5.8KB gzipped, MIT, native TypeScript, actively maintained.
+4. **Smallest full-text engine.** MiniSearch is about 5.8 KB gzipped, MIT-licensed, written in TypeScript, and maintained.
 
-## Chosen Architecture: Option A — Build-Time Index Emission, Reuse MiniSearch Runtime
+## Chosen architecture: build-time index, MiniSearch runtime
 
-The aid binary emits MiniSearch's documented JSON index format **directly from Go/Rust**, with no embedded JavaScript runtime. The browser loads via `MiniSearch.loadJSON(...)` and is query-ready immediately — no `addAll` pass, no spinner, no indexing latency regardless of site size.
+Superseded in part. aid builds the index with MiniSearch itself, in TypeScript on Bun (`src/core/search-index.ts`), and writes `ms.toJSON()` to `search-index.<hash>.js`. The browser loads MiniSearch through `import("minisearch")` inside the `aid-web.js` bundle, and no `minisearch.min.js` file exists. The design below is the one this brief proposed.
+
+The brief proposed that the aid binary write MiniSearch's documented JSON index format from Go or Rust, with no embedded JavaScript runtime. The browser calls `MiniSearch.loadJSON(...)` and can query at once, with no `addAll` pass at any site size.
 
 ### Build pipeline (pure Go/Rust)
 
@@ -81,25 +85,27 @@ First focus of search box (lazy):
      })
 ```
 
-### Why .js wrapper instead of .json
-- V8 bytecode-caches `.js` after first load → zero parse cost on subsequent visits.
-- Single network request, no `fetch().then(JSON.parse)` dance.
-- Hashed filename for cache-busting on content changes.
+### Why a .js wrapper instead of .json
 
-### Why Option A over alternatives
-- **vs. embed goja/boa in the binary**: aid binary stays pure Go/Rust. No 5MB JS-interpreter weight, no second runtime to keep current.
-- **vs. ship raw doc JSON + index in browser**: no first-search indexing latency. For 5000-page sites, first-search delay drops from seconds to milliseconds.
-- **vs. roll our own search engine**: reuses MiniSearch's tested BM25, Levenshtein, prefix matching, and `boostDocument` API. ~few-hundred-LoC emitter port instead of writing a search engine.
-- **vs. Pagefind**: Pagefind has no Levenshtein typo tolerance. Hard fail for "openpai → openapi".
+- V8 caches the bytecode of a `.js` file after the first load, so later visits in Chromium browsers skip parsing.
+- The index loads in one request without a `fetch().then(JSON.parse)` step.
+- The filename hash changes with the content, which busts caches.
+
+### Why this design over the alternatives
+
+- **Indexing in the browser.** A precomputed index removes the indexing step before the first search. On a 5000-page site this should cut the first-search delay from seconds to milliseconds (estimate, not measured).
+- **Writing our own engine.** MiniSearch already has tested BM25 ranking, Levenshtein matching, prefix matching, and `boostDocument`.
+- **Pagefind.** Pagefind has no Levenshtein typo tolerance, so "openpai" does not find "openapi".
 
 ### Risk
-If MiniSearch ships a breaking format change in a future major version, we update the emitter once. Format has been stable through 2024–25 majors; risk is low but non-zero. We pin a known-good MiniSearch runtime version per aid release.
 
-## Open Questions
+Resolved: build and browser use the same `minisearch` package, so a format change cannot split them.
 
-1. Should aid ship a minimal default search UI (input + result dropdown as a partial), or just emit the index + runtime and let users wire their own?
-2. Stemming language: MiniSearch has no built-in language packs; do we ship a snowball stemmer for English-only v1, or pluggable per-language?
-3. Cache-busting strategy for `search-index.js`: filename hash + immutable HTTP header is standard; confirm fits the static-host deploy model.
+## Open questions
+
+1. Resolved: aid ships a default search UI (`src/theme/components/SearchBox.tsx` and `src/web/search.ts`).
+2. **Stemming.** MiniSearch has no language packs. Should v1 ship an English Snowball stemmer, or support a stemmer per language? This is still open.
+3. Partly resolved: the build hashes the index filename. Still open: confirm that common static hosts can send an immutable cache header for it.
 
 ## Sources
 

@@ -1,167 +1,183 @@
-# aid (all-in-docs) — Product Overview
+# aid (all-in-docs) product overview
 
-## 1. Executive Summary
+## 1. Executive summary
 
-**aid** is a single-binary documentation tool that generates static documentation sites with zero external dependencies. It takes markdown, HTML, OpenAPI specs, and Protocol Buffer definitions and produces a cohesive, themed documentation site — complete with an LLM-friendly layer — using one CLI command.
+aid is a single-binary documentation tool that generates static documentation sites. One CLI command turns markdown, HTML, OpenAPI specs, and Protocol Buffer definitions into a static site with one shared theme, machine-readable page exports, and an `llms.txt` file.
 
-### Key Differentiators
+### Key differentiators
 
-- **Single binary, zero dependencies** — one statically-linked executable contains everything: Tailwind CSS compiler, Biome, linters, formatters, API reference renderers, and a dev server. Nothing else to install.
-- **Multi-format, colocated** — markdown, HTML, OpenAPI (v2 through v3), and `.proto` files can live side by side in any directory. Each is rendered with the appropriate UI based on file type, producing a cohesive site with consistent styling and navigation.
-- **LLM-ready by default** — markdown and HTML pages are available as markdown (`.md` suffix), OpenAPI/proto pages export as JSON (`.json` suffix), and a spec-compliant `llms.txt` file is generated at the site root. Every page also ships an **"Open in AI" button** that hands the current page straight into ChatGPT, Claude, or other LLM chat interfaces in one click.
-- **Convention over configuration** — a required folder structure and a single YAML config file (`aid.yaml`) get you from zero to docs site in seconds.
-- **Themeable via Tailwind 4, dark mode included** — the bundled framework exposes a `main.css` for custom Tailwind 4 configuration (colors, fonts, design tokens). Theming applies uniformly across all page types — including OpenAPI and proto renderers — for a consistent look and feel. Dark mode ships built-in, with a contrast-correct palette auto-derived from your light tokens.
-- **Cross-format search, instant on load** — full-text, typo-tolerant search across markdown, HTML, OpenAPI, and proto pages, ranked together with per-format weights you control. The build emits a precomputed search index as a static `search-index.js`, so the browser is query-ready the moment it loads — no client-side indexing pass.
+- **Single binary.** One executable contains the Tailwind CSS compiler, Biome, the linters and formatters, the API reference renderers, and a dev server. Users install nothing else. Release builds target macOS and Linux on x64 and arm64.
+- **Colocated formats.** Markdown, HTML, OpenAPI (v2 and v3), and `.proto` files can share a directory. aid picks the renderer from the file type, and every page shares one layout.
+- **LLM exports by default.** Markdown and HTML pages are available as markdown (`.md` suffix), OpenAPI pages as JSON (`.json` suffix), and proto pages as their `.proto` source. The build writes a spec-compliant `llms.txt` at the site root. Each page also has an "Open in AI" button, which is not wired up yet.
+- **Convention over configuration.** A fixed folder layout and one `aid.yaml` are all a project needs, and only `name` is required.
+- **Tailwind 4 theming with dark mode.** One `main.css` sets colors, fonts, and design tokens for every page type, including OpenAPI and proto pages. aid derives the dark palette from the light tokens.
+- **Cross-format search.** Full-text, typo-tolerant search covers markdown, HTML, OpenAPI, and proto pages and ranks them in one list with per-format weights from `aid.yaml`. The build writes a precomputed index (`search-index.<hash>.js`), so the browser does not build one.
 
-### Target Use Case
+### Target use case
 
-Teams and organizations that need a documentation site supporting technical formats (API specs, proto definitions) alongside prose — without managing a dozen tools, plugins, or build pipelines.
-
----
-
-## 2. Core Concepts
-
-### Single Binary, Batteries Included
-
-Everything ships inside one executable. The Tailwind CSS 4 compiler, Biome (for CSS/HTML/JSON linting and formatting), markdown tooling, OpenAPI/proto linters and formatters, API reference UIs, and a development server are all embedded. Users install `aid` and nothing else.
-
-### Convention Over Configuration
-
-Running `aid init` scaffolds a project with a required folder structure and an `aid.yaml` config file pre-filled with basic project info. This convention means projects are immediately buildable — configuration is optional, not mandatory.
-
-### Multi-Format, Colocated
-
-aid treats every supported file type as a first-class page source. Different file types can coexist in the same directory — routing is purely path-based, and each file is rendered with the UI appropriate to its type:
-
-- **Markdown** files render as rich HTML with GitHub Flavored Markdown, Mermaid diagram support, and frontmatter-driven SEO metadata.
-- **HTML** files render as-is within the site layout.
-- **OpenAPI specs** (v2 through v3, YAML or JSON) render with an embedded API reference UI.
-- **Proto files** render with an embedded protocol buffer documentation UI.
-
-A single directory might contain `index.md`, `api.yaml`, and `events.proto` — all become sibling routes under the same path, each with the right renderer. All pages share the same templates, navigation, and styling.
-
-### LLM-Ready by Default
-
-aid automatically generates machine-readable exports:
-
-- Markdown and HTML pages are available as plain markdown by appending `.md` to the URL.
-- OpenAPI and proto pages export structured JSON by appending `.json` to the URL.
-- A spec-compliant `llms.txt` file (per [llmstxt.org](https://llmstxt.org)) is generated at the site root, providing LLMs with a table of contents and instructions for navigating the documentation programmatically.
-
-### Themeable via Tailwind 4
-
-The bundled documentation framework uses Tailwind CSS 4 and exposes a `main.css` file where teams can configure custom colors, fonts, spacing, and other design tokens. Templates use Tailwind utility classes, making the entire look and feel customizable without touching the template structure.
-
-Crucially, theming is unified across **all renderers** — markdown pages, HTML pages, OpenAPI reference UIs, and proto documentation UIs all consume the same `main.css`. This means a single set of color and typography definitions produces a consistent look across every page type.
-
-**Dark mode is built-in.** Define your light palette in `main.css` and aid auto-derives a contrast-correct dark variant; override any token if you need pixel control. The toggle, `prefers-color-scheme` handling, and dark styles for OpenAPI and proto pages all ship with the framework — no plugin, no extra config.
-
-### Cross-Format Search
-
-Every page — markdown, HTML, OpenAPI operation, proto message — is part of one searchable corpus. The build pipeline tokenizes content from each format, builds a unified inverted index, and emits it as a precomputed `search-index.js`. The browser loads the script and queries it instantly — no in-browser indexing pass.
-
-Key behaviors:
-
-- Full-text BM25-style ranking, not substring matching.
-- Levenshtein typo tolerance — `openpai` still finds `openapi`, `petsore` finds `PetStore`.
-- Per-format weights configurable in `aid.yaml`: boost OpenAPI operation IDs over markdown body text, or proto messages over HTML, etc.
-- Cross-format results — a query for `StreamEvent` returns the proto message that defines it, the OpenAPI operation that returns it, and the markdown page that explains it, all ranked together.
+aid is for teams that publish API specs and proto definitions next to prose and do not want a separate tool for each format.
 
 ---
 
-## 3. CLI Commands
+## 2. Core concepts
+
+### Single binary
+
+The `aid` executable embeds the Tailwind CSS 4 compiler, Biome, markdownlint, Spectral, Buf, the Scalar and proto reference UIs, and the dev server. Users install `aid` and nothing else.
+
+### Convention over configuration
+
+A project needs an `aid.yaml` with a `name`, a `main.css`, and a `docs/` content folder. Every other config field has a default. `aid init` will scaffold this layout from `assets/scaffold/`, but the command is not implemented yet.
+
+### Multi-format, colocated
+
+Any supported file type can be a page, and different types can share a directory. The route comes from the file path, and the file type picks the renderer:
+
+- **Markdown** files render as HTML with GitHub Flavored Markdown, Mermaid diagrams, and SEO metadata from frontmatter.
+- **HTML** files render as-is inside the site layout.
+- **OpenAPI specs** (v2 and v3, YAML or JSON) render with the embedded Scalar API reference UI.
+- **Proto files** render with aid's proto reference UI (`@aid/proto-ui`).
+
+A single directory might contain `index.md`, `api.yaml`, and `events.proto`. Each becomes a route with its own renderer, and all three share the layout and styling.
+
+### LLM-ready by default
+
+aid generates machine-readable exports:
+
+- Markdown and HTML pages are available as markdown by appending `.md` to the URL.
+- OpenAPI pages are available as JSON by appending `.json` to the URL.
+- Proto pages are available as their `.proto` source by appending `.proto` to the URL.
+- The build writes `llms.txt` (per [llmstxt.org](https://llmstxt.org)) at the site root. It lists every page and tells LLMs how to fetch the machine-readable versions.
+
+### Themeable with Tailwind 4
+
+The bundled theme uses Tailwind CSS 4 and reads a `main.css` file where teams set colors, fonts, spacing, and other design tokens. Templates use Tailwind utility classes, so changing tokens restyles every page without editing templates.
+
+Markdown pages, HTML pages, the OpenAPI reference UI, and the proto reference UI all read the same `main.css`. One set of color and typography tokens styles every page type.
+
+**Dark mode is built in.** Define the light palette in `main.css` as `oklch()` colors, and aid derives a dark variant under `prefers-color-scheme: dark`. Override any token to set it by hand, or set `theme.dark_mode` to `manual` or `off`. The header has a dark-mode toggle button, but the toggle does nothing yet.
+
+### Cross-format search
+
+Markdown, HTML, OpenAPI, and proto pages share one search index. The build collects search tokens from each renderer, builds a MiniSearch index, and writes it as `search-index.<hash>.js`. The browser loads the precomputed index and queries it without building an index first.
+
+It works as follows:
+
+- Ranking is full-text BM25, not substring matching.
+- Levenshtein typo tolerance. `openpai` finds `openapi`, and `petsore` finds `PetStore`.
+- `aid.yaml` sets per-format weights, for example to rank OpenAPI pages above markdown pages.
+- Results from all formats rank in one list. A query for `StreamEvent` can return the proto page that defines it, the OpenAPI page that returns it, and the markdown page that explains it.
+
+---
+
+## 3. CLI commands
 
 | Command | Description |
-|---------|-------------|
-| `aid init` | Scaffold a new project: creates the required folder structure and an `aid.yaml` config with basic project info. |
-| `aid dev` | Start a local development server with hot reload. Watches for changes in content, templates, and styles. |
-| `aid build` | Build the complete static site to the configured output directory. |
-| `aid lint` | Run bundled linters across all supported formats: markdown, OpenAPI, proto, CSS, and HTML. |
-| `aid fmt` | Run bundled formatters across all supported formats: markdown, OpenAPI, proto, CSS, and HTML. |
-
-### `aid init`
-
-Creates a new documentation project in the current directory (or a specified path). Generates the required folder structure and a pre-filled `aid.yaml`. The scaffolded project is immediately buildable with `aid build` or servable with `aid dev`.
+| --------- | ------------- |
+| `aid init` | Planned. Will create the required folder structure and an `aid.yaml`. It currently prints "not implemented" and exits with code 1. |
+| `aid dev` | Starts a local dev server with live reload. |
+| `aid build` | Builds the static site into the configured output directory. |
+| `aid lint` | Runs the bundled linters over markdown, OpenAPI, proto, CSS, JSON, and JavaScript or TypeScript files. |
+| `aid fmt` | Runs the bundled formatters over the same file types. |
 
 ### `aid dev`
 
-Starts a built-in HTTP server that serves the documentation site locally. Watches for changes to content files, templates, styles, and configuration — and triggers hot reload in the browser automatically.
+`aid dev` serves the site locally and reloads the browser after changes. It does the following:
+
+- Starts an HTTP server on the configured host and port (default `localhost:3000`).
+- Watches content files, templates, styles, the files Tailwind reports as dependencies, and `aid.yaml`.
+- Rebuilds the site into two alternating directories on disk, `.aid/dev/build-a` and `.aid/dev/build-b`, using the same pipeline as `aid build`.
+- Reloads the browser over Server-Sent Events after each rebuild.
+
+See docs/DEV_SERVER.md for details.
 
 ### `aid build`
 
-Compiles the entire documentation site into a directory of static files (HTML, CSS, assets, `.md` exports for markdown/HTML pages, `.json` exports for OpenAPI/proto pages, `llms.txt`). The output is ready to deploy to any static hosting provider.
+`aid build` compiles the site into a directory of static files. The output contains:
 
-### `aid lint` / `aid fmt`
+- HTML pages for every routed content file.
+- The compiled, hashed stylesheet (`main.<hash>.css`).
+- The browser bundles (`aid-web.js`, plus `aid-mermaid.js`, `aid-openapi.js`, and `aid-proto.js` when the site needs them).
+- The contents of the static directory (images, fonts, and similar files).
+- Markdown exports (`.md`) for markdown and HTML pages, JSON exports (`.json`) for OpenAPI pages, and `.proto` exports for proto pages.
+- `llms.txt` at the site root.
+- `search-index.<hash>.js`, the precomputed search index.
 
-Runs the bundled linting and formatting tools against all supported file types in the project. Both commands operate across markdown, OpenAPI specs, proto files, CSS, and HTML — using the embedded toolchain with no external dependencies.
+aid stops at writing static files. Any static host can serve the output directory, for example S3, GitHub Pages, Netlify, Cloudflare Pages, or nginx. aid has no deploy command. See docs/BUILD.md for details.
+
+### `aid lint` and `aid fmt`
+
+`aid lint` and `aid fmt` run the embedded tools over the project. Biome handles CSS, JSON, and JavaScript or TypeScript files, markdownlint handles markdown, Spectral lints OpenAPI files, and Buf handles `.proto` files. aid finds OpenAPI files for linting by name: `openapi.yaml`, `*.openapi.yaml`, or any YAML or JSON file under an `openapi/` folder.
 
 ---
 
-## 4. Project Structure & Routing
+## 4. Project structure and routing
 
-### 4.1 Required Folder Structure
+### 4.1 Required folder structure
 
-Running `aid init` produces the following canonical structure:
+A typical project looks like this:
 
 ```
 my-docs/
 ├── aid.yaml                # Project configuration
+├── main.css                # Tailwind 4 entry point (the default `stylesheet`)
 ├── docs/                   # Content root (all files here become routes)
-│   ├── index.md            # Landing page → /
+│   ├── index.md            # Landing page -> /
 │   ├── getting-started/
-│   │   └── index.md        # → /getting-started
+│   │   └── index.md        # -> /getting-started
 │   ├── products/
-│   │   ├── index.html      # → /products/ (HTML page)
-│   │   ├── api.yaml        # → /products/api (OpenAPI spec, rendered with API reference UI)
-│   │   ├── stocks.md       # → /products/stocks (Markdown page)
-│   │   └── events.proto    # → /products/events (Proto file, rendered with proto docs UI)
-│   └── _partials/          # _ prefix: excluded from routing, usable as includes
-│       ├── header.html
-│       └── footer.html
-├── static/                 # Static assets (images, fonts, etc.) — copied as-is to output
-└── templates/              # (optional) Named partial overrides — drop in only the partials you want to replace
+│   │   ├── index.html      # -> /products/ (HTML page)
+│   │   ├── api.yaml        # -> /products/api (OpenAPI spec, rendered with API reference UI)
+│   │   ├── stocks.md       # -> /products/stocks (Markdown page)
+│   │   └── events.proto    # -> /products/events (Proto file, rendered with proto docs UI)
+│   └── _drafts/            # _ prefix: excluded from routing
+│       └── roadmap.md
+├── static/                 # (optional) Copied as-is to output (images, fonts, favicon)
+└── templates/              # (optional) Template overrides, for example llms.txt
 ```
 
-### 4.2 Folder-Based Routing Model
+The bundled scaffold in `assets/scaffold/` has only `aid.yaml`, `main.css`, and `docs/index.md`.
 
-Every file in the content root becomes a route. The route is derived from the file path relative to the content root, with the file extension stripped and the configured `base_path` prepended. **File types can be freely mixed within any directory** — routing is purely path-based, not type-based. Examples below assume the default `base_path: "/"` :
+### 4.2 Folder-based routing model
+
+Every supported file in the content root becomes a route. The route is the file path relative to the content root, with the file extension stripped and the configured `base_path` prepended. File types can share any directory, because routing uses only the path. The examples below assume the default `base_path: "/"`:
 
 | File path | Route | Rendered as |
-|-----------|-------|-------------|
+| ----------- | ------- | ------------- |
 | `docs/index.md` | `/` | Markdown page |
 | `docs/products/index.html` | `/products/` | HTML page |
 | `docs/products/stocks.md` | `/products/stocks` | Markdown page |
 | `docs/products/api.yaml` | `/products/api` | OpenAPI reference UI |
 | `docs/products/events.proto` | `/products/events` | Proto documentation UI |
 
-This colocation model means a single directory can contain prose documentation, API specs, and proto definitions side by side — each rendered with the appropriate UI based on its file type.
+aid treats a `.yaml`, `.yml`, or `.json` file as OpenAPI only if it has a top-level `openapi` or `swagger` key, and skips it otherwise. If two files resolve to the same route, the build fails.
 
-**`_`-prefixed folders** are excluded from the route tree entirely. They can contain:
-- Shared HTML fragments or partials that templates can include
+The router skips any path that has a `_`-prefixed segment. Use these folders for:
+
 - Draft content not ready for publishing
-- Shared assets or data files used during rendering
+- Shared assets or data files
 - Any files that should exist in the project but not generate standalone pages
 
-**Versioning-aware design**: the folder structure is intentionally flexible enough for users to organize by version (e.g., `docs/v1/...`, `docs/v2/...`) without aid enforcing a specific versioning pattern. aid routes whatever folder structure it finds — version boundaries are a user-level convention, not a framework constraint.
+aid has no versioning feature. Users can keep versions in folders (`docs/v1/`, `docs/v2/`), and aid routes them like any other folder.
 
-### 4.3 File Type to Page Rendering
+### 4.3 File type to page rendering
 
 | Source file type | Rendering | Auto-exported formats |
-|-----------------|-----------|----------------------|
-| `.md` (Markdown) | GitHub Flavored Markdown + Mermaid diagrams. Frontmatter parsed for SEO metadata (title, description, etc.). | `.md` (original source) |
-| `.html` | Rendered as-is within the site layout template. | `.md` |
-| `.yaml` / `.json` (OpenAPI v2–v3) | Embedded API reference UI (e.g., Scalar, Swagger UI, or Redoc). | `.json` |
-| `.proto` (Protocol Buffers) | Embedded protocol buffer documentation UI. | `.json` |
+| ----------------- | ----------- | ---------------------- |
+| `.md` (Markdown) | GitHub Flavored Markdown with Mermaid diagrams. aid reads SEO metadata (title, description) from frontmatter. | `.md` (original source) |
+| `.html` | Inserted as-is into the site layout template. | `.md` |
+| `.yaml` / `.json` (OpenAPI v2-v3) | Embedded Scalar API reference UI (`@scalar/api-reference`). | `.json` |
+| `.proto` (Protocol Buffers) | `@aid/proto-ui` (React and protobufjs), rendered in the browser. | `.proto` (original source) |
 
-Every page, regardless of source format, is wrapped in the site layout template and receives consistent navigation, header, footer, and styling.
+aid wraps every page in the site layout template, so every page has the same header, footer, and styling. The layout has a navigation sidebar, but the build passes it an empty tree for now, so it renders no links.
 
 ---
 
 ## 5. Configuration (`aid.yaml`)
 
-The project configuration lives in a single YAML file at the project root. Running `aid init` generates it with sensible defaults.
+The project configuration lives in one YAML file at the project root. The schema is in `src/core/config.ts`, and `bun run emit-schema` generates `schemas/aid.schema.json` from it.
 
-### Schema Overview
+### Schema overview
 
 ```yaml
 # Project metadata
@@ -178,14 +194,15 @@ stylesheet: "main.css"       # Path to the Tailwind CSS entry point (applied to 
 dir:
   content: "docs"            # Content root (default: "docs")
   output: "dist"             # Build output directory (default: "dist")
-  templates: ""              # Directory of named partial overrides (optional, empty = use bundled defaults)
+  templates: ""              # Directory of template overrides (optional, empty = use bundled defaults)
+  static: "static"           # Copied verbatim into the build output (default: "static")
 
 # Theming
 theme:
   dark_mode: "auto"          # "auto" derives the dark palette from light tokens; "manual" expects you to define dark variants in main.css; "off" disables dark mode entirely
 
 # AI integrations
-ai_targets:                  # "Open in AI" buttons rendered on every page (omit or empty list to disable)
+ai_targets:                  # "Open in AI" targets (default: chatgpt, claude). Not read by the build yet.
   - chatgpt
   - claude
 
@@ -205,68 +222,68 @@ dev:
   host: "localhost"          # Dev server host (default: "localhost")
 ```
 
-All fields have defaults — the minimal valid config only requires `name`.
+Every field except `name` has a default, so the smallest valid config sets only `name`.
 
 ---
 
-## 6. Template System
+## 6. Template system
 
-### 6.1 Bundled Templates
+### 6.1 Bundled templates
 
-aid ships with a complete set of default templates. The template engine is TBD (e.g., Go `html/template`, Tera, Handlebars — depends on the implementation language chosen). There is a template for each page type:
+aid ships default templates as TSX components in `src/theme/components/`, rendered to HTML at build time by aid's own JSX runtime (`src/jsx-runtime.ts`). There is a template for each page type:
 
-- **Markdown page** — renders the parsed markdown content within the site layout
-- **HTML page** — wraps raw HTML content in the site layout
-- **OpenAPI page** — embeds the API reference UI with the spec loaded
-- **Proto page** — embeds the proto documentation UI with the definition loaded
-- **Index / listing pages** — renders directory listings and navigation
+- `PageMarkdown` renders the parsed markdown inside the site layout.
+- `PageHtml` wraps the HTML body inside the site layout.
+- `PageOpenAPI` embeds the Scalar API reference UI with the spec loaded.
+- `PageProto` renders a mount point that the proto UI fills in the browser.
+- `PageIndex` is meant for directory listings. The build does not use it yet.
 
-All templates use Tailwind 4 utility classes and reference `main.css` for theming via CSS custom properties.
+`Layout`, `Header`, `Nav`, `Footer`, `SearchBox`, `AIButton`, and `DarkToggle` make up the shared page frame. All templates use Tailwind 4 utility classes and read their theme from `main.css` through CSS custom properties.
 
-### 6.2 Theming-First Customization
+### 6.2 Theming-first customization
 
-Most teams should never need to touch templates — `main.css` is the primary customization surface. By configuring Tailwind 4 design tokens (colors, fonts, spacing, radii) there, every page type — markdown, HTML, OpenAPI reference, proto docs — picks up the same look without per-template work. Dark mode is derived automatically from those same tokens, so a single light palette produces a coherent dark counterpart across every renderer.
+Most teams only edit `main.css`. Its Tailwind 4 tokens (colors, fonts, spacing, radii) style every page type, and aid derives the dark palette from the same tokens.
 
-When templates *do* need overriding, drop a named partial into the `templates/` directory and aid uses it transparently. There is no "eject everything" step: aid resolves each partial by name at render time, falling back to the bundled default whenever no override exists. You can override the OpenAPI page layout *or* the navigation header — without touching, copying, or maintaining any unrelated partials.
+Template overrides are planned but not implemented. The plan is that a `.tsx` file with a partial's name in the templates directory replaces that partial, and aid falls back to the bundled default for every other partial. `resolvePartial` in `src/theme/partials.ts` is still a stub that always returns the bundled default. The one override that works today is `llms.txt`. A `llms.txt` file in the templates directory replaces the bundled `llms.txt` template.
 
-Templates have full access to:
-- Tailwind 4 utility classes (including dark-mode variants)
+Templates can use:
+
+- Tailwind 4 utility classes, including dark-mode variants
 - CSS custom properties defined in `main.css`
-- Template data (page content, metadata, navigation tree, site config)
+- Template data: page content, metadata, navigation tree, and site config
 
 ---
 
-## 7. LLM Integration
+## 7. LLM integration
 
-aid treats LLMs as a first-class consumer of the documentation. Three mechanisms ship by default: a structured discovery file (`llms.txt`), per-page machine-readable exports, and an "Open in AI" button on every page.
+aid has three LLM features: a discovery file (`llms.txt`), per-page machine-readable exports, and a planned "Open in AI" button on every page.
 
 ### 7.1 `llms.txt`
 
-aid automatically generates an `llms.txt` file at the site root, following the [llmstxt.org](https://llmstxt.org) specification. This file provides LLMs with a structured way to discover and consume the documentation.
+The build writes `llms.txt` at the site root, following the [llmstxt.org](https://llmstxt.org) spec. It contains:
 
-**What it contains:**
+- A table of contents that lists every page, grouped by top-level folder.
+- Instructions for fetching each page in another format:
+  - Append `.md` to markdown and HTML page URLs for a markdown version.
+  - Append `.json` to OpenAPI page URLs for the spec as JSON.
+  - Append `.proto` to proto page URLs for the source file.
 
-- **Table of contents** — a structured listing of every page in the documentation site
-- **Format instructions** — how to access different representations of each page:
-  - Append `.md` to markdown/HTML page URLs for a plain markdown version
-  - Append `.json` to OpenAPI/proto page URLs for structured data
+A `llms.txt` file in the templates directory replaces the bundled template. It can use the `{{name}}`, `{{description}}`, `{{base_url}}`, `{{toc}}`, and `{{toc:optional}}` placeholders. See docs/LLMS_TXT.md.
 
-### 7.2 Auto-Exported Page Formats
+### 7.2 Auto-exported page formats
 
-| Page type | `.md` export | `.json` export |
-|-----------|:------------:|:--------------:|
-| Markdown  | Yes          | No             |
-| HTML      | Yes          | No             |
-| OpenAPI   | No           | Yes            |
-| Proto     | No           | Yes            |
+| Page type | `.md` export | `.json` export | `.proto` export |
+|-----------|:------------:|:--------------:|:---------------:|
+| Markdown  | Yes          | No             | No              |
+| HTML      | Yes          | No             | No              |
+| OpenAPI   | No           | Yes            | No              |
+| Proto     | No           | No             | Yes             |
 
-Markdown and HTML pages are consumable by LLMs as plain markdown. OpenAPI and proto pages are available as structured JSON for programmatic use.
+### 7.3 "Open in AI" button
 
-### 7.3 "Open in AI" Button
+The "Open in AI" button is a stub. Every page type renders one "Open in AI" button that carries the page's machine-readable URL, but clicking it does nothing. `buildAiButtons` in `src/core/ai-targets.ts` returns an empty list, and the click handler in `src/web/ai-button.ts` is empty.
 
-Every rendered page includes an **Open in AI** button in the page chrome. Clicking it hands the current page (its `.md` or `.json` representation, depending on type) to a configurable LLM chat interface — ChatGPT, Claude, Gemini, and others — pre-seeded with a sensible prompt ("explain this page", "answer questions about this API", etc.).
-
-The set of available targets is configured in `aid.yaml`:
+The plan is that clicking the button opens the configured chat (ChatGPT, Claude, or Gemini) with a prompt that points at the page's machine-readable version. The `ai_targets` key in `aid.yaml` will choose the targets:
 
 ```yaml
 ai_targets:
@@ -275,39 +292,38 @@ ai_targets:
   - gemini
 ```
 
-aid renders one button per target (or a single dropdown if multiple are configured). The page's content is passed via each target's documented "open with prompt" URL pattern, so no API keys, accounts, or backend integrations are required — the click takes the user straight into their preferred LLM with the page already in context.
+aid will pass the page through each target's "open with prompt" URL, so the button will need no API key or backend.
 
 ---
 
-## 8. Cross-Format Search
+## 8. Cross-format search
 
-aid's search is **frontend-only, instant on load, typo-tolerant, and aware of every supported file type**. Markdown prose, HTML pages, OpenAPI operations, and proto messages are all part of the same searchable corpus, ranked together with per-format weights you control.
+Search runs in the browser. One index covers markdown, HTML, OpenAPI, and proto pages and ranks them with per-format weights from `aid.yaml`.
 
 ### 8.1 Architecture
 
-The build emits a precomputed search index as a static `search-index.js` file. The browser loads it and queries it instantly — no client-side indexing pass, no `addAll` loop, no spinner.
+The build writes a precomputed search index as `search-index.<hash>.js`. The browser loads it and queries it without an indexing pass.
 
 ```
 aid build
-  └─ walks content tree
-  └─ tokenizes each file according to its format
-  └─ constructs an inverted index in pure Go/Rust
-  └─ emits dist/search-index.js — a self-bootstrapping module exposing
-     window.__AID_SEARCH__ as a MiniSearch-format JSON literal
-  └─ ships dist/minisearch.min.js (~6KB gz) as the runtime
+  └─ renders every route; each renderer returns search tokens
+  └─ builds one MiniSearch index (new MiniSearch, addAll), one document per page
+  └─ writes dist/search-index.<hash>.js, which assigns ms.toJSON() to
+     window.__AID_SEARCH__
+  └─ bundles the MiniSearch runtime into aid-web.js through import("minisearch")
 
 Browser (lazy on first focus of the search box):
-  └─ <script src="search-index.js">         // V8-bytecode-cached after first load
-  └─ <script src="minisearch.min.js">
-  └─ MiniSearch.loadJSON(window.__AID_SEARCH__, options)   // instant
+  └─ <script src="search-index.<hash>.js">
+  └─ import("minisearch")
+  └─ MiniSearch.loadJSON(JSON.stringify(window.__AID_SEARCH__), options)
   └─ ms.search(query, { fuzzy, prefix, boostDocument })
 ```
 
-The aid binary writes MiniSearch's documented index format **directly from Go/Rust** — no embedded JavaScript runtime is required at build time. This keeps the binary pure and avoids a goja/V8 dependency, while reusing MiniSearch's tested BM25 ranking, Levenshtein matching, and `boostDocument` API in the browser.
+aid runs MiniSearch itself at build time, in TypeScript on Bun, and writes the result of `toJSON()`. The browser uses the same `minisearch` package, so the index format cannot drift between build and query. The browser gets MiniSearch's BM25 ranking, Levenshtein matching, and `boostDocument` API.
 
-### 8.2 Per-Format Weights
+### 8.2 Per-format weights
 
-Different file types yield different ranking signal. By default, OpenAPI operation IDs and proto message names are boosted over prose body text — a query for `getPets` should land on the API definition, not on the tutorial that mentions it. Weights are configurable in `aid.yaml`:
+By default, OpenAPI pages (weight 2.0) and proto pages (1.5) rank above markdown and HTML pages (1.0). A query for `getPets` should land on the API spec, not on the tutorial that mentions it. `aid.yaml` sets the weights:
 
 ```yaml
 search:
@@ -318,166 +334,111 @@ search:
     proto: 1.5
 ```
 
-Per-document weighting is applied via MiniSearch's `boostDocument` callback at query time, so weight changes only require a config update — no rebuild.
+The index has one document per page, and each weight applies to every page of that type. The browser applies the weights through MiniSearch's `boostDocument` at query time. The build writes the weights into each page's HTML (the `data-aid-search-weights` attribute), so changing them needs a rebuild.
 
-### 8.3 Typo Tolerance
+### 8.3 Typo tolerance
 
-Search is fuzzy by default. Configurable as a fraction of term length (default `0.2` = up to 1 edit per 5 characters):
+Search is fuzzy by default. `search.typo_tolerance` sets the allowed edit distance as a fraction of term length. The default `0.2` allows one edit per five characters. For example:
 
-- `openpai` → matches `openapi`
-- `petsore` → matches `PetStore`
-- `StreamEvnt` → matches `StreamEvent`
+- `openpai` matches `openapi`
+- `petsore` matches `PetStore`
+- `StreamEvnt` matches `StreamEvent`
 
-Prefix matching is also enabled, so partial typing (`open` → `openapi`) returns useful results before the full term is typed.
+Prefix matching is on, so `open` already matches `openapi`.
 
-### 8.4 What Gets Indexed
+### 8.4 What gets indexed
 
 | Source         | Indexed fields                                                            |
 |----------------|---------------------------------------------------------------------------|
-| Markdown       | Frontmatter title, headings (boosted), body text                          |
-| HTML           | `<title>`, `<h1>`–`<h6>` (boosted), visible text                          |
-| OpenAPI        | `operationId`, summary, description, path, schema names, parameter names  |
-| Proto          | message names, field names, RPC names, leading/trailing comments          |
+| Markdown       | Title (boosted 3x), headings (boosted 2x), body text                      |
+| HTML           | Title (boosted 3x), body                                                  |
+| OpenAPI        | Title, `operationId`s, paths, schema names, parameter names, summaries    |
+| Proto          | Title, message, enum, service, RPC, and field names, comments             |
 
-Stored fields per result include `type` (used for per-format weighting), `title`, `url`, and a snippet for highlighting.
+Each result stores `type` (used for per-format weighting), `title`, and `url`.
 
-### 8.5 Output Files
+### 8.5 Output files
 
-Two artifacts are produced at the site root:
+The build writes one search file at the site root, `search-index.<hash>.js`. It holds the precomputed index as a script that assigns `window.__AID_SEARCH__`. The hash in the filename changes with the content, which busts caches. The MiniSearch runtime is part of the `aid-web.js` bundle.
 
-- `search-index.js` — the precomputed index as a self-bootstrapping JS module. Hashed filename for cache-busting.
-- `minisearch.min.js` — the MiniSearch runtime (~6KB gzipped).
-
-Both are loaded lazily on first focus of the search box, so users who never search pay no bandwidth or CPU cost.
+The browser loads the index on the first focus of the search box, so users who never search do not download it.
 
 ---
 
-## 9. Bundled Tooling
+## 9. Bundled tooling
 
-One of aid's core principles is **zero external dependencies**. Every tool in the pipeline is either compiled directly into the binary or embedded as bytes and executed at runtime.
+aid has no external runtime dependencies. `bun build --compile` packs the Bun runtime, aid's code, and its npm dependencies into one executable. aid embeds the native files that cannot be bundled as JavaScript once per target.
 
-### Tooling Inventory
+### Tooling inventory
 
-| Tool | Purpose | Bundling Strategy |
-|------|---------|-------------------|
-| **Tailwind CSS 4 compiler** | Processes `main.css` and generates the final stylesheet | Embedded binary, executed at build/dev time |
-| **Biome** | Linting + formatting for CSS, HTML, and JSON files | Embedded binary |
-| **Markdown linter/formatter** | Lint and format `.md` files | Embedded binary or compiled-in library (TBD) |
-| **OpenAPI linter/formatter** | Lint and format OpenAPI spec files | Embedded binary or compiled-in library (TBD) |
-| **Proto linter/formatter** | Lint and format `.proto` files | Embedded binary (TBD) |
-| **Markdown renderer** | GFM parsing + Mermaid diagram rendering | Compiled in as a library |
-| **OpenAPI reference UI** | Interactive API documentation (e.g., Scalar, Swagger UI, Redoc) | Bundled static assets |
-| **Proto documentation UI** | Interactive proto documentation viewer | Bundled static assets |
-| **MiniSearch runtime** | In-browser query engine for the precomputed cross-format search index | Bundled static asset (`minisearch.min.js`, ~6KB gz) |
+| Tool | Purpose | Bundling strategy |
+| ------ | --------- | ------------------- |
+| Tailwind CSS 4 compiler | Processes `main.css` and generates the final stylesheet | `@tailwindcss/node` and `@tailwindcss/oxide`, called in-process. The lightningcss native file is embedded per target. |
+| Biome | Linting and formatting for CSS, JSON, and JavaScript or TypeScript | `@biomejs/js-api` over the WASM build |
+| markdownlint | Lint and format `.md` files | npm library (`markdownlint`) |
+| Spectral | Lint OpenAPI files | npm libraries (`@stoplight/spectral-*`) |
+| OpenAPI formatter | Canonicalize OpenAPI files | `Bun.YAML` or JSON round trip. It drops YAML comments. |
+| Buf | Lint and format `.proto` files | `@bufbuild/buf` native binary, embedded per target |
+| Markdown renderer | GFM parsing and syntax highlighting | unified, remark, rehype, and Shiki. Mermaid renders in the browser. |
+| OpenAPI reference UI | Interactive API documentation | Scalar (`@scalar/api-reference`), bundled as `aid-openapi.js` |
+| Proto documentation UI | Interactive proto documentation viewer | `@aid/proto-ui` (React and protobufjs), bundled as `aid-proto.js` |
+| MiniSearch runtime | In-browser query engine for the precomputed search index | Bundled into `aid-web.js` |
 
-### Bundling Strategy
+### Bundling strategy
 
-All external binaries (Tailwind, Biome, format-specific linters) are included as byte arrays in the final aid executable. At runtime, they are extracted to a temporary location and executed as needed. This approach:
+aid embeds only the Buf binary and the lightningcss native file per target (see `scripts/compile.ts`). Each release binary carries the natives for its own platform. The release targets are `darwin-arm64`, `darwin-x64`, `linux-arm64`, and `linux-x64`. Windows is not supported.
 
-- Eliminates the need for users to install any external tools
-- Ensures consistent tool versions across all environments
-- Keeps the distribution story simple: one binary, one download
-
----
-
-## 10. Dev Server
-
-### `aid dev`
-
-The built-in development server provides a local preview environment with hot reload capabilities.
-
-**Key behaviors:**
-- Starts an HTTP server on the configured port (default: `localhost:3000`)
-- Watches for changes in content files, templates, styles, and configuration
-- Triggers automatic browser reload when changes are detected
-- Serves the same output as `aid build`, but generated in-memory for speed
-- Runs the Tailwind compiler in watch mode to pick up style changes instantly
-
-The dev server is designed for fast iteration — change a markdown file, save, and see the result immediately.
+Users install no other tools, and every user runs the same tool versions.
 
 ---
 
-## 11. Build and Output
+## 10. Architecture overview
 
-### `aid build`
-
-Compiles the entire documentation site into a directory of static files.
-
-**Output contents:**
-- HTML pages for every routed content file
-- Compiled CSS (Tailwind output)
-- Static assets (images, fonts, etc.)
-- Markdown exports (`.md`) for markdown and HTML pages
-- JSON exports (`.json`) for OpenAPI and proto pages
-- `llms.txt` at the site root
-- `search-index.js` (precomputed cross-format search index) and `minisearch.min.js` (runtime)
-
-**Deployment:** aid's responsibility ends at generating static files. The output directory can be deployed to any static hosting provider — S3, GitHub Pages, Netlify, Cloudflare Pages, nginx, or any HTTP server capable of serving files. No deployment helpers or platform-specific integrations are included.
-
----
-
-## 12. Architecture Overview
-
-### High-Level Data Flow
+### High-level data flow
 
 ```
-Source Files (md, html, yaml, proto)
+Source Files (md, html, yaml, json, proto)
         │
         ▼
    ┌─────────┐
-   │  Parser  │  ← Detects file type, extracts metadata/frontmatter
-   └────┬─────┘
+   │ Router  │  <- Walks the content root, classifies files, skips _ folders
+   └────┬────┘
         │
         ▼
   ┌───────────┐
-  │ Renderers │  ← Format-specific: GFM renderer, OpenAPI UI, Proto UI
+  │ Renderers │  <- Per format: markdown (unified), HTML, OpenAPI (Scalar), proto
   └─────┬─────┘
         │
         ▼
   ┌───────────┐
-  │ Templates │  ← Template engine (TBD): layout + page-type templates
+  │ Templates │  <- TSX components rendered by aid's JSX runtime: layout + page templates
   └─────┬─────┘
         │
         ▼
   ┌───────────┐
-  │ Tailwind  │  ← Compiles main.css → final stylesheet
+  │ Tailwind  │  <- Scans the rendered HTML, compiles main.css into main.<hash>.css
   └─────┬─────┘
         │
         ▼
   ┌───────────┐
-  │  Output   │  ← HTML + CSS + assets + .md/.json exports + llms.txt + search-index.js
+  │  Output   │  <- HTML + CSS + JS bundles + static files + .md/.json/.proto exports + llms.txt + search index
   └───────────┘
 ```
 
-The parser also feeds a parallel **search index builder** that tokenizes every page (markdown headings/body, OpenAPI operations/schemas, proto messages/RPCs) into a unified inverted index, emitted alongside the rest of the output as a precomputed `search-index.js` in MiniSearch's documented JSON format.
+Each renderer also returns search tokens. The search index builder collects them into one MiniSearch index and writes it next to the other output files.
 
-### Component Map
+### Component map
 
 | Component | Responsibility |
-|-----------|---------------|
-| **CLI** | Command parsing, dispatching to subsystems |
-| **Config loader** | Reads and validates `aid.yaml` |
-| **Router** | Walks content directory, builds route tree, excludes `_` folders |
-| **Parsers** | File-type detection, frontmatter extraction, metadata parsing |
-| **Renderers** | Format-specific rendering (GFM+Mermaid, OpenAPI UI, Proto UI, HTML passthrough) |
-| **Template engine** | Template engine (TBD) with named-partial override resolution (user partials → bundled fallback) |
-| **Tailwind pipeline** | Runs the embedded Tailwind compiler against `main.css`; auto-derives the dark-mode palette from light tokens |
-| **Export generator** | Produces `.md` and `.json` variants, generates `llms.txt` |
-| **Search index builder** | Tokenizes every page (md / OpenAPI / proto / HTML), builds the inverted index in pure Go/Rust, emits `search-index.js` in MiniSearch's documented format |
-| **AI link builder** | Generates per-page "Open in AI" URLs for each configured target (ChatGPT, Claude, Gemini, …) |
-| **Dev server** | HTTP server + file watcher + hot reload |
-| **Linter/Formatter** | Orchestrates embedded tools (Biome, markdown/OpenAPI/proto linters) |
-
-*Detailed architecture diagrams and subsystem breakdowns will be added in future iterations of this document.*
-
----
-
-## Appendix: Future Iterations
-
-This document is the **first layer** of the technical overview. Subsequent passes will add:
-
-1. **Architecture diagrams** — Mermaid-based component and data flow diagrams
-2. **Subsystem deep-dives** — detailed breakdown of each component (routing engine, template resolution, Tailwind pipeline, file watcher, export generator)
-3. **Config schema reference** — full YAML specification with all fields, types, defaults, and validation rules
-4. **Decision records** — architectural decision records (ADRs) for key choices: implementation language, bundling strategy, renderer selection, template engine, linter/formatter tooling
-5. **Edge cases and error handling** — how aid behaves with malformed input, missing files, conflicting routes, invalid config
+| ----------- | --------------- |
+| CLI | Command parsing (citty), dispatching to subsystems (`src/cli`) |
+| Config loader | Reads `aid.yaml` with `Bun.YAML` and validates it with Zod (`src/core/config.ts`) |
+| Router | Walks the content directory, builds the route list, excludes `_` folders (`src/core/router.ts`) |
+| Renderers | Format-specific rendering: GFM with Mermaid, HTML passthrough, OpenAPI, proto (`src/renderers`) |
+| Templates | TSX components (`src/theme/components`). Partial overrides are planned; `src/theme/partials.ts` is a stub. |
+| Tailwind pipeline | Runs the embedded Tailwind compiler against `main.css` and derives the dark-mode palette from light tokens (`src/core/tailwind.ts`, `src/core/dark-mode.ts`) |
+| Export generator | Writes the `.md`, `.json`, and `.proto` exports and generates `llms.txt` (`src/core/pipeline.ts`, `src/core/llms-txt.ts`) |
+| Search index builder | Builds the MiniSearch index from each page's search tokens and writes `search-index.<hash>.js` (`src/core/search-index.ts`) |
+| AI link builder | Planned. Will generate per-page "Open in AI" URLs for ChatGPT, Claude, and Gemini. `src/core/ai-targets.ts` is a stub. |
+| Dev server | HTTP server, file watcher, and live reload over Server-Sent Events (`src/dev`) |
+| Linter and formatter | Runs the embedded tools: Biome, markdownlint, Spectral, Buf (`src/lint`, `src/fmt`) |
