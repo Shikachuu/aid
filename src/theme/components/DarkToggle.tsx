@@ -1,3 +1,4 @@
+/** Render the header theme toggle that `attachDarkMode` binds in the browser. */
 export function DarkToggle() {
   return (
     <button

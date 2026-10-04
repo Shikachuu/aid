@@ -1,12 +1,16 @@
 import type { ProtoTypeRef } from "../parser"
 
-export type TypeRefProps = {
+type TypeRefProps = {
   reference: ProtoTypeRef
   baseHref?: string
 }
 
 const WKT_DOCS_BASE = "https://protobuf.dev/reference/protobuf/google.protobuf/"
 
+/**
+ * Render a field or RPC type. Resolved types link to their anchor on the page, and well-known
+ * `google.protobuf` types link to protobuf.dev.
+ */
 export const TypeRef = ({ reference, baseHref = "" }: TypeRefProps) => {
   if (reference.scalar) {
     return <span className="proto-type-scalar">{reference.raw}</span>

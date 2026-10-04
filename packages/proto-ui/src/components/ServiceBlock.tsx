@@ -5,11 +5,12 @@ import { printService } from "./print-proto"
 import { RpcSignature } from "./RpcSignature"
 import { ViewSource } from "./ViewSource"
 
-export type ServiceBlockProps = {
+type ServiceBlockProps = {
   service: ProtoService
   baseHref?: string
 }
 
+/** Render a service with its RPCs. Each RPC gets the anchor id `{serviceFqn}.{rpcName}`. */
 export const ServiceBlock = ({ service, baseHref }: ServiceBlockProps) => (
   <section className="proto-service">
     <EntityHeader

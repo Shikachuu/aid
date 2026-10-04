@@ -1,13 +1,17 @@
 import { RawHtml } from "../../jsx-runtime"
 import { AIButton } from "./AIButton"
 
-export type PageOpenApiProps = {
+type PageOpenApiProps = {
   title: string
   /** JSON-stringified OpenAPI 3.1 document. */
   specJson: string
   machineUrl: string
 }
 
+/**
+ * Render the OpenAPI page shell. The `aid-openapi` browser bundle reads the spec from
+ * `#aid-openapi-spec` and mounts Scalar on `#aid-openapi-mount`.
+ */
 export function PageOpenAPI({ title, specJson, machineUrl }: PageOpenApiProps) {
   return (
     <article class="aid-page aid-page-openapi">

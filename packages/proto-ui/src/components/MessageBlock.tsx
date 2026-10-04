@@ -6,11 +6,15 @@ import { printMessage } from "./print-proto"
 import { TypeRef } from "./TypeRef"
 import { ViewSource } from "./ViewSource"
 
-export type MessageBlockProps = {
+type MessageBlockProps = {
   message: ProtoMessage
   baseHref?: string
 }
 
+/**
+ * Render a message with its field table, oneof groups and reconstructed declaration. Nested
+ * messages and enums render recursively below it.
+ */
 export const MessageBlock = ({ message, baseHref }: MessageBlockProps) => {
   const visibleFields = message.fields.filter((f) => !f.oneofName)
   return (

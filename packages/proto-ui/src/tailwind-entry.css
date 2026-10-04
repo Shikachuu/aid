@@ -4,9 +4,8 @@
 
 @layer components {
   /*
-   * Component-scoped tokens. Site-wide design tokens belong in `@theme`, but
-   * these are override hooks for the component library — consumers re-declare
-   * `--proto-*` on `.proto-root` (or a wrapping selector) to retheme.
+   * Consumers retheme the component by re-declaring these `--proto-*` tokens on
+   * `.proto-root` or a wrapping selector.
    */
   .proto-root {
     --proto-color-bg: oklch(99% 0 0);

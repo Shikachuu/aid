@@ -1,12 +1,5 @@
 @import "tailwindcss";
 
-/*
- * Default aid theme tokens. Override or extend by writing a `main.css` in
- * your project root and pointing `aid.yaml` `stylesheet` at it. Tailwind 4
- * picks these up via @theme — change a token here and every renderer
- * (markdown, OpenAPI/Scalar, proto) reflects it.
- */
-
 @theme {
   --color-aid-bg: oklch(99% 0 0);
   --color-aid-text: oklch(20% 0 0);
@@ -18,21 +11,11 @@
   --font-aid-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
-/*
- * Base. Document-level concerns only — color-scheme so form controls/scrollbars
- * pick up the OS preference. Visual styling lives in `@layer components`.
- */
-
 @layer base {
   :root {
     @apply scheme-light-dark;
   }
 }
-
-/*
- * Components. Everything else is a Tailwind-utility composition via @apply or
- * a CSS-variable bridge for a third-party renderer that consumes our tokens.
- */
 
 @layer components {
   .aid-body {
@@ -55,55 +38,29 @@
     @apply flex justify-end;
   }
 
-  /*
-   * Markdown article. `max-w-prose` caps the line length at Tailwind's prose
-   * measure (~65ch) for readability, and `mx-auto` centers the column within
-   * whatever the surrounding layout gives it — so prose pages look the same
-   * whether the sidebar is populated, empty, or hidden.
-   */
   .aid-page-markdown {
     @apply mx-auto w-full max-w-prose;
   }
 
-  /*
-   * Scalar token bridge. Maps the embedded api-reference's CSS vars to ours so
-   * the OpenAPI renderer inherits the same palette without per-page CSS. These
-   * are var declarations on a host selector — no utility equivalent in Tailwind,
-   * so they stay raw inside the components layer.
-   */
-
   :where(.aid-page-openapi) {
-    --scalar-color-1: var(--color-aid-text);
-    --scalar-color-2: var(--color-aid-muted);
-    --scalar-background-1: var(--color-aid-bg);
-    --scalar-border-color: var(--color-aid-border);
-    --scalar-color-accent: var(--color-aid-accent);
-    --scalar-font: var(--font-aid-sans);
-    --scalar-font-code: var(--font-aid-mono);
+    @apply [--scalar-color-1:var(--color-aid-text)];
+    @apply [--scalar-color-2:var(--color-aid-muted)];
+    @apply [--scalar-background-1:var(--color-aid-bg)];
+    @apply [--scalar-border-color:var(--color-aid-border)];
+    @apply [--scalar-color-accent:var(--color-aid-accent)];
+    @apply [--scalar-font:var(--font-aid-sans)];
+    @apply [--scalar-font-code:var(--font-aid-mono)];
   }
-
-  /*
-   * `@aid/proto-ui` token bridge. The embedded React component carries its own
-   * `--proto-*` defaults on `.proto-root`; aid's `.aid-page-proto` wrapper
-   * re-points them at the aid palette so proto pages inherit theming without
-   * per-page CSS. `:where()` keeps specificity at zero so consumer overrides
-   * still win.
-   */
 
   :where(.aid-page-proto) {
-    --proto-color-bg: var(--color-aid-bg);
-    --proto-color-text: var(--color-aid-text);
-    --proto-color-muted: var(--color-aid-muted);
-    --proto-color-border: var(--color-aid-border);
-    --proto-color-accent: var(--color-aid-accent);
-    --proto-font-sans: var(--font-aid-sans);
-    --proto-font-mono: var(--font-aid-mono);
+    @apply [--proto-color-bg:var(--color-aid-bg)];
+    @apply [--proto-color-text:var(--color-aid-text)];
+    @apply [--proto-color-muted:var(--color-aid-muted)];
+    @apply [--proto-color-border:var(--color-aid-border)];
+    @apply [--proto-color-accent:var(--color-aid-accent)];
+    @apply [--proto-font-sans:var(--font-aid-sans)];
+    @apply [--proto-font-mono:var(--font-aid-mono)];
   }
-
-  /*
-   * Prose. Tailwind utilities do the visual work; CSS-variable references
-   * pick up the theme tokens so user overrides flow through.
-   */
 
   .aid-page-markdown pre {
     @apply overflow-x-auto rounded-lg p-4 font-aid-mono text-sm leading-relaxed;

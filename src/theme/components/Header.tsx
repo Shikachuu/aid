@@ -2,13 +2,12 @@ import type { AidConfig } from "../../core/config"
 import { DarkToggle } from "./DarkToggle"
 import { SearchBox, type SearchBoxProps } from "./SearchBox"
 
-/** Props for {@link Header}. */
-export type HeaderProps = {
+type HeaderProps = {
   config: AidConfig
-  /** Search affordance config; pass `undefined` to omit the SearchBox entirely. */
   search?: SearchBoxProps
 }
 
+/** Render the site header. Omit `search` to leave out the search box. */
 export function Header({ config, search }: HeaderProps) {
   return (
     <header class="aid-header">

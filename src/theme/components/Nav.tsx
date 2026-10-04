@@ -1,5 +1,6 @@
 import type { NavNode } from "../../core/types"
 
+/** Render the sidebar navigation tree. Nodes without a path render as plain labels. */
 export function Nav({ tree }: { tree: NavNode[] }) {
   return (
     <nav class="aid-nav">

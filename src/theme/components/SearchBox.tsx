@@ -1,17 +1,16 @@
-/** Props for {@link SearchBox}. */
+/** Search settings that the server renders into the input for the browser search runtime. */
 export type SearchBoxProps = {
   /** Public href of the hashed search-index JS file. */
   indexHref: string
   /** Fraction of term length allowed as edit distance (mirrors `search.typo_tolerance`). */
   typoTolerance: number
-  /** Per-format ranking boosts applied at query time via MiniSearch's `boostDocument`. */
+  /** Ranking boost per page type, for example `openapi: 2`. Unlisted types get 1. */
   weights: Record<string, number>
 }
 
 /**
- * Server-rendered search affordance. The input carries data attributes the
- * client-side `attachSearch()` reads: the index URL, the typo-tolerance
- * fraction, and the per-format weights as JSON.
+ * Render the search input and results list. `attachSearch` reads the `data-aid-search-*`
+ * attributes.
  */
 export function SearchBox(props: SearchBoxProps) {
   const weightsJson = JSON.stringify(props.weights)

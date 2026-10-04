@@ -1,19 +1,25 @@
 import protobuf from "protobufjs"
 
+/** The `syntax` or `edition` the file declares. `unknown` means it declares neither. */
 export type ProtoSyntax = "proto2" | "proto3" | "editions" | "unknown"
 
+/** A type as written in a field or RPC, with its resolved target when one exists. */
 export type ProtoTypeRef = {
   /** Raw type name as written in the .proto source. */
   raw: string
   /** Resolved fully-qualified name (no leading dot) if a user-defined type, else null. */
   fqn: string | null
-  /** True when the type is a built-in scalar (int32, string, bytes, …). */
+  /** True when the type is a built-in scalar such as int32, string or bytes. */
   scalar: boolean
 }
 
+/** A message field. Fields inside a oneof carry `oneofName`. */
 export type ProtoField = {
   name: string
   number: number
+  /**
+   * `singular` means the field has no label, as in proto3 fields without `optional` and map fields.
+   */
   rule: "optional" | "required" | "repeated" | "singular"
   type: ProtoTypeRef
   /** Key type for `map<K, V>` fields; absent otherwise. */
@@ -24,11 +30,13 @@ export type ProtoField = {
   oneofName?: string
 }
 
+/** A oneof group. Its member fields are the message fields with a matching `oneofName`. */
 export type ProtoOneOf = {
   name: string
   comment: string | null
 }
 
+/** An enum value. `deprecated` reflects the `[deprecated = true]` value option. */
 export type ProtoEnumValue = {
   name: string
   number: number
@@ -36,6 +44,7 @@ export type ProtoEnumValue = {
   deprecated: boolean
 }
 
+/** An enum. `fqn` has no leading dot and is the anchor id on the rendered page. */
 export type ProtoEnum = {
   kind: "enum"
   name: string
@@ -45,6 +54,10 @@ export type ProtoEnum = {
   values: ProtoEnumValue[]
 }
 
+/**
+ * A message with its nested messages and enums. `fqn` has no leading dot and is the anchor id on
+ * the rendered page.
+ */
 export type ProtoMessage = {
   kind: "message"
   name: string
@@ -57,6 +70,7 @@ export type ProtoMessage = {
   nestedEnums: ProtoEnum[]
 }
 
+/** An RPC method. The streaming flags mirror the `stream` keyword on the request and response. */
 export type ProtoRpc = {
   name: string
   comment: string | null
@@ -67,6 +81,7 @@ export type ProtoRpc = {
   serverStreaming: boolean
 }
 
+/** A service. `fqn` has no leading dot and is the anchor id on the rendered page. */
 export type ProtoService = {
   kind: "service"
   name: string
@@ -76,6 +91,10 @@ export type ProtoService = {
   rpcs: ProtoRpc[]
 }
 
+/**
+ * One parsed `.proto` file. Each list holds only top-level entities; nested ones live on their
+ * parent message.
+ */
 export type ProtoAst = {
   package: string | null
   packageLeadingComment: string | null
@@ -88,12 +107,8 @@ export type ProtoAst = {
 const isScalar = (raw: string): boolean => Object.hasOwn(protobuf.types.basic, raw)
 
 /**
- * Parse a `.proto` source string into an aggregated, UI-friendly AST.
- *
- * Uses `protobufjs.parse()` for tokenizing and `resolveAll()` for cross-type
- * resolution. Resolution failures (e.g. unresolved imports) are tolerated —
- * unresolved references emit `fqn: null` and the UI renders raw type names
- * without cross-links.
+ * Parse `.proto` source into a {@link ProtoAst}. Throws on syntax errors. A reference that does not
+ * resolve, for example to a type from an import, gets `fqn: null` instead of throwing.
  */
 export const parseProto = (source: string): ProtoAst => {
   const result = protobuf.parse(source, {
@@ -104,8 +119,7 @@ export const parseProto = (source: string): ProtoAst => {
   try {
     result.root.resolveAll()
   } catch {
-    // resolveAll throws on unresolved imports / unknown extensions. The AST
-    // is still useful — unresolved fields render without cross-links.
+    // resolveAll throws on unresolved imports and unknown extensions.
   }
 
   const syntax = detectSyntax(source)

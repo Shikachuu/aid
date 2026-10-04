@@ -1,30 +1,28 @@
-import { useProtoAst } from "../hooks/useProtoAst"
-import type { ProtoAst } from "../parser"
+import { type UseProtoAstOptions, useProtoAst } from "../hooks/useProtoAst"
 import { EnumBlock } from "./EnumBlock"
 import { MessageBlock } from "./MessageBlock"
 import { PackageHeader } from "./PackageHeader"
 import { ServiceBlock } from "./ServiceBlock"
 import { Sidebar } from "./Sidebar"
 
-/**
- * Source of the `.proto` documentation. Exactly one must be supplied:
- * `protoText` for inline source, `protoUrl` for built-in fetch, or `ast` when
- * an external loader has already produced the parsed AST.
- */
-type ProtoSource =
-  | { protoText: string; protoUrl?: never; ast?: never }
-  | { protoUrl: string; protoText?: never; ast?: never }
-  | { ast: ProtoAst; protoText?: never; protoUrl?: never }
-
-export type ProtoReferenceProps = ProtoSource & {
-  /** Anchor base href for cross-links (defaults to ''). */
+/** One proto source, as in {@link UseProtoAstOptions}, plus display options. */
+export type ProtoReferenceProps = UseProtoAstOptions & {
+  /** Prefix for cross-link hrefs. Omit it to link to anchors on the current page. */
   baseHref?: string
-  /** Optional className appended to the root element. */
+  /** Extra class names for the root element, added after `proto-root`. */
   className?: string
-  /** Optional link to the original `.proto` file (e.g. GitHub). Shown in the header. */
+  /**
+   * URL of the original `.proto` file, for example on GitHub. The package header links to it when
+   * set.
+   */
   fileSourceUrl?: string
 }
 
+/**
+ * Render the full documentation for one `.proto` file: sidebar, package header, services, messages
+ * and enums. Shows a loading state until the source parses, and an error state when loading or
+ * parsing fails.
+ */
 export const ProtoReference = (props: ProtoReferenceProps) => {
   const result = useProtoAst(props)
   const { baseHref, className, fileSourceUrl } = props

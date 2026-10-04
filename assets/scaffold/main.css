@@ -1,10 +1,9 @@
 @import "tailwindcss";
 
 /*
- * Override aid's default theme tokens here. Anything you set takes precedence
- * over the bundled defaults; everything else inherits. Tailwind 4 picks these
- * up via @theme — change a token and every renderer (markdown, OpenAPI/Scalar,
- * proto) reflects it automatically.
+ * Override aid's default theme tokens here. Tokens you set take precedence over
+ * the bundled defaults, and the rest keep their default values. A changed token
+ * applies to every renderer: markdown, OpenAPI (Scalar) and proto.
  *
  * Token reference:
  *   --color-aid-bg, --color-aid-text, --color-aid-muted, --color-aid-border,

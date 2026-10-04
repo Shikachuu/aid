@@ -5,10 +5,11 @@ import { EntityHeader } from "./EntityHeader"
 import { printEnum } from "./print-proto"
 import { ViewSource } from "./ViewSource"
 
-export type EnumBlockProps = {
+type EnumBlockProps = {
   enumEntity: ProtoEnum
 }
 
+/** Render an enum with its doc comment, value table and reconstructed declaration. */
 export const EnumBlock = ({ enumEntity }: EnumBlockProps) => (
   <section className="proto-enum">
     <EntityHeader

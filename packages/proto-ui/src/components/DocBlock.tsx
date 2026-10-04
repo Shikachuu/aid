@@ -1,10 +1,11 @@
 import { renderDocMarkdown } from "./doc-markdown"
 
-export type DocBlockProps = {
-  /** Raw comment text — protobufjs has already stripped the comment markers. */
+type DocBlockProps = {
+  /** Comment text without its comment markers, which protobufjs strips. */
   raw: string | null
 }
 
+/** Render a proto comment as markdown, or nothing when the comment is null or empty. */
 export const DocBlock = ({ raw }: DocBlockProps) =>
   raw ? (
     <div

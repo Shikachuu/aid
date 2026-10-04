@@ -1,10 +1,11 @@
 import type { ProtoAst } from "../parser"
 
-export type SidebarProps = {
+type SidebarProps = {
   ast: ProtoAst
   baseHref?: string
 }
 
+/** Render anchor links to every top-level service, message and enum, grouped by kind. */
 export const Sidebar = ({ ast, baseHref = "" }: SidebarProps) => (
   <nav className="proto-sidebar" aria-label="Proto entity navigation">
     {(

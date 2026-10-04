@@ -12,9 +12,8 @@ const rulePrefix = (rule: ProtoMessage["fields"][number]["rule"]): string =>
   rule === "singular" ? "" : `${rule} `
 
 /**
- * Reconstruct a `.proto`-style declaration for a single entity. Lossy by design —
- * options, reserved ranges, and custom annotations are dropped. Used by `<ViewSource/>`
- * as a quick reference; the authoritative source is the original `.proto` file.
+ * Rebuild a `.proto` declaration for a message for `<ViewSource/>`. The output drops options,
+ * reserved ranges and custom annotations, so it is not the original source.
  */
 export const printMessage = (m: ProtoMessage): string => {
   const lines: string[] = [`message ${m.name} {`]
@@ -44,6 +43,7 @@ export const printMessage = (m: ProtoMessage): string => {
   return lines.join("\n")
 }
 
+/** Rebuild a `.proto` declaration for an enum. Value options are dropped. */
 export const printEnum = (e: ProtoEnum): string => {
   const lines: string[] = [`enum ${e.name} {`]
   for (const v of e.values) {
@@ -53,6 +53,7 @@ export const printEnum = (e: ProtoEnum): string => {
   return lines.join("\n")
 }
 
+/** Rebuild a `.proto` declaration for a service. RPC options and bodies are dropped. */
 export const printService = (s: ProtoService): string => {
   const lines: string[] = [`service ${s.name} {`]
   for (const rpc of s.rpcs) {

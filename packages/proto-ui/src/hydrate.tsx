@@ -2,10 +2,8 @@ import { createRoot } from "react-dom/client"
 import { ProtoReference, type ProtoReferenceProps } from "./components/ProtoReference"
 
 /**
- * Mount a `<ProtoReference/>` instance into the given DOM element. Returns an
- * `unmount` function. Used by aid's web entry to hydrate the SSR shell on
- * proto pages; third-party consumers can use it the same way for vanilla
- * (non-React) host apps.
+ * Render `<ProtoReference/>` into `mount` with a new React root, replacing its children. Returns a
+ * function that unmounts it. Use it from pages that are not React apps.
  */
 export const createProtoReference = (
   mount: Element,

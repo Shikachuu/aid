@@ -24,5 +24,8 @@ const marked = new Marked({
   },
 })
 
-/** Render a proto comment as markdown. Raw HTML is escaped and links outside http, https and mailto are dropped. */
+/**
+ * Render a proto comment from markdown to HTML. Raw HTML in the comment comes out escaped. Links
+ * with a scheme other than http, https or mailto, such as `javascript:`, get `#` as their href.
+ */
 export const renderDocMarkdown = (raw: string): string => marked.parse(raw) as string

@@ -2,14 +2,18 @@ import { useEffect, useMemo, useState } from "react"
 import { type ProtoAst, parseProto } from "../parser"
 
 /**
- * Input to `useProtoAst`. Exactly one of `protoText`, `protoUrl`, or `ast` must
- * be supplied. The discriminated arms make mismatched combinations a type error.
+ * The proto source for `useProtoAst`. Pass exactly one of `protoText` for inline source, `protoUrl`
+ * to fetch it, or `ast` when you already have a parsed AST.
  */
 export type UseProtoAstOptions =
   | { protoText: string; protoUrl?: never; ast?: never }
   | { protoUrl: string; protoText?: never; ast?: never }
   | { ast: ProtoAst; protoText?: never; protoUrl?: never }
 
+/**
+ * Load state of a proto source. `source` holds the parsed text, or null when the caller passed
+ * `ast`.
+ */
 export type UseProtoAstResult =
   | { status: "loading"; ast: null; error: null; source: null }
   | { status: "ready"; ast: ProtoAst; error: null; source: string | null }
@@ -18,10 +22,8 @@ export type UseProtoAstResult =
 const LOADING: UseProtoAstResult = { status: "loading", ast: null, error: null, source: null }
 
 /**
- * Source-loading + parsing lifecycle hook. Pass `protoText` for inline source,
- * `protoUrl` for built-in fetch, or `ast` to skip both stages — useful when an
- * external loader (SWR, react-query, redux, a custom transport) has already
- * produced the AST. Transitions: `loading` → (`ready` | `error`).
+ * Load and parse a proto source. `protoText` and `ast` resolve on the first render. `protoUrl`
+ * starts in `loading`, and a new URL aborts the previous fetch.
  */
 export const useProtoAst = (options: UseProtoAstOptions): UseProtoAstResult => {
   const { protoText, protoUrl, ast } = options

@@ -1,15 +1,8 @@
-/**
- * Toggle data-aid-theme on <html> between "light" / "dark" / "auto" and
- * persist to localStorage. Respects prefers-color-scheme on first load.
- *
- * Stub.
- */
+/** Attach a click handler to the header dark-mode toggle. The handler does nothing yet. */
 export function attachDarkMode(): void {
   const toggle = document.querySelector<HTMLElement>("[data-aid-dark-toggle]")
   if (!toggle) {
     return
   }
-  toggle.addEventListener("click", () => {
-    // cycle theme + persist
-  })
+  toggle.addEventListener("click", () => {})
 }

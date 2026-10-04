@@ -1,11 +1,12 @@
 import { DocBlock } from "./DocBlock"
 
-export type PackageHeaderProps = {
+type PackageHeaderProps = {
   packageName: string | null
   leadingComment: string | null
   fileSourceUrl?: string
 }
 
+/** Render the package name, the comment above the `package` line, and an optional source link. */
 export const PackageHeader = ({
   packageName,
   leadingComment,

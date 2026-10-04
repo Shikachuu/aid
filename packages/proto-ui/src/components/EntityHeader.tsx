@@ -1,13 +1,17 @@
 import { useState } from "react"
 import { DeprecatedBadge } from "./DeprecatedBadge"
 
-export type EntityHeaderProps = {
+type EntityHeaderProps = {
   kind: "message" | "enum" | "service" | "package"
   name: string
   fqn: string
   deprecated?: boolean
 }
 
+/**
+ * Render an entity heading with `id={fqn}`, the target of sidebar and type cross-links, and a
+ * copy-link button.
+ */
 export const EntityHeader = ({ kind, name, fqn, deprecated = false }: EntityHeaderProps) => {
   const [copied, setCopied] = useState(false)
 

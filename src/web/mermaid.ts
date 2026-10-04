@@ -1,10 +1,6 @@
 /**
- * Render any `<pre class="mermaid">` blocks on the page. The mermaid library
- * is ~600 kB — we only fetch it when the current page actually contains a
- * diagram, so prose-only pages pay no cost. Theme tracks the OS color
- * preference; a media-query listener re-runs mermaid on light/dark flips by
- * resetting the `data-processed` attribute mermaid uses to skip already-
- * rendered nodes.
+ * Render every `<pre class="mermaid">` block, and render again when the OS color scheme changes.
+ * The page imports mermaid only when it has a diagram.
  */
 export async function attachMermaid(): Promise<void> {
   const elements = [...document.querySelectorAll<HTMLElement>("pre.mermaid")]
@@ -17,6 +13,7 @@ export async function attachMermaid(): Promise<void> {
   const { default: mermaid } = await import("mermaid")
   const render = async () => {
     elements.forEach((el, i) => {
+      // mermaid skips nodes that carry data-processed.
       el.removeAttribute("data-processed")
       el.textContent = sources[i] ?? ""
     })

@@ -8,11 +8,8 @@ const DEBOUNCE_MS = 80
 const BLUR_CLOSE_DELAY_MS = 150
 
 /**
- * Lazy-load MiniSearch and the precomputed index on first focus of any search
- * input, then wire a keyboard-navigable results dropdown. The input element
- * carries every piece of state the client needs (index URL, typo tolerance,
- * per-format weights) via `data-aid-search-*` attributes stamped by the
- * server-rendered SearchBox.
+ * Wire every search input to the prebuilt index. The index and MiniSearch load on the first focus.
+ * The input's `data-aid-search-*` attributes, set by the SearchBox component, carry the settings.
  */
 export function attachSearch(): void {
   const inputs = document.querySelectorAll<HTMLInputElement>("[data-aid-search-input]")
