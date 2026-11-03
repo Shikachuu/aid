@@ -1,0 +1,199 @@
+import { stat } from "node:fs/promises"
+import path from "node:path"
+import type { Diagnostic } from "../lint/diagnostics"
+import type { CopyAsset } from "../renderers/markdown/colocated-assets"
+import { routePathFromStem, routeUrl } from "./router"
+import type { AnchorRef, BuildContext, RenderedPage, Route } from "./types"
+
+/** Diagnostic codes for references the build could not resolve. */
+export type BrokenLinkCode = "link/missing" | "link/excluded" | "link/outside"
+
+/** Outcome of resolving one author-written href against the route table. */
+export type ResolvedLink =
+  | { kind: "skip" }
+  | { kind: "page"; href: string; routePath: string; fragment: string }
+  | { kind: "asset"; href: string }
+  | { kind: "broken"; code: BrokenLinkCode; reason: string }
+
+/** Resolves a relative href found in one page. The pipeline builds one per route. */
+export type ResolveLink = (href: string) => Promise<ResolvedLink>
+
+/** Route lookups by absolute source path and by route path. */
+export type RouteIndex = { bySource: Map<string, Route>; byPath: Map<string, Route> }
+
+/** Index `routes` once per build so every link resolves without rescanning. */
+export function indexRoutes(routes: Route[]): RouteIndex {
+  return {
+    bySource: new Map(routes.map((r) => [r.source, r])),
+    byPath: new Map(routes.map((r) => [r.path, r])),
+  }
+}
+
+const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i
+const CONTENT_EXTS = new Set([".md", ".html", ".proto"])
+
+/**
+ * Build the link resolver for `route`. Links to content sources become route
+ * URLs under `base_path`, other files are copied next to the page like
+ * colocated images, and anything that cannot resolve comes back as `broken`.
+ * Absolute paths, protocol-relative URLs and scheme URLs are left alone.
+ */
+export function makeResolveLink(
+  route: Route,
+  ctx: BuildContext,
+  index: RouteIndex,
+  copyAsset: CopyAsset,
+): ResolveLink {
+  const base = ctx.config.base_path
+  return async (href) => {
+    if (href === "" || href.startsWith("/") || SCHEME_RE.test(href)) {
+      return { kind: "skip" }
+    }
+    const { pathPart, query, fragment } = splitHref(href)
+    if (pathPart === "") {
+      return fragment !== "" && query === ""
+        ? { kind: "page", href, routePath: route.path, fragment }
+        : { kind: "skip" }
+    }
+    let decoded: string
+    try {
+      decoded = decodeURI(pathPart)
+    } catch {
+      return broken("link/missing", `malformed link "${href}"`)
+    }
+    const abs = path.resolve(path.dirname(route.source), decoded)
+    if (abs !== ctx.contentDir && !isLexicallyInside(abs, ctx.contentDir)) {
+      return broken(
+        "link/outside",
+        `link "${href}" points outside the content dir. Use an absolute URL for files outside it.`,
+      )
+    }
+    const toPage = (target: Route): ResolvedLink => ({
+      kind: "page",
+      href: `${routeUrl(target.path, base)}${query}${hashOf(fragment)}`,
+      routePath: target.path,
+      fragment,
+    })
+    const bySource = index.bySource.get(abs)
+    if (bySource) {
+      return toPage(bySource)
+    }
+    const ext = path.extname(abs).toLowerCase()
+    if (CONTENT_EXTS.has(ext)) {
+      const rel = path.relative(ctx.contentDir, abs)
+      return rel.split(path.sep).some((seg) => seg.startsWith("_")) && (await isFile(abs))
+        ? broken("link/excluded", `link "${href}" targets a page excluded by its "_" prefix`)
+        : broken("link/missing", `link "${href}" targets a page that does not exist`)
+    }
+    if (!(await isFile(abs))) {
+      const byPath = index.byPath.get(routePathFromStem(path.relative(ctx.contentDir, abs)))
+      return byPath
+        ? toPage(byPath)
+        : broken("link/missing", `link "${href}" targets a file that does not exist`)
+    }
+    const assetHref = await copyAsset(abs)
+    return assetHref === null
+      ? broken("link/missing", `link "${href}" targets a file that does not exist`)
+      : { kind: "asset", href: `${assetHref}${query}${hashOf(fragment)}` }
+  }
+}
+
+function broken(code: BrokenLinkCode, reason: string): ResolvedLink {
+  return { kind: "broken", code, reason }
+}
+
+function splitHref(href: string): { pathPart: string; query: string; fragment: string } {
+  const hashAt = href.indexOf("#")
+  const fragment = hashAt === -1 ? "" : href.slice(hashAt + 1)
+  const beforeHash = hashAt === -1 ? href : href.slice(0, hashAt)
+  const queryAt = beforeHash.indexOf("?")
+  return {
+    pathPart: queryAt === -1 ? beforeHash : beforeHash.slice(0, queryAt),
+    query: queryAt === -1 ? "" : beforeHash.slice(queryAt),
+    fragment,
+  }
+}
+
+const hashOf = (fragment: string): string => (fragment === "" ? "" : `#${fragment}`)
+
+async function isFile(p: string): Promise<boolean> {
+  try {
+    return (await stat(p)).isFile()
+  } catch {
+    return false
+  }
+}
+
+/** True when `child` sits strictly below `parent` without leaving it through `..`. */
+export function isLexicallyInside(child: string, parent: string): boolean {
+  const rel = path.relative(parent, child)
+  return rel !== "" && rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel)
+}
+
+/**
+ * Fragment links whose target page publishes its anchors but not this one.
+ * Pages without `anchors` (OpenAPI, proto) render their ids in the browser, so
+ * links into them are not checked.
+ */
+export function checkAnchors(pages: RenderedPage[]): Diagnostic[] {
+  const anchorsByRoute = new Map(
+    pages.flatMap((p) => (p.anchors ? [[p.route.path, new Set(p.anchors)] as const] : [])),
+  )
+  return pages.flatMap((page) =>
+    (page.anchorRefs ?? []).flatMap((ref) => {
+      const anchors = anchorsByRoute.get(ref.routePath)
+      if (!anchors || isKnownAnchor(ref.fragment, anchors)) {
+        return []
+      }
+      return [anchorDiagnostic(page.route.source, ref)]
+    }),
+  )
+}
+
+function isKnownAnchor(fragment: string, anchors: Set<string>): boolean {
+  if (fragment === "" || fragment === "top") {
+    return true
+  }
+  try {
+    return anchors.has(decodeURIComponent(fragment))
+  } catch {
+    return false
+  }
+}
+
+function anchorDiagnostic(file: string, ref: AnchorRef): Diagnostic {
+  return {
+    file,
+    line: ref.line,
+    col: ref.col,
+    severity: "error",
+    code: "link/anchor",
+    message: `link "${ref.href}" targets a heading or id that does not exist`,
+  }
+}
+
+/**
+ * Report every broken reference in one message, sorted by file and position.
+ * Throws unless `on_broken_links` is `warn`, so one build run lists every
+ * problem instead of stopping at the first.
+ */
+export function reportBrokenLinks(problems: Diagnostic[], ctx: BuildContext): void {
+  if (problems.length === 0) {
+    return
+  }
+  const lines = problems
+    .map((d) => ({ ...d, file: path.relative(ctx.cwd, d.file) }))
+    .toSorted(
+      (a, b) =>
+        a.file.localeCompare(b.file) ||
+        (a.line ?? 0) - (b.line ?? 0) ||
+        (a.col ?? 0) - (b.col ?? 0),
+    )
+    .map((d) => `  ${d.file}:${d.line ?? 0}:${d.col ?? 0}  ${d.code}  ${d.message}`)
+  const message = `aid: ${problems.length} broken reference${problems.length === 1 ? "" : "s"}\n${lines.join("\n")}`
+  if (ctx.config.on_broken_links === "warn") {
+    console.warn(message)
+    return
+  }
+  throw new Error(message)
+}

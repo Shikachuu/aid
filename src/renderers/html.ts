@@ -8,10 +8,12 @@ import remarkStringify from "remark-stringify"
 import { unified } from "unified"
 import { visit } from "unist-util-visit"
 import { VFile } from "vfile"
-import type { RenderedPage, Route, SearchTokens } from "../core/types"
+import type { ResolveLink } from "../core/links"
+import type { AnchorRef, RenderedPage, Route, SearchTokens } from "../core/types"
+import { linkRefsFromHast, rewriteLinks } from "./links"
 import { type CopyAsset, colocatedAssetsPlugin } from "./markdown/colocated-assets"
 import type { Frontmatter } from "./markdown/frontmatter"
-import { hastText } from "./shared"
+import { collectAnchors, hastText, vfileDiagnostics } from "./shared"
 
 /** Arguments for {@link renderHtml}. */
 export type RenderHtmlArgs = {
@@ -24,6 +26,8 @@ export type RenderHtmlArgs = {
    * output dir; omit during unit tests for a pure render with no side effects.
    */
   copyAsset?: CopyAsset
+  /** Optional resolver for relative `<a href>` values. The pipeline supplies one per route. */
+  resolveLink?: ResolveLink
 }
 
 /**
@@ -70,6 +74,10 @@ export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
     await rewrite(bodyTree, file)
   }
 
+  const anchorRefs: AnchorRef[] = args.resolveLink
+    ? await rewriteLinks(linkRefsFromHast(bodyTree), args.resolveLink, file)
+    : []
+
   let hasMermaid = false
   visit(bodyTree, "element", (node: HastElement) => {
     if ((node.tagName === "pre" || node.tagName === "div") && hasClass(node, "mermaid")) {
@@ -101,6 +109,9 @@ export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
     hasOpenApi: false,
     hasProto: false,
     description: frontmatter.description,
+    anchors: collectAnchors(html),
+    anchorRefs,
+    diagnostics: vfileDiagnostics(file, args.sourcePath),
   }
 }
 

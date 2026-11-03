@@ -1,3 +1,4 @@
+import type { Diagnostic } from "../lint/diagnostics"
 import type { Frontmatter } from "../renderers/markdown/frontmatter"
 import type { AidConfig } from "./config"
 
@@ -31,6 +32,21 @@ export type RenderedPage = {
   hasProto: boolean
   /** One-line summary used in llms.txt bullets. */
   description?: string
+  /** Element ids a link fragment may target. Undefined when ids only exist in the browser. */
+  anchors?: string[]
+  /** Fragment links found in the page, checked against the target's `anchors`. */
+  anchorRefs?: AnchorRef[]
+  /** Broken links and images found while rendering. */
+  diagnostics?: Diagnostic[]
+}
+
+/** A link with a `#fragment` into a page, kept for the anchor check after every page renders. */
+export type AnchorRef = {
+  routePath: string
+  fragment: string
+  href: string
+  line?: number
+  col?: number
 }
 
 /** Text a renderer extracts from a page for the search index. */

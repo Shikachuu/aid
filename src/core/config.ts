@@ -121,6 +121,13 @@ export const AidConfigSchema = z
       .prefault({})
       .describe("Cross-format search configuration."),
 
+    on_broken_links: z
+      .enum(["error", "warn"])
+      .default("error")
+      .describe(
+        "What to do when a relative link, link fragment or colocated image does not resolve. 'error' fails the build; 'warn' prints the report and continues.",
+      ),
+
     dev: z
       .object({
         port: PortSchema.default(3000).describe("Dev server port."),

@@ -7,7 +7,7 @@ import type { VFile } from "vfile"
  * Callback invoked once per relative `<img src>` discovered in a rendered
  * page. Implementations copy the file and return the public href to
  * substitute. Returning `null` means the file does not exist: the plugin then
- * adds a warning to the VFile and leaves the src untouched.
+ * adds an `image/missing` message to the VFile and leaves the src untouched.
  */
 export type CopyAsset = (absoluteSource: string) => Promise<string | null>
 
@@ -43,8 +43,8 @@ export type AssetRef = { src: string; place?: HastElement["position"]; set: (hre
 
 /**
  * Copy every relative `ref` through `opts.copyAsset` and point it at the
- * returned public href. A missing asset leaves the ref untouched and adds a
- * warning to `file`.
+ * returned public href. A missing asset leaves the ref untouched and adds an
+ * `image/missing` message to `file`.
  */
 export async function copyColocated(
   opts: ColocatedAssetsOptions,
@@ -57,7 +57,11 @@ export async function copyColocated(
       .map(async (ref) => {
         const href = await opts.copyAsset(path.resolve(opts.sourceDir, ref.src))
         if (href == null) {
-          file.message(`colocated image not found: ${ref.src}`, { place: ref.place })
+          file.message(`colocated image not found: ${ref.src}`, {
+            place: ref.place,
+            ruleId: "image/missing",
+            source: "aid",
+          })
         } else {
           ref.set(href)
         }

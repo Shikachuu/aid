@@ -22,6 +22,11 @@ describe("AidConfigSchema", () => {
     })
     expect(parsed.dev.port).toBe(3000)
     expect(parsed.dev.host).toBe("localhost")
+    expect(parsed.on_broken_links).toBe("error")
+  })
+
+  test("rejects unknown on_broken_links", () => {
+    expect(() => AidConfigSchema.parse({ name: "T", on_broken_links: "ignore" })).toThrow()
   })
 
   test("rejects a missing name", () => {

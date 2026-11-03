@@ -12,8 +12,10 @@ import remarkStringify from "remark-stringify"
 import { unified } from "unified"
 import { visit } from "unist-util-visit"
 import { VFile } from "vfile"
-import type { RenderedPage, Route, SearchTokens } from "../../core/types"
-import { hastText } from "../shared"
+import type { ResolveLink } from "../../core/links"
+import type { AnchorRef, RenderedPage, Route, SearchTokens } from "../../core/types"
+import { linkRefsFromMdast, rewriteLinks } from "../links"
+import { collectAnchors, hastText, vfileDiagnostics } from "../shared"
 import type { CopyAsset } from "./colocated-assets"
 import { colocatedAssetsMdastPlugin } from "./colocated-assets-mdast"
 import { extractFrontmatter } from "./frontmatter"
@@ -31,6 +33,8 @@ export type RenderMarkdownArgs = {
    * omit during unit tests for a pure render with no side effects.
    */
   copyAsset?: CopyAsset
+  /** Optional resolver for relative links. The pipeline supplies one per route. */
+  resolveLink?: ResolveLink
 }
 
 /**
@@ -43,14 +47,15 @@ export type RenderMarkdownArgs = {
  */
 export async function renderMarkdown(args: RenderMarkdownArgs): Promise<RenderedPage> {
   const source = await Bun.file(args.sourcePath).text()
-  const { frontmatter, body } = extractFrontmatter(source)
+  const { frontmatter, body, bodyLine } = extractFrontmatter(source)
   const filenameTitle = path.basename(args.sourcePath, path.extname(args.sourcePath))
 
   const titleSink = { value: frontmatter?.title ?? filenameTitle }
   const headings: string[] = []
 
-  const file = new VFile({ value: body })
-  const mdast = await buildMdast(file, args)
+  const file = new VFile({ path: args.sourcePath, value: body })
+  const anchorRefs: AnchorRef[] = []
+  const mdast = await buildMdast(file, args, anchorRefs)
 
   const htmlProcessor = unified()
     .use(remarkRehype, { allowDangerousHtml: true })
@@ -103,15 +108,31 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
     hasOpenApi: false,
     hasProto: false,
     description: frontmatter?.description,
+    anchors: collectAnchors(html),
+    anchorRefs: anchorRefs.map((ref) => ({
+      ...ref,
+      line: ref.line === undefined ? undefined : ref.line + bodyLine - 1,
+    })),
+    diagnostics: vfileDiagnostics(file, args.sourcePath, bodyLine - 1),
   }
 }
 
-async function buildMdast(file: VFile, args: RenderMarkdownArgs): Promise<MdastRoot> {
+async function buildMdast(
+  file: VFile,
+  args: RenderMarkdownArgs,
+  anchorRefs: AnchorRef[],
+): Promise<MdastRoot> {
   let processor = unified().use(remarkParse).use(remarkGfm)
   if (args.copyAsset) {
     processor = processor.use(colocatedAssetsMdastPlugin, {
       sourceDir: path.dirname(args.sourcePath),
       copyAsset: args.copyAsset,
+    })
+  }
+  const { resolveLink } = args
+  if (resolveLink) {
+    processor = processor.use(() => async (tree: MdastRoot, vfile: VFile) => {
+      anchorRefs.push(...(await rewriteLinks(linkRefsFromMdast(tree), resolveLink, vfile)))
     })
   }
   return (await processor.run(processor.parse(file), file)) as MdastRoot

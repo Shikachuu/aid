@@ -10,6 +10,14 @@ import { Layout } from "../theme/components/Layout"
 import { PageHtml } from "../theme/components/PageHtml"
 import { PageMarkdown } from "../theme/components/PageMarkdown"
 import { AssetRegistry } from "./assets"
+import {
+  checkAnchors,
+  indexRoutes,
+  isLexicallyInside,
+  makeResolveLink,
+  type RouteIndex,
+  reportBrokenLinks,
+} from "./links"
 import { buildLlmsTxt } from "./llms-txt"
 import { buildRoutes, exportPath } from "./router"
 import { buildSearchIndex, type SearchIndexResult } from "./search-index"
@@ -22,14 +30,23 @@ const STYLESHEET_PLACEHOLDER = "__AID_STYLESHEET_HREF__"
 
 /**
  * Build the whole site from `ctx` into `ctx.outputDir`. Throws when two outputs
- * target the same path or a colocated asset escapes `contentDir`.
+ * target the same path, a colocated asset escapes `contentDir`, or a link or
+ * image does not resolve (unless `on_broken_links` is `warn`).
  */
 export async function build(ctx: BuildContext): Promise<void> {
   const registry = new AssetRegistry()
 
   const [routes] = await Promise.all([buildRoutes(ctx), copyStaticAssets(ctx, registry)])
 
-  const rendered = await Promise.all(routes.map((route) => dispatchRenderer(route, ctx, registry)))
+  const index = indexRoutes(routes)
+  const rendered = await Promise.all(
+    routes.map((route) => dispatchRenderer(route, ctx, registry, index)),
+  )
+
+  reportBrokenLinks(
+    [...rendered.flatMap((p) => p.diagnostics ?? []), ...checkAnchors(rendered)],
+    ctx,
+  )
 
   const web = await buildWebBundle(ctx, {
     mermaid: rendered.some((p) => p.hasMermaid),
@@ -86,20 +103,20 @@ async function dispatchRenderer(
   route: Route,
   ctx: BuildContext,
   registry: AssetRegistry,
+  index: RouteIndex,
 ): Promise<RenderedPage> {
   switch (route.kind) {
     case "markdown":
-      return renderMarkdown({
+    case "html": {
+      const copyAsset = makeCopyAsset(route, ctx, registry)
+      const args = {
         route,
         sourcePath: route.source,
-        copyAsset: makeCopyAsset(route, ctx, registry),
-      })
-    case "html":
-      return renderHtml({
-        route,
-        sourcePath: route.source,
-        copyAsset: makeCopyAsset(route, ctx, registry),
-      })
+        copyAsset,
+        resolveLink: makeResolveLink(route, ctx, index, copyAsset),
+      }
+      return route.kind === "markdown" ? renderMarkdown(args) : renderHtml(args)
+    }
     case "openapi":
       return renderOpenApi({ route, sourcePath: route.source })
     case "proto":
@@ -148,11 +165,6 @@ async function realpathOrNull(p: string): Promise<string | null> {
   } catch {
     return null
   }
-}
-
-function isLexicallyInside(child: string, parent: string): boolean {
-  const rel = path.relative(parent, child)
-  return rel !== "" && rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel)
 }
 
 function wrapInLayout(
