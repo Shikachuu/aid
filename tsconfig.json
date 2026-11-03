@@ -9,7 +9,6 @@
     "jsx": "react-jsx",
     "jsxImportSource": "@aid/jsx",
 
-    "baseUrl": ".",
     "paths": {
       "@aid/jsx/jsx-runtime": ["./src/jsx-runtime.ts"],
       "@aid/jsx/jsx-dev-runtime": ["./src/jsx-dev-runtime.ts"]

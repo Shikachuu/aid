@@ -24,8 +24,9 @@ export async function parseOpenApi(source: string, sourcePath: string): Promise<
   const upgraded = upgrade(normalized as Record<string, unknown>)
   const dereferenced = dereference(upgraded.specification as Record<string, unknown>)
   const doc = (dereferenced.specification ?? upgraded.specification) as Record<string, unknown>
-  const warnings = (dereferenced.errors ?? []).map(
-    (e) => `${sourcePath}: ${e.path?.join("/") ?? "<root>"} — ${e.message}`,
-  )
+  const warnings = (dereferenced.errors ?? []).map((e) => {
+    const where = [e.path ?? []].flat().join("/") || "<root>"
+    return `${sourcePath}: ${where} — ${e.message}`
+  })
   return { doc, warnings }
 }

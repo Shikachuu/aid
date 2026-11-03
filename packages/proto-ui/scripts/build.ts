@@ -69,7 +69,7 @@ const compileStyles = async (): Promise<void> => {
 }
 
 const emitTypes = async (): Promise<void> => {
-  await Bun.$`bun x tsgo --emitDeclarationOnly --outDir dist --project .`.cwd(PACKAGE_ROOT)
+  await Bun.$`bun x tsc --emitDeclarationOnly --outDir dist --project .`.cwd(PACKAGE_ROOT)
 }
 
 const main = async (): Promise<void> => {

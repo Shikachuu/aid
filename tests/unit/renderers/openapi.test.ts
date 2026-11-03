@@ -45,6 +45,14 @@ describe("parseOpenApi", () => {
     expect((doc.info as { title: string }).title).toBe("New")
   })
 
+  test("a broken $ref becomes a warning instead of an error", async () => {
+    const yaml = `openapi: "3.1.0"\ninfo:\n  title: Refs\n  version: "1"\npaths: {}\ncomponents:\n  schemas:\n    A:\n      $ref: "#/components/schemas/Missing"\n`
+    const { warnings } = await parseOpenApi(yaml, "refs.yaml")
+    expect(warnings).toEqual([
+      "refs.yaml: <root> — Can't resolve reference: #/components/schemas/Missing",
+    ])
+  })
+
   test("non-mapping source throws with the source path in the message", async () => {
     await expect(parseOpenApi("- a\n- b\n", "/abs/spec.yaml")).rejects.toThrow(/\/abs\/spec\.yaml/)
   })

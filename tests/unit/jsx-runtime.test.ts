@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import { Fragment, jsx, RawHtml, render, renderDocument } from "../../src/jsx-runtime"
 
+const Greeting = ({ name }: { name: string }) => jsx("p", { children: `Hi ${name}` })
+
 describe("jsx-runtime", () => {
   test("renders intrinsic elements with attributes", () => {
     const el = jsx("div", { id: "x", className: "a b", children: "hi" })
@@ -40,7 +42,6 @@ describe("jsx-runtime", () => {
   })
 
   test("function components are evaluated", () => {
-    const Greeting = ({ name }: { name: string }) => jsx("p", { children: `Hi ${name}` })
     expect(render(jsx(Greeting, { name: "World" }))).toBe("<p>Hi World</p>")
   })
 

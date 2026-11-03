@@ -71,20 +71,20 @@ describe("formatOpenApi", () => {
     expect(second).toBe(first)
   })
 
-  test.each([
-    true,
-    false,
-  ])("reports an unparseable spec as an error and leaves it untouched (check: %p)", async (check) => {
-    const file = join(dir, "openapi.json")
-    const original = '{"openapi": "3.0.0",'
-    await Bun.write(file, original)
-    const result = await formatOpenApi([file], dir, { check })
-    expect(result.ok).toBe(false)
-    expect(result.diagnostics).toEqual([
-      expect.objectContaining({ file, severity: "error", code: "openapi/parse" }),
-    ])
-    expect(await Bun.file(file).text()).toBe(original)
-  })
+  test.each([true, false])(
+    "reports an unparseable spec as an error and leaves it untouched (check: %p)",
+    async (check) => {
+      const file = join(dir, "openapi.json")
+      const original = '{"openapi": "3.0.0",'
+      await Bun.write(file, original)
+      const result = await formatOpenApi([file], dir, { check })
+      expect(result.ok).toBe(false)
+      expect(result.diagnostics).toEqual([
+        expect.objectContaining({ file, severity: "error", code: "openapi/parse" }),
+      ])
+      expect(await Bun.file(file).text()).toBe(original)
+    },
+  )
 })
 
 describe("formatWithBiome", () => {

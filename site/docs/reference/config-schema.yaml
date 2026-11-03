@@ -4,8 +4,7 @@ info:
   title: Configuration schema
   version: 0.0.0
   description: "The aid.yaml, frontmatter, and _meta.yaml schemas, shown as OpenAPI models. Generated from the same Zod schemas that validate them at build time."
-paths:
-  {}
+paths: {}
 components:
   schemas:
     AidConfig:
@@ -35,8 +34,7 @@ components:
           type: string
         dir:
           description: Project directory configuration.
-          default:
-            {}
+          default: {}
           type: object
           properties:
             content:
@@ -57,8 +55,7 @@ components:
               type: string
         theme:
           description: Theme configuration.
-          default:
-            {}
+          default: {}
           type: object
           properties:
             dark_mode:
@@ -84,8 +81,7 @@ components:
             description: "Supported LLM chat target for the 'Open in AI' button."
         search:
           description: Cross-format search configuration.
-          default:
-            {}
+          default: {}
           type: object
           properties:
             enabled:
@@ -99,8 +95,7 @@ components:
               minimum: 0
               maximum: 1
             weights:
-              default:
-                {}
+              default: {}
               type: object
               properties:
                 markdown:
@@ -133,8 +128,7 @@ components:
             - warn
         dev:
           description: Dev server configuration.
-          default:
-            {}
+          default: {}
           type: object
           properties:
             port:
@@ -176,8 +170,7 @@ components:
               description: "Sort key among siblings, ascending. Entries without one sort last, by name."
               type: number
           additionalProperties: false
-      additionalProperties:
-        {}
+      additionalProperties: {}
     SidebarMeta:
       type: object
       propertyNames:

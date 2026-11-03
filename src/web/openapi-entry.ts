@@ -8,6 +8,7 @@ if (mount && specEl?.textContent) {
     hideDarkModeToggle: true,
     agent: { disabled: true },
     hideSearch: true,
+    showDeveloperTools: "never",
     layout: "modern",
   })
 }
