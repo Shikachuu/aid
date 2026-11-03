@@ -1,5 +1,6 @@
 import path from "node:path"
 import MiniSearch from "minisearch"
+import { routeUrl } from "./router"
 import { SEARCH_OPTIONS } from "./search-options"
 import type { BuildContext, RenderedPage } from "./types"
 
@@ -31,10 +32,7 @@ export function buildSearchIndex(
       id: p.route.path,
       type: p.route.kind,
       title: p.searchTokens.title,
-      url:
-        p.route.path === "/"
-          ? ctx.config.base_path
-          : path.posix.join(ctx.config.base_path, p.route.path),
+      url: routeUrl(p.route.path, ctx.config.base_path),
       headings: p.searchTokens.headings.join(" "),
       body: p.searchTokens.body,
       extras: Object.values(p.searchTokens.extras).flat().join(" "),

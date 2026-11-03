@@ -59,6 +59,19 @@ async function classify(source: string): Promise<PageKind | null> {
 }
 
 function toRoutePath(relative: string): string {
-  const withoutExt = relative.split(path.sep).join("/").slice(0, -path.extname(relative).length)
-  return `/${withoutExt.replace(/(^|\/)index$/, "")}`
+  return routePathFromStem(relative.slice(0, relative.length - path.extname(relative).length))
+}
+
+/**
+ * Route path for a content-relative source path without its extension. Shared
+ * by the router and link resolution, so `guides/index` and `guides/` both map to `/guides`.
+ */
+export function routePathFromStem(stem: string): string {
+  const posix = stem.split(path.sep).join("/").replace(/\/+$/, "")
+  return `/${posix.replace(/(^|\/)index$/, "")}`
+}
+
+/** Public URL of a route. The one place that applies `base_path`, for nav, links and search. */
+export function routeUrl(routePath: string, basePath: string): string {
+  return routePath === "/" ? basePath : path.posix.join(basePath, routePath)
 }

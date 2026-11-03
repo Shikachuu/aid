@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { buildRoutes } from "../../src/core/router"
+import { buildRoutes, routePathFromStem, routeUrl } from "../../src/core/router"
 import type { BuildContext } from "../../src/core/types"
 import { makeCtx } from "../helpers"
 
@@ -79,5 +79,24 @@ describe("buildRoutes", () => {
       `openapi: "3.1.0"\ninfo:\n  title: T\n  version: "1"\npaths: {}\n`,
     )
     await expect(buildRoutes(ctx)).rejects.toThrow(/route collision.*\/api/)
+  })
+})
+
+describe("routePathFromStem", () => {
+  test("maps index stems and trailing slashes to their folder route", () => {
+    expect(routePathFromStem("")).toBe("/")
+    expect(routePathFromStem("index")).toBe("/")
+    expect(routePathFromStem("guides/index")).toBe("/guides")
+    expect(routePathFromStem("guides/")).toBe("/guides")
+    expect(routePathFromStem("guides/setup")).toBe("/guides/setup")
+  })
+})
+
+describe("routeUrl", () => {
+  test("prefixes base_path and maps the root route to base_path itself", () => {
+    expect(routeUrl("/", "/")).toBe("/")
+    expect(routeUrl("/a/b", "/")).toBe("/a/b")
+    expect(routeUrl("/", "/docs")).toBe("/docs")
+    expect(routeUrl("/a", "/docs")).toBe("/docs/a")
   })
 })

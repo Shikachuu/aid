@@ -25,6 +25,8 @@ const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
 export type ExtractedFrontmatter = {
   frontmatter: Frontmatter | undefined
   body: string
+  /** 1-based source line where `body` starts, for mapping body positions back to the file. */
+  bodyLine: number
 }
 
 /**
@@ -37,16 +39,17 @@ export type ExtractedFrontmatter = {
 export function extractFrontmatter(source: string): ExtractedFrontmatter {
   const match = source.match(FRONTMATTER_RE)
   if (!match) {
-    return { frontmatter: undefined, body: source }
+    return { frontmatter: undefined, body: source, bodyLine: 1 }
   }
+  const bodyLine = match[0].split("\n").length
   const yamlText = match[1] ?? ""
   const parsed = Bun.YAML.parse(yamlText)
   if (parsed == null) {
-    return { frontmatter: undefined, body: source.slice(match[0].length) }
+    return { frontmatter: undefined, body: source.slice(match[0].length), bodyLine }
   }
   if (typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error("frontmatter must be a YAML mapping, not a scalar or sequence")
   }
   const frontmatter = FrontmatterSchema.parse(parsed)
-  return { frontmatter, body: source.slice(match[0].length) }
+  return { frontmatter, body: source.slice(match[0].length), bodyLine }
 }
