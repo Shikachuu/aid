@@ -16,6 +16,7 @@ import type { ResolveLink } from "../../core/links"
 import type { AnchorRef, RenderedPage, Route, SearchTokens } from "../../core/types"
 import { linkRefsFromMdast, rewriteLinks } from "../links"
 import { collectAnchors, hastText, vfileDiagnostics } from "../shared"
+import { rehypeCallouts, remarkCalloutMarkers } from "./callouts"
 import type { CopyAsset } from "./colocated-assets"
 import { colocatedAssetsMdastPlugin } from "./colocated-assets-mdast"
 import { extractFrontmatter } from "./frontmatter"
@@ -59,6 +60,7 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
 
   const htmlProcessor = unified()
     .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeCallouts)
     .use(resolveAndEnsureLeadingH1, {
       frontmatterTitle: frontmatter?.title,
       filenameTitle,
@@ -122,7 +124,7 @@ async function buildMdast(
   args: RenderMarkdownArgs,
   anchorRefs: AnchorRef[],
 ): Promise<MdastRoot> {
-  let processor = unified().use(remarkParse).use(remarkGfm)
+  let processor = unified().use(remarkParse).use(remarkGfm).use(remarkCalloutMarkers)
   if (args.copyAsset) {
     processor = processor.use(colocatedAssetsMdastPlugin, {
       sourceDir: path.dirname(args.sourcePath),

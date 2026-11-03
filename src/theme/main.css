@@ -6,6 +6,11 @@
   --color-aid-muted: oklch(50% 0 0);
   --color-aid-border: oklch(90% 0 0);
   --color-aid-accent: oklch(60% 0.15 250);
+  --color-aid-note: oklch(55% 0.15 250);
+  --color-aid-tip: oklch(55% 0.14 150);
+  --color-aid-important: oklch(55% 0.18 300);
+  --color-aid-warning: oklch(55% 0.13 75);
+  --color-aid-caution: oklch(55% 0.19 25);
 
   --font-aid-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-aid-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -92,6 +97,34 @@
 
   .aid-page-markdown :not(pre) > code {
     @apply rounded bg-aid-muted/12 px-1 py-0.5 font-aid-mono text-[0.875em];
+  }
+
+  .aid-callout {
+    @apply my-4 rounded-r-md border-l-4 px-4 py-2;
+  }
+
+  .aid-callout-title {
+    @apply m-0 font-semibold;
+  }
+
+  .aid-callout-note {
+    @apply border-aid-note bg-aid-note/8 [&_.aid-callout-title]:text-aid-note;
+  }
+
+  .aid-callout-tip {
+    @apply border-aid-tip bg-aid-tip/8 [&_.aid-callout-title]:text-aid-tip;
+  }
+
+  .aid-callout-important {
+    @apply border-aid-important bg-aid-important/8 [&_.aid-callout-title]:text-aid-important;
+  }
+
+  .aid-callout-warning {
+    @apply border-aid-warning bg-aid-warning/8 [&_.aid-callout-title]:text-aid-warning;
+  }
+
+  .aid-callout-caution {
+    @apply border-aid-caution bg-aid-caution/8 [&_.aid-callout-title]:text-aid-caution;
   }
 
   .aid-heading-link {

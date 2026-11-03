@@ -9,6 +9,8 @@
  * Token reference:
  *   --color-aid-bg, --color-aid-text, --color-aid-muted, --color-aid-border,
  *   --color-aid-accent, --font-aid-sans, --font-aid-mono
+ *   Callouts: --color-aid-note, --color-aid-tip, --color-aid-important,
+ *   --color-aid-warning, --color-aid-caution
  */
 
 @theme {
