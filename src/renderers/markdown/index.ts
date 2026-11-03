@@ -48,7 +48,7 @@ export type RenderMarkdownArgs = {
  */
 export async function renderMarkdown(args: RenderMarkdownArgs): Promise<RenderedPage> {
   const source = await Bun.file(args.sourcePath).text()
-  const { frontmatter, body, bodyLine } = extractFrontmatter(source)
+  const { frontmatter, body, bodyLine } = parseFrontmatter(source, args.sourcePath)
   const filenameTitle = path.basename(args.sourcePath, path.extname(args.sourcePath))
 
   const titleSink = { value: frontmatter?.title ?? filenameTitle }
@@ -138,6 +138,14 @@ async function buildMdast(
     })
   }
   return (await processor.run(processor.parse(file), file)) as MdastRoot
+}
+
+function parseFrontmatter(source: string, sourcePath: string) {
+  try {
+    return extractFrontmatter(source)
+  } catch (err) {
+    throw new Error(`aid: invalid frontmatter in ${sourcePath}: ${(err as Error).message}`)
+  }
 }
 
 type TitleSink = { value: string }

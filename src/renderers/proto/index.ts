@@ -1,5 +1,6 @@
 import path from "node:path"
 import { type ProtoAst, type ProtoMessage, parseProto } from "@aid/proto-ui/parser"
+import { exportPath } from "../../core/router"
 import type { RenderedPage, Route, SearchTokens } from "../../core/types"
 import { render } from "../../jsx-runtime"
 import { PageProto } from "../../theme/components/PageProto"
@@ -10,11 +11,14 @@ export type RenderProtoArgs = {
   route: Route
   /** Absolute path of the source `.proto` file on disk. */
   sourcePath: string
+  /** `config.base_path`, so the browser fetches the `.proto` export by absolute URL. Default `/`. */
+  basePath?: string
 }
 
 /**
  * Render a `.proto` source as a hydration shell. The page holds a mount div
- * whose `data-proto-url` points at the `.proto` export, and `aid-proto.js`
+ * whose `data-proto-url` holds the absolute URL of the `.proto` export (page
+ * URLs have no trailing slash, so a relative URL would resolve one level too high), and `aid-proto.js`
  * fetches that file and renders the UI in the browser. The build still parses
  * the AST to fill `searchTokens` and the page description.
  *
@@ -26,15 +30,9 @@ export const renderProto = async (args: RenderProtoArgs): Promise<RenderedPage> 
   const fallbackTitle = path.basename(args.sourcePath, path.extname(args.sourcePath))
   const title = ast.package ?? fallbackTitle
   const description = firstParagraph(ast.packageLeadingComment)
-  const protoSiblingHref = computeProtoSiblingHref(args.route.path)
+  const protoUrl = path.posix.join(args.basePath ?? "/", exportPath(args.route, ".proto"))
 
-  const html = render(
-    PageProto({
-      title,
-      protoSiblingHref,
-      machineUrl: `${args.route.path}.proto`,
-    }),
-  )
+  const html = render(PageProto({ title, protoUrl, machineUrl: protoUrl }))
 
   return {
     route: args.route,
@@ -46,14 +44,6 @@ export const renderProto = async (args: RenderProtoArgs): Promise<RenderedPage> 
     hasProto: true,
     description,
   }
-}
-
-const computeProtoSiblingHref = (routePath: string): string => {
-  if (routePath === "/") {
-    return "./index.proto"
-  }
-  const last = routePath.split("/").filter(Boolean).pop() ?? "index"
-  return `../${last}.proto`
 }
 
 const firstParagraph = (text: string | null): string | undefined => {

@@ -128,3 +128,9 @@ test("on_broken_links: warn finishes the build and prints the report", async () 
   }
   expect(await Bun.file(path.join(ctx.outputDir, "index.html")).exists()).toBe(true)
 })
+
+test("invalid frontmatter fails the build naming the file", async () => {
+  const ctx = await makeSite(cwd)
+  await writeContent(ctx, { "guide.md": "---\ntitle: 3\n---\n# G\n" })
+  expect(await buildError(ctx)).toMatch(/invalid frontmatter in .*docs\/guide\.md/)
+})

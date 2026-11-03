@@ -1,9 +1,11 @@
+const MERMAID_SELECTOR = "pre.mermaid, div.mermaid"
+
 /**
- * Render every `<pre class="mermaid">` block, and render again when the OS color scheme changes.
+ * Render every `pre.mermaid` and `div.mermaid` block, and render again when the OS color scheme changes.
  * The page imports mermaid only when it has a diagram.
  */
 export async function attachMermaid(): Promise<void> {
-  const elements = [...document.querySelectorAll<HTMLElement>("pre.mermaid")]
+  const elements = [...document.querySelectorAll<HTMLElement>(MERMAID_SELECTOR)]
   if (elements.length === 0) {
     return
   }
@@ -20,7 +22,7 @@ export async function attachMermaid(): Promise<void> {
     const attr = document.documentElement.dataset.aidTheme
     const dark = attr === "dark" || (attr !== "light" && media.matches)
     mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default" })
-    await mermaid.run({ querySelector: "pre.mermaid", suppressErrors: true })
+    await mermaid.run({ querySelector: MERMAID_SELECTOR, suppressErrors: true })
   }
 
   await render()

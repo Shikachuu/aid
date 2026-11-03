@@ -127,7 +127,7 @@ async function dispatchRenderer(
     case "openapi":
       return renderOpenApi({ route, sourcePath: route.source })
     case "proto":
-      return renderProto({ route, sourcePath: route.source })
+      return renderProto({ route, sourcePath: route.source, basePath: ctx.config.base_path })
     default:
       throw new Error(`renderer not implemented: ${route.kind}`)
   }

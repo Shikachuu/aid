@@ -162,3 +162,12 @@ test("link to a non-content file copies it next to the page", async () => {
   expect(html).toContain('href="/guides/a/data.json"')
   expect(await readOut(ctx, "guides", "a", "spec.pdf")).toBe("%PDF")
 })
+
+test("proto pages fetch their .proto export by absolute URL under base_path", async () => {
+  const ctx = await makeSite(cwd, { base_path: "/docs" })
+  await writeContent(ctx, { "api/ping.proto": PROTO })
+  await build(ctx)
+  const html = await readOut(ctx, "api", "ping", "index.html")
+  expect(html).toContain('data-proto-url="/docs/api/ping.proto"')
+  expect(await Bun.file(path.join(ctx.outputDir, "api", "ping.proto")).exists()).toBe(true)
+})
