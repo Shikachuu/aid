@@ -23,7 +23,7 @@ const SOURCE = `# Callouts
 > - second
 
 > [!CAUTION]
-> Careful.
+> **Careful** with this.
 
 > [!DANGER]
 > Not a GitHub alert type.
@@ -89,6 +89,7 @@ test("unknown types and markers with trailing text stay plain blockquotes", () =
 test("the .md export keeps the alert markers unescaped", () => {
   expect(md).toContain("> [!NOTE]\n> Plain note.")
   expect(md).toContain("> [!TIP]")
+  expect(md).toContain("> [!CAUTION]\n> **Careful** with this.")
   expect(md).not.toContain("\\[!NOTE]\n")
 })
 

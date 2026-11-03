@@ -36,11 +36,12 @@ export function remarkCalloutMarkers() {
       const marker = `[!${(match[1] as string).toUpperCase()}]`
       const rest = text.value.slice(match[0].length)
       const paragraph = first as Paragraph
+      const hasMore = rest !== "" || paragraph.children.length > 1
       paragraph.children.splice(
         0,
         1,
         { type: "html", value: marker },
-        ...(rest === "" ? [] : [{ type: "text" as const, value: `\n${rest}` }]),
+        ...(hasMore ? [{ type: "text" as const, value: `\n${rest}` }] : []),
       )
     })
   }

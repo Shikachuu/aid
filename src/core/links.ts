@@ -1,4 +1,3 @@
-import { stat } from "node:fs/promises"
 import path from "node:path"
 import type { Diagnostic } from "../lint/diagnostics"
 import type { CopyAsset } from "../renderers/markdown/colocated-assets"
@@ -116,12 +115,8 @@ function splitHref(href: string): { pathPart: string; query: string; fragment: s
 
 const hashOf = (fragment: string): string => (fragment === "" ? "" : `#${fragment}`)
 
-async function isFile(p: string): Promise<boolean> {
-  try {
-    return (await stat(p)).isFile()
-  } catch {
-    return false
-  }
+function isFile(p: string): Promise<boolean> {
+  return Bun.file(p).exists()
 }
 
 /** True when `child` sits strictly below `parent` without leaving it through `..`. */
