@@ -1,0 +1,24 @@
+{
+  "should_trigger": [
+    "update the docs for the new --strict flag",
+    "sync the docs with this change",
+    "I added a sidebar.hidden frontmatter key, document it",
+    "the docs are out of date for aid lint",
+    "add a docs page for the sitemap feature",
+    "regenerate the reference pages",
+    "run gen-docs and check the site builds",
+    "which docs does this change affect?",
+    "I just changed how the dev server handles base_path, what else needs updating?",
+    "the release workflow changed, make sure the contributor docs match"
+  ],
+  "should_not_trigger": [
+    "fix the failing test in tests/unit/router.test.ts",
+    "add JSDoc to the exports in src/core/links.ts",
+    "update docs/PRODUCT_OVERVIEW.md with the new research notes",
+    "rename this private helper in pipeline.ts",
+    "bump zod to the latest version",
+    "why does the build fail on my machine?",
+    "write a commit message for these changes",
+    "review the diff for bugs"
+  ]
+}
