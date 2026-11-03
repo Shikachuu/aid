@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { join, relative } from "node:path"
 import { lintWithBiome } from "../../src/lint/biome"
 import { lintMarkdown } from "../../src/lint/markdown"
 import { lintOpenApi } from "../../src/lint/openapi"
@@ -73,6 +73,21 @@ describe("lintWithBiome", () => {
     await lintWithBiome([file], dir, { fix: true })
     const after = await Bun.file(file).text()
     expect(after).toContain("const x")
+  })
+})
+
+describe("lintProto", () => {
+  test("reports buf findings when the target dir is a relative path", async () => {
+    const docs = join(dir, "docs")
+    await Bun.write(join(docs, "x.proto"), 'syntax = "proto3";\npackage Bad_pkg;\nmessage m {}\n')
+    const report = await lintAll({
+      dir: relative(process.cwd(), docs),
+      fix: false,
+      filter: new Set(["proto"]),
+    })
+    const proto = report.results.find((r) => r.tool === "proto")
+    expect(proto?.ok).toBe(false)
+    expect(proto?.diagnostics.map((d) => d.code)).toContain("MESSAGE_PASCAL_CASE")
   })
 })
 

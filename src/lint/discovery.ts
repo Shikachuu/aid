@@ -39,7 +39,7 @@ export const USER_CONFIGS: Record<Tool, readonly string[]> = {
   md: [".markdownlint.json", ".markdownlint.jsonc", ".markdownlint.yaml", ".markdownlint.yml"],
   openapi: [".spectral.yaml", ".spectral.yml", ".spectral.json"],
   biome: ["biome.json", "biome.jsonc"],
-  proto: ["buf.yaml", "buf.yml"],
+  proto: ["buf.yaml"],
 }
 
 /**

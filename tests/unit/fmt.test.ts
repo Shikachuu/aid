@@ -50,6 +50,17 @@ describe("formatOpenApi", () => {
     expect(after.endsWith("\n")).toBe(true)
   })
 
+  test("yaml output stays block style with two-space indent and a trailing newline", async () => {
+    const file = join(dir, "openapi.yaml")
+    await Bun.write(file, "openapi: 3.0.0\ninfo:\n  title: X\n  version: '1'\npaths: {}\n")
+    await formatOpenApi([file], dir, { check: false })
+    const out = await Bun.file(file).text()
+    expect(out).toContain("info:\n  title: X\n")
+    expect(out.startsWith("{")).toBe(false)
+    expect(out.endsWith("\n")).toBe(true)
+    expect(out.endsWith("\n\n")).toBe(false)
+  })
+
   test("yaml round-trip is idempotent", async () => {
     const file = join(dir, "openapi.yaml")
     await Bun.write(file, "openapi: 3.0.0\ninfo:\n  title: X\n  version: '1'\npaths: {}\n")

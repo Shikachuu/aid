@@ -19,7 +19,9 @@ export const formatOpenApi = async (
     try {
       return file.endsWith(".json")
         ? `${JSON.stringify(JSON.parse(text), null, 2)}\n`
-        : Bun.YAML.stringify(Bun.YAML.parse(text))
+        : `${Bun.YAML.stringify(Bun.YAML.parse(text), null, 2)
+            .replace(/[ \t]+$/gm, "")
+            .trimEnd()}\n`
     } catch (err) {
       diagnostics.push({
         file,

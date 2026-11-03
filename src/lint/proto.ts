@@ -1,3 +1,4 @@
+import { resolve as resolvePath } from "node:path"
 import bufDarwinArm64 from "@bufbuild/buf-darwin-arm64/bin/buf" with { type: "file" }
 import bufDarwinX64 from "@bufbuild/buf-darwin-x64/bin/buf" with { type: "file" }
 import bufLinuxArm64 from "@bufbuild/buf-linux-aarch64/bin/buf" with { type: "file" }
@@ -99,8 +100,9 @@ export const lintProto = async (paths: string[], dir: string): Promise<ToolResul
   }
   const config =
     (await findUserConfig(dir, USER_CONFIGS.proto)) === null ? ["--config", bufDefault] : []
-  const { stdout, exitCode } = await Bun.$`${bin} lint --error-format=json ${config} ${dir}`
-    .cwd(dir)
+  const root = resolvePath(dir)
+  const { stdout, exitCode } = await Bun.$`${bin} lint --error-format=json ${config} ${root}`
+    .cwd(root)
     .nothrow()
     .quiet()
   const diagnostics = parseBufOutput(stdout.toString())
