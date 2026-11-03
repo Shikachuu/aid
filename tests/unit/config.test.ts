@@ -55,3 +55,13 @@ describe("AidConfigSchema", () => {
     expect(parsed.search.weights.markdown).toBe(1.0)
   })
 })
+
+describe("published JSON Schema", () => {
+  test("requires only name, so a minimal aid.yaml validates in editors", async () => {
+    const schema = await Bun.file(`${import.meta.dir}/../../schemas/aid.schema.json`).json()
+    expect(schema.required).toEqual(["name"])
+    for (const key of ["dir", "theme", "search", "dev"]) {
+      expect(schema.properties[key].required).toBeUndefined()
+    }
+  })
+})

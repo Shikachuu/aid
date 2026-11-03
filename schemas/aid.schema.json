@@ -32,6 +32,7 @@
     },
     "dir": {
       "description": "Project directory configuration.",
+      "default": {},
       "type": "object",
       "properties": {
         "content": {
@@ -54,17 +55,11 @@
           "description": "Directory copied verbatim into the build output. Use for images, fonts, favicon, robots.txt. Default 'static'.",
           "type": "string"
         }
-      },
-      "required": [
-        "content",
-        "output",
-        "templates",
-        "static"
-      ],
-      "additionalProperties": false
+      }
     },
     "theme": {
       "description": "Theme configuration.",
+      "default": {},
       "type": "object",
       "properties": {
         "dark_mode": {
@@ -77,11 +72,7 @@
             "off"
           ]
         }
-      },
-      "required": [
-        "dark_mode"
-      ],
-      "additionalProperties": false
+      }
     },
     "ai_targets": {
       "default": [
@@ -102,6 +93,7 @@
     },
     "search": {
       "description": "Cross-format search configuration.",
+      "default": {},
       "type": "object",
       "properties": {
         "enabled": {
@@ -117,6 +109,7 @@
           "maximum": 1
         },
         "weights": {
+          "default": {},
           "type": "object",
           "properties": {
             "markdown": {
@@ -144,22 +137,9 @@
               "minimum": 0
             }
           },
-          "required": [
-            "markdown",
-            "html",
-            "openapi",
-            "proto"
-          ],
-          "additionalProperties": false,
           "description": "Per-format search ranking weights, applied via MiniSearch boostDocument."
         }
-      },
-      "required": [
-        "enabled",
-        "typo_tolerance",
-        "weights"
-      ],
-      "additionalProperties": false
+      }
     },
     "on_broken_links": {
       "default": "error",
@@ -172,6 +152,7 @@
     },
     "dev": {
       "description": "Dev server configuration.",
+      "default": {},
       "type": "object",
       "properties": {
         "port": {
@@ -186,26 +167,12 @@
           "description": "Dev server host.",
           "type": "string"
         }
-      },
-      "required": [
-        "port",
-        "host"
-      ],
-      "additionalProperties": false
+      }
     }
   },
   "required": [
-    "name",
-    "base_path",
-    "stylesheet",
-    "dir",
-    "theme",
-    "ai_targets",
-    "search",
-    "on_broken_links",
-    "dev"
+    "name"
   ],
-  "additionalProperties": false,
   "description": "aid project configuration. Generated JSON Schema is published at https://aid.tools/schemas/v0/aid.schema.json.",
   "$id": "https://aid.tools/schemas/v0/aid.schema.json",
   "title": "aid project configuration"

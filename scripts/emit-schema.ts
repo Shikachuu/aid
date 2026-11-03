@@ -29,7 +29,7 @@ console.log(`[emit-schema] wrote ${OUTPUT_PATH}`)
 
 function generateJsonSchema(): string {
   const schema = {
-    ...z.toJSONSchema(AidConfigSchema),
+    ...z.toJSONSchema(AidConfigSchema, { io: "input" }),
     $id: SCHEMA_ID,
     $schema: "https://json-schema.org/draft/2020-12/schema",
     title: "aid project configuration",

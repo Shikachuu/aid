@@ -25,8 +25,15 @@ export const NavMetaSchema = z.record(z.string(), SidebarEntrySchema)
  */
 export const FrontmatterSchema = z
   .object({
-    title: z.string().min(1).optional().describe("Page title — feeds <title> and <meta>."),
-    description: z.string().optional().describe('Short summary — feeds <meta name="description">.'),
+    title: z
+      .string()
+      .min(1)
+      .optional()
+      .describe("Page title. Used in <title>, the sidebar, search and llms.txt."),
+    description: z
+      .string()
+      .optional()
+      .describe('Short summary. Used in <meta name="description"> and llms.txt.'),
     llms: z
       .literal("optional")
       .optional()
