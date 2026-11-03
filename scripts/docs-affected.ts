@@ -29,6 +29,7 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
     pages: [
       `${DOCS}/configuration/index.md`,
       `${DOCS}/configuration/paths-and-urls.md`,
+      `${DOCS}/deployment/github-pages.md`,
       `${DOCS}/status.html`,
     ],
   },
@@ -111,14 +112,6 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
   {
     sources: ["mise.toml", "mise.lock", "package.json", "scripts/check-binaries.ts"],
     pages: [`${DOCS}/contributing/dev-setup.md`, `${DOCS}/getting-started/installation.md`],
-  },
-  {
-    sources: [".github/workflows/ci.yml", ".github/workflows/release.yml"],
-    pages: [`${DOCS}/contributing/release-and-ci.md`],
-  },
-  {
-    sources: [".github/workflows/docs.yml"],
-    pages: [`${DOCS}/deployment/github-pages.md`, `${DOCS}/contributing/release-and-ci.md`],
   },
   {
     sources: ["tests/helpers.ts", "tests/fixtures/**", "scripts/manual-test.ts"],

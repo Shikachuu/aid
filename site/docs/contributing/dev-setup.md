@@ -60,7 +60,7 @@ aid embeds native binaries from npm packages, and each platform's package must m
 | `@biomejs/biome` | `@biomejs/wasm-nodejs` and the version in the `$schema` URL of `biome.json`. |
 | Bun | The running Bun, the `mise.toml` pin, `engines.bun`, and the major and minor version of `@types/bun`. |
 
-It also compares each `vendor/natives/lightningcss-<platform>.bin` with its source in `node_modules`. Any mismatch prints a `drift:` list and exits with code 1. CI runs it with `--offline`.
+It also compares each `vendor/natives/lightningcss-<platform>.bin` with its source in `node_modules`. Any mismatch prints a `drift:` list and exits with code 1.
 
 Without `--offline`, the script then looks up the latest version of each group on the npm registry, and of Bun with `mise latest bun`. For each outdated group, it prints the `bun add` commands that bump the parent and pin every platform package to the same exact version. The script never edits `package.json`.
 

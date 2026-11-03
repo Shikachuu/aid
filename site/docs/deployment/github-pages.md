@@ -1,6 +1,6 @@
 ---
 title: GitHub Pages
-description: How this site deploys to GitHub Pages, and a workflow that deploys an aid site from your own repository.
+description: A GitHub Actions workflow that builds an aid site and deploys it to GitHub Pages from your own repository.
 sidebar:
   order: 1
 ---
@@ -10,29 +10,6 @@ GitHub Pages hosts the static output of `aid build`. A GitHub Actions workflow b
 ## Turn on Pages
 
 In the repository, open Settings, then Pages, and set Source under "Build and deployment" to "GitHub Actions". Without this setting the workflow cannot deploy.
-
-## How this site deploys
-
-`.github/workflows/docs.yml` in the aid repository builds and deploys this site. It runs on every push to `main` and on a manual run from the Actions tab.
-
-The `build` job:
-
-1. checks out the repository;
-2. runs `jdx/mise-action`, which installs Bun 1.4.4 from `mise.toml` and runs `mise install` with its `postinstall` hook (see [installation](../getting-started/installation.md));
-3. runs `actions/configure-pages`;
-4. runs `bun run docs:build`, which is `bun src/cli/index.ts build site --clean`;
-5. uploads `site/dist` with `actions/upload-pages-artifact`.
-
-The `deploy` job waits for `build`, then publishes the artifact with `actions/deploy-pages` to the `github-pages` environment. Only this job gets the `pages: write` and `id-token: write` permissions. The workflow-level permission is `contents: read`.
-
-The workflow uses the concurrency group `pages` with `cancel-in-progress: false`, so a new push queues behind a running deploy instead of cancelling it.
-
-`site/aid.yaml` sets the URLs for the Pages address `https://shikachuu.github.io/aid/`:
-
-```yaml
-base_url: https://shikachuu.github.io
-base_path: /aid
-```
 
 ## Deploy your own site
 
@@ -119,6 +96,6 @@ jobs:
 The aid steps run inside `.aid-src`, where `mise.toml` selects Bun 1.4.4. The build command takes your repository root, `$GITHUB_WORKSPACE`, as the project folder. Replace `ref: main` with a commit SHA to pin the aid version.
 
 > [!NOTE]
-> This workflow uses the same actions and build steps as this site's workflow. It has not been run from a separate repository.
+> This workflow has not been run from a separate repository.
 
 The workflow does not use a compiled aid binary, because the binaries do not run outside the aid repository yet. The [status page](../status.html) tracks the problem.

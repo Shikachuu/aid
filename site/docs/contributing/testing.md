@@ -16,7 +16,7 @@ bun test tests/integration/links.test.ts
 bun test -t "broken"
 ```
 
-The first command runs the whole suite. The second runs one file. The third runs the tests whose name matches the pattern. CI runs `bun test` on every pull request (see [release and CI](./release-and-ci.md)).
+The first command runs the whole suite. The second runs one file. The third runs the tests whose name matches the pattern.
 
 ## Layout
 
