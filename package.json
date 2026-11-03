@@ -20,7 +20,8 @@
     "gen-docs": "bun run scripts/gen-docs.ts",
     "docs:build": "bun src/cli/index.ts build site --clean",
     "docs:dev": "bun src/cli/index.ts dev site",
-    "docs:lint": "bun src/cli/index.ts lint site --filter md"
+    "docs:lint": "bun src/cli/index.ts lint site --filter md",
+    "docs:affected": "bun run scripts/docs-affected.ts"
   },
   "engines": {
     "bun": ">=1.3.6"
