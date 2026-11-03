@@ -27,3 +27,9 @@ test("scaffold stylesheet pulls in the bundled theme components", () => {
   expect(css).toMatch(/\.aid-shell\s*\{/)
   expect(css).toContain("--color-aid-accent")
 })
+
+test("compiled theme styles the search results dropdown", () => {
+  expect(css).toMatch(/\.aid-search-results\s*\{[^}]*position:\s*absolute/)
+  expect(css).toMatch(/\.aid-search-result\s*\{/)
+  expect(css).toContain('aria-selected="true"')
+})
