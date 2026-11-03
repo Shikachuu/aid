@@ -1,7 +1,8 @@
 import { resolve as resolvePath } from "node:path"
 import { KNOWN_TOOLS, type Report, type Tool, type ToolResult } from "./diagnostics"
 
-const DEFAULT_IGNORES = new Set([
+/** Directory names discovery never walks into, whatever the tool. */
+export const DEFAULT_IGNORES = new Set([
   "node_modules",
   "dist",
   ".bun",
@@ -28,6 +29,17 @@ export const PATTERNS: Record<Tool, readonly string[]> = {
   ],
   biome: ["**/*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,css}"],
   proto: ["**/*.proto"],
+}
+
+/**
+ * Config file names each tool looks for, nearest first. The search walks up
+ * from the target directory and stops at the first directory holding `.git`.
+ */
+export const USER_CONFIGS: Record<Tool, readonly string[]> = {
+  md: [".markdownlint.json", ".markdownlint.jsonc", ".markdownlint.yaml", ".markdownlint.yml"],
+  openapi: [".spectral.yaml", ".spectral.yml", ".spectral.json"],
+  biome: ["biome.json", "biome.jsonc"],
+  proto: ["buf.yaml", "buf.yml"],
 }
 
 /**

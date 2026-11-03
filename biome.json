@@ -12,6 +12,7 @@
       "scripts/**",
       "tests/**",
       "packages/**",
+      "site/**",
       "*.json",
       "*.md",
       "!!**/node_modules",

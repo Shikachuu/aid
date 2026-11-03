@@ -7,7 +7,7 @@ export const command = defineCommand({
   meta: {
     name: "fmt",
     description:
-      "Run bundled formatters across markdown, OpenAPI, CSS, HTML, JSON, and protobuf files.",
+      "Run bundled formatters across markdown, OpenAPI, protobuf, and Biome-supported files (JS, TS, JSON, CSS).",
   },
   args: {
     dir: {

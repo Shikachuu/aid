@@ -4,11 +4,10 @@ import { Json, Yaml } from "@stoplight/spectral-parsers"
 import { oas } from "@stoplight/spectral-rulesets"
 import { findUserConfig, parseConfigFile } from "./config-resolve"
 import type { Diagnostic, Severity, ToolResult } from "./diagnostics"
-
-const USER_CONFIGS = [".spectral.yaml", ".spectral.yml", ".spectral.json"] as const
+import { USER_CONFIGS } from "./discovery"
 
 const resolveSpectralRuleset = async (dir: string): Promise<RulesetDefinition> => {
-  const path = await findUserConfig(dir, USER_CONFIGS)
+  const path = await findUserConfig(dir, USER_CONFIGS.openapi)
   if (path === null) {
     return oas as unknown as RulesetDefinition
   }

@@ -3,13 +3,12 @@ import { Biome } from "@biomejs/js-api/nodejs"
 import { findUserConfig, parseConfigFile } from "./config-resolve"
 import { biomeDefault } from "./configs/biome.default"
 import type { Diagnostic, Severity, ToolResult } from "./diagnostics"
-
-const USER_CONFIGS = ["biome.json", "biome.jsonc"] as const
+import { USER_CONFIGS } from "./discovery"
 
 type ProjectKey = ReturnType<Biome["openProject"]>["projectKey"]
 
 const resolveBiomeConfig = async (dir: string): Promise<Configuration> => {
-  const path = await findUserConfig(dir, USER_CONFIGS)
+  const path = await findUserConfig(dir, USER_CONFIGS.biome)
   if (path === null) {
     return biomeDefault as unknown as Configuration
   }

@@ -6,8 +6,7 @@ import { extractEmbedded } from "../core/internal/extract-embedded"
 import { findUserConfig } from "./config-resolve"
 import { bufDefault } from "./configs/buf.default"
 import type { Diagnostic, ToolResult } from "./diagnostics"
-
-const USER_CONFIGS = ["buf.yaml", "buf.yml"] as const
+import { USER_CONFIGS } from "./discovery"
 
 let cachedBin: string | null | undefined
 
@@ -98,7 +97,8 @@ export const lintProto = async (paths: string[], dir: string): Promise<ToolResul
       reason: "buf binary not available — install `@bufbuild/buf` or put `buf` on PATH",
     }
   }
-  const config = (await findUserConfig(dir, USER_CONFIGS)) === null ? ["--config", bufDefault] : []
+  const config =
+    (await findUserConfig(dir, USER_CONFIGS.proto)) === null ? ["--config", bufDefault] : []
   const { stdout, exitCode } = await Bun.$`${bin} lint --error-format=json ${config} ${dir}`
     .cwd(dir)
     .nothrow()

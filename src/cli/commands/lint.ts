@@ -7,7 +7,7 @@ export const command = defineCommand({
   meta: {
     name: "lint",
     description:
-      "Run bundled linters across markdown, OpenAPI, CSS, HTML, JSON, and protobuf files.",
+      "Run bundled linters across markdown, OpenAPI, protobuf, and Biome-supported files (JS, TS, JSON, CSS).",
   },
   args: {
     dir: {

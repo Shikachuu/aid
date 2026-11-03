@@ -3,16 +3,10 @@ import { lint } from "markdownlint/promise"
 import { findUserConfig, parseConfigFile } from "./config-resolve"
 import { markdownlintDefault } from "./configs/markdownlint.default"
 import type { Diagnostic, ToolResult } from "./diagnostics"
-
-const USER_CONFIGS = [
-  ".markdownlint.json",
-  ".markdownlint.jsonc",
-  ".markdownlint.yaml",
-  ".markdownlint.yml",
-] as const
+import { USER_CONFIGS } from "./discovery"
 
 const resolveMarkdownConfig = async (dir: string): Promise<Configuration> => {
-  const path = await findUserConfig(dir, USER_CONFIGS)
+  const path = await findUserConfig(dir, USER_CONFIGS.md)
   return path === null ? markdownlintDefault : ((await parseConfigFile(path)) as Configuration)
 }
 
