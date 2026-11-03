@@ -102,13 +102,14 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
       "scripts/compile.ts",
       "scripts/bundle-web.ts",
       "scripts/stage-natives.ts",
+      "scripts/natives.ts",
       "src/core/internal/**",
       "src/web/_bundled.ts",
     ],
     pages: [`${DOCS}/contributing/single-binary.md`, `${DOCS}/getting-started/installation.md`],
   },
   {
-    sources: ["mise.toml", "mise.lock", "package.json"],
+    sources: ["mise.toml", "mise.lock", "package.json", "scripts/check-binaries.ts"],
     pages: [`${DOCS}/contributing/dev-setup.md`, `${DOCS}/getting-started/installation.md`],
   },
   {
