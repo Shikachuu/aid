@@ -8,6 +8,7 @@ import { AidConfigSchema } from "../src/core/config"
 import { biomeDefault } from "../src/lint/configs/biome.default"
 import { bufDefault } from "../src/lint/configs/buf.default"
 import { markdownlintDefault } from "../src/lint/configs/markdownlint.default"
+import { CSS_RULES } from "../src/lint/css"
 import { KNOWN_TOOLS } from "../src/lint/diagnostics"
 import { DEFAULT_IGNORES, PATTERNS, USER_CONFIGS } from "../src/lint/discovery"
 import { FrontmatterSchema, NavMetaSchema } from "../src/renderers/markdown/frontmatter"
@@ -268,7 +269,7 @@ export function lintDefaultsReference(): string {
   const rows = KNOWN_TOOLS.map((tool) => [
     code(tool),
     PATTERNS[tool].map(code).join(", "),
-    USER_CONFIGS[tool].map(code).join(", "),
+    USER_CONFIGS[tool].length === 0 ? "None" : USER_CONFIGS[tool].map(code).join(", "),
   ])
   return page(
     {
@@ -278,7 +279,7 @@ export function lintDefaultsReference(): string {
       order: 4,
     },
     [
-      "`aid lint` and `aid fmt` dispatch to four tools. Each tool looks for its own config file, starting in the target directory and walking up until it reaches a directory that holds `.git`. Without one, the bundled default below applies.",
+      "`aid lint` dispatches to five tools and `aid fmt` to four: `css` only lints. Each tool except `css` looks for its own config file, starting in the target directory and walking up until it reaches a directory that holds `.git`. Without one, the bundled default below applies. `aid lint` leaves CSS files to `css`, so Biome only formats them.",
       table(["Tool", "Files", "Config files"], rows),
       `Discovery never walks into these directories: ${[...DEFAULT_IGNORES].map(code).join(", ")}.`,
       "## markdownlint default (`md`)",
@@ -287,6 +288,16 @@ export function lintDefaultsReference(): string {
       "The bundled ruleset is `spectral:oas`.",
       "## Biome default (`biome`)",
       fence("json", JSON.stringify(biomeDefault, null, 2)),
+      "## CSS checks (`css`)",
+      "The `css` tool has no config file and always runs these checks. Codes match the Stylelint rule with the same intent.",
+      table(
+        ["Code", "Severity", "Reports"],
+        Object.entries(CSS_RULES).map(([name, rule]) => [
+          code(name),
+          rule.severity,
+          rule.description,
+        ]),
+      ),
       "## buf default (`proto`)",
       fence("yaml", bufDefault.trim()),
     ].join("\n\n"),

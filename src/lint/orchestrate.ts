@@ -1,4 +1,5 @@
 import { lintWithBiome } from "./biome"
+import { lintCss } from "./css"
 import type { Report, Tool } from "./diagnostics"
 import { runTools } from "./discovery"
 import { lintMarkdown } from "./markdown"
@@ -17,6 +18,12 @@ export const lintAll = (opts: LintOptions): Promise<Report> =>
   runTools(opts.dir, opts.filter, {
     md: (paths) => lintMarkdown(paths, opts.dir, { fix: opts.fix }),
     openapi: (paths) => lintOpenApi(paths, opts.dir),
-    biome: (paths) => lintWithBiome(paths, opts.dir, { fix: opts.fix }),
+    biome: (paths) =>
+      lintWithBiome(
+        paths.filter((p) => !p.endsWith(".css")),
+        opts.dir,
+        { fix: opts.fix },
+      ),
+    css: (paths) => lintCss(paths),
     proto: (paths) => lintProto(paths, opts.dir),
   })

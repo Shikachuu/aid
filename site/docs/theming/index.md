@@ -33,6 +33,8 @@ The `stylesheet` key in `aid.yaml` names the entry file, relative to the project
 
 `aid dev` rebuilds when the stylesheet file changes, but not when a file it imports changes. See [the dev server page](../dev-server/index.md#what-the-watcher-watches).
 
+`aid lint` checks the stylesheet for invalid CSS and compiles it with Tailwind, so an unknown utility in `@apply` fails the lint run before it fails a build. See [the CSS checks](../linting/index.md#css-checks).
+
 ### Why `@import "aid/theme"` matters
 
 Before it compiles, aid replaces `@import "aid/theme";` with the full text of the bundled theme. The bundled theme holds the design tokens and every rule for the `.aid-*` classes.

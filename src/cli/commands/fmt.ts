@@ -1,5 +1,5 @@
 import { defineCommand } from "citty"
-import { formatAll } from "../../fmt/orchestrate"
+import { FORMAT_TOOLS, formatAll } from "../../fmt/orchestrate"
 import { parseFilter, printReport } from "../../lint/diagnostics"
 
 /** `aid fmt`. Use `--check` in CI. It writes nothing and exits 1 when any tool fails. */
@@ -34,7 +34,7 @@ export const command = defineCommand({
     const report = await formatAll({
       dir: args.dir ?? ".",
       check: Boolean(args.check),
-      filter: parseFilter(args.filter),
+      filter: parseFilter(args.filter, FORMAT_TOOLS),
     })
     printReport(report, args.format)
   },

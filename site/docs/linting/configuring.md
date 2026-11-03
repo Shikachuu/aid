@@ -1,6 +1,6 @@
 ---
 title: Configuring the linters
-description: Where aid lint and aid fmt look for markdownlint, Spectral, Biome, and buf config files, and how a config file replaces the bundled default.
+description: Where aid lint and aid fmt look for markdownlint, Spectral, Biome, and buf config files, how a config file replaces the bundled default, and why the CSS checks have none.
 sidebar:
   order: 1
 ---
@@ -11,7 +11,7 @@ Each tool behind [`aid lint`](./index.md) and [`aid fmt`](../formatting/index.md
 
 For each tool, aid starts in the target directory and checks for that tool's config file names. If none exists, it moves to the parent directory and checks again. It stops after the first directory that contains `.git`, so it never reads a config file from outside your repository. If the walk finds nothing, aid uses its bundled default for that tool.
 
-The file names per tool, in the order aid checks them, are in [the lint defaults reference](../reference/lint-defaults.md). In short: `.markdownlint.*`, `.spectral.*`, `biome.json` or `biome.jsonc`, and `buf.yaml`.
+The file names per tool, in the order aid checks them, are in [the lint defaults reference](../reference/lint-defaults.md). In short: `.markdownlint.*`, `.spectral.*`, `biome.json` or `biome.jsonc`, and `buf.yaml`. The `css` tool reads no config file.
 
 aid parses `.json` and `.jsonc` files as JSON with comments, and `.yaml` and `.yml` files as YAML. The same reference page lists the bundled defaults.
 
@@ -64,6 +64,10 @@ aid prints these findings as `warn`, and warnings do not change the exit code. `
 Save this as `biome.json`. aid hands the parsed file to Biome's `applyConfiguration`. Keys you leave out fall back to Biome's own defaults, not to aid's bundled default. Biome's own formatter default indents with tabs and always adds semicolons, so a `biome.json` with only a `linter` block changes how `aid fmt` formats JS and TS.
 
 aid finds the files itself, so `files.includes` in your `biome.json` does not widen or narrow what aid checks.
+
+## CSS
+
+The `css` tool has no config file and no setting to turn a check off. It always runs the checks in [the CSS checks table](../reference/lint-defaults.md#css-checks-css). To skip CSS, leave `css` out of `--filter`, for example `aid lint docs --filter md,openapi,biome,proto`. Biome's `css` settings in `biome.json` change how `aid fmt` formats CSS, not what `aid lint` reports.
 
 ## buf
 

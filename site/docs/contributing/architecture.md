@@ -38,7 +38,7 @@ flowchart LR
 - The renderers return a `RenderedPage` with body HTML only. The pipeline wraps it in `Layout` from `src/theme/components/Layout.tsx`.
 - `packages/proto-ui` runs in two places. At build time, `src/renderers/proto/index.ts` calls `parseProto` from `@aid/proto-ui/parser` for the page title, description, and search tokens. In the browser, `src/web/proto-entry.ts` calls `createProtoReference` from `@aid/proto-ui/hydrate`, which fetches the `.proto` export and renders the React UI.
 - `src/web` holds the browser entries. `src/core/web-entries.ts` lists them, and `src/core/web-bundle.ts` writes only the bundles the site needs.
-- `src/lint` and `src/fmt` share the file discovery in `src/lint/discovery.ts` and wrap external tools: markdownlint, Spectral, Biome, and buf. They never call `build()`.
+- `src/lint` and `src/fmt` share the file discovery in `src/lint/discovery.ts` and wrap external tools: markdownlint, Spectral, Biome, and buf. `aid lint` also runs its own CSS checks in `src/lint/css.ts`, on lightningcss and the Tailwind compiler. They never call `build()`.
 
 [Build pipeline](./build-pipeline.md) walks through `build()` phase by phase.
 

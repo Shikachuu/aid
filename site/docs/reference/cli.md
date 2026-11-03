@@ -54,7 +54,7 @@ aid build [OPTIONS] [DIR]
 
 ## `aid lint`
 
-Run bundled linters across markdown, OpenAPI, protobuf, and Biome-supported files (JS, TS, JSON, CSS).
+Run bundled linters across markdown, OpenAPI, protobuf, CSS, and Biome-supported files (JS, TS, JSON).
 
 ```sh
 aid lint [OPTIONS] [DIR]
@@ -63,8 +63,8 @@ aid lint [OPTIONS] [DIR]
 | Argument | Type | Default | Description |
 | --- | --- | --- | --- |
 | `DIR` | positional | none | Project directory (default: current directory). |
-| `--fix` | boolean | none | Apply autofixes where the underlying tool supports it (markdown, biome). |
-| `--filter` | string | none | Comma-separated list of tools to run: md, openapi, biome, proto. |
+| `--fix` | boolean | none | Apply autofixes where the underlying tool supports it (markdown, biome). css has none. |
+| `--filter` | string | none | Comma-separated list of tools to run: md, openapi, biome, css, proto. |
 | `--format` | one of `pretty`, `json` | `pretty` | Output format. |
 
 ## `aid fmt`

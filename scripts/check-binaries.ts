@@ -119,7 +119,10 @@ export const updateCommands = ({ family, latest }: Update & { latest: string }):
         "mise install",
       ]
     case "lightningcss":
-      return ["# lightningcss follows the exact pin in @tailwindcss/node; bump Tailwind instead"]
+      return [
+        "# lightningcss follows the exact pin in @tailwindcss/node; bump Tailwind instead,",
+        "# then run `bun add --exact lightningcss@<that pin>` so aid's own pin matches",
+      ]
     case "@biomejs/biome":
       return [
         `bun add -d @biomejs/biome@^${latest}`,
@@ -199,6 +202,10 @@ const collectFamilies = async (pkg: PackageJson): Promise<Family[]> => {
       name: "lightningcss (pinned by @tailwindcss/node)",
       expected: twNode?.dependencies?.lightningcss ?? null,
       members: [
+        {
+          name: "lightningcss (package.json)",
+          version: pkg.dependencies?.lightningcss ?? null,
+        },
         { name: "lightningcss", version: await installed("lightningcss") },
         ...(await Promise.all(
           TARGETS.map(async (t) => ({

@@ -5,7 +5,7 @@ sidebar:
   order: 0
 ---
 
-`aid fmt` rewrites the files under a directory in place with the same four tools as [`aid lint`](../linting/index.md). With `--check`, it writes nothing and exits 1 when any file would change.
+`aid fmt` rewrites the files under a directory in place with four of the five tools behind [`aid lint`](../linting/index.md). The `css` tool only lints, so Biome formats CSS. With `--check`, it writes nothing and exits 1 when any file would change.
 
 ## Use it
 

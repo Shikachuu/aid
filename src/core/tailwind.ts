@@ -33,11 +33,31 @@ export async function compileTailwind(
   const darkApplied = applyDarkModeFlag(inlined, ctx.config.theme.dark_mode)
   const source = buildSourcePrelude(sourceTargets) + darkApplied
 
-  const compiled = await compile(source, {
-    base: entry.base,
-    from: entry.from,
+  const compiled = await compile(source, compileOptions(entry.base, entry.from))
+  const scanner = new Scanner({ sources: compiled.sources })
+  return compiled.build([
+    ...scanner.scan(),
+    ...scanner.scanFiles(htmlContents.map((content) => ({ content, extension: "html" }))),
+  ])
+}
+
+/**
+ * Compile `css` the way `aid build` does, with no class candidates, and throw
+ * Tailwind's error when the stylesheet is invalid.
+ */
+export async function validateTailwindStylesheet(css: string, from: string): Promise<void> {
+  await installLightningcssShim()
+  const { compile } = await import("@tailwindcss/node")
+  const compiled = await compile(inlineAidImports(css), compileOptions(path.dirname(from), from))
+  compiled.build([])
+}
+
+function compileOptions(base: string, from: string) {
+  return {
+    base,
+    from,
     onDependency: () => {},
-    customCssResolver: async (id) => {
+    customCssResolver: async (id: string) => {
       if (id === "tailwindcss") {
         return bundledTailwindcssEntry
       }
@@ -46,12 +66,7 @@ export async function compileTailwind(
       }
       return undefined
     },
-  })
-  const scanner = new Scanner({ sources: compiled.sources })
-  return compiled.build([
-    ...scanner.scan(),
-    ...scanner.scanFiles(htmlContents.map((content) => ({ content, extension: "html" }))),
-  ])
+  }
 }
 
 type ResolvedEntry = {

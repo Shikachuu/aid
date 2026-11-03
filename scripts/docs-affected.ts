@@ -118,7 +118,13 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
     pages: [`${DOCS}/contributing/single-binary.md`, `${DOCS}/getting-started/installation.md`],
   },
   {
-    sources: ["mise.toml", "mise.lock", "package.json", "scripts/check-binaries.ts"],
+    sources: [
+      "mise.toml",
+      "mise.lock",
+      "package.json",
+      "scripts/check-binaries.ts",
+      "scripts/gen-css-data.ts",
+    ],
     pages: [`${DOCS}/contributing/dev-setup.md`, `${DOCS}/getting-started/installation.md`],
   },
   {

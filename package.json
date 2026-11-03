@@ -18,6 +18,7 @@
     "lint": "biome check .",
     "fmt": "biome format --write .",
     "gen-docs": "bun run scripts/gen-docs.ts",
+    "gen-css-data": "bun run scripts/gen-css-data.ts",
     "docs:build": "bun src/cli/index.ts build site --clean",
     "docs:dev": "bun src/cli/index.ts dev site",
     "docs:lint": "bun src/cli/index.ts lint site --filter md",
@@ -41,6 +42,7 @@
     "@tailwindcss/node": "^4.3.4",
     "@tailwindcss/oxide": "^4.3.4",
     "citty": "^0.2.2",
+    "lightningcss": "1.33.0",
     "markdownlint": "^0.42.0",
     "mermaid": "^12.3.0",
     "minisearch": "^7.2.0",
@@ -74,6 +76,8 @@
     "@types/bun": "^1.4.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@webref/css": "^8.7.8",
+    "@webref/elements": "^2.9.2",
     "typescript": "^7.0.2"
   }
 }

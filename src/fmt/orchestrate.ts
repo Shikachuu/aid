@@ -1,9 +1,12 @@
-import type { Report, Tool } from "../lint/diagnostics"
+import { KNOWN_TOOLS, type Report, type Tool } from "../lint/diagnostics"
 import { runTools } from "../lint/discovery"
 import { formatWithBiome } from "./biome"
 import { formatMarkdown } from "./markdown"
 import { formatOpenApi } from "./openapi"
 import { formatProto } from "./proto"
+
+/** Tools `aid fmt` runs. The `css` tool only lints. */
+export const FORMAT_TOOLS: readonly Tool[] = KNOWN_TOOLS.filter((tool) => tool !== "css")
 
 /** Options for `formatAll`. A `null` filter runs every tool. */
 export type FormatOptions = {
