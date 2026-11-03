@@ -8,7 +8,7 @@
       "description": "Project display name. Required."
     },
     "description": {
-      "description": "Short site description used in <meta> tags and llms.txt.",
+      "description": "Short site description. Used as the llms.txt summary line.",
       "type": "string"
     },
     "version": {
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "base_url": {
-      "description": "Absolute base URL of the published site (e.g. https://docs.example.com). Used for canonical links and llms.txt.",
+      "description": "Absolute origin of the published site (e.g. https://docs.example.com). Makes llms.txt links absolute; base_path is appended to it.",
       "type": "string",
       "format": "uri"
     },
@@ -46,7 +46,7 @@
         },
         "templates": {
           "default": "",
-          "description": "Optional directory of named partial overrides. Empty string = use bundled defaults only.",
+          "description": "Optional directory holding an llms.txt template override. Tailwind also scans it for class names. Empty string means the bundled defaults.",
           "type": "string"
         },
         "static": {
@@ -88,7 +88,7 @@
         "chatgpt",
         "claude"
       ],
-      "description": "LLM chat targets that get an 'Open in AI' button on every page. Empty list disables the buttons.",
+      "description": "Not implemented yet: the build does not read this key. Reserved for the 'Open in AI' button targets.",
       "type": "array",
       "items": {
         "type": "string",

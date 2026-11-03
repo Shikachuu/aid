@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "aid/theme";
 
 /*
  * Override aid's default theme tokens here. Tokens you set take precedence over

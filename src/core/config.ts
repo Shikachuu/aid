@@ -37,14 +37,14 @@ export const AidConfigSchema = z
     description: z
       .string()
       .optional()
-      .describe("Short site description used in <meta> tags and llms.txt."),
+      .describe("Short site description. Used as the llms.txt summary line."),
     version: z.string().optional().describe("Project version string (semver recommended)."),
     base_url: z
       .string()
       .url()
       .optional()
       .describe(
-        "Absolute base URL of the published site (e.g. https://docs.example.com). Used for canonical links and llms.txt.",
+        "Absolute origin of the published site (e.g. https://docs.example.com). Makes llms.txt links absolute; base_path is appended to it.",
       ),
     base_path: z
       .string()
@@ -71,7 +71,7 @@ export const AidConfigSchema = z
           .string()
           .default("")
           .describe(
-            "Optional directory of named partial overrides. Empty string = use bundled defaults only.",
+            "Optional directory holding an llms.txt template override. Tailwind also scans it for class names. Empty string means the bundled defaults.",
           ),
         static: z
           .string()
@@ -99,7 +99,7 @@ export const AidConfigSchema = z
       .array(AiTarget)
       .default(["chatgpt", "claude"])
       .describe(
-        "LLM chat targets that get an 'Open in AI' button on every page. Empty list disables the buttons.",
+        "Not implemented yet: the build does not read this key. Reserved for the 'Open in AI' button targets.",
       ),
 
     search: z
