@@ -1,54 +1,11 @@
 #!/usr/bin/env bun
 import { mkdir, rm } from "node:fs/promises"
-import { resolve } from "node:path"
+import { dirname, resolve } from "node:path"
+import { TARGETS, type Target } from "./natives"
 
 const ROOT = resolve(import.meta.dir, "..")
 const DIST = resolve(ROOT, "dist")
 const CLI_ENTRY = resolve(ROOT, "src", "cli", "index.ts")
-
-type Target = {
-  triple: string
-  outSuffix: string
-  bufSubpkg: string
-  lcssSubpkg: string
-  platform: "darwin" | "linux"
-  arch: "arm64" | "x64"
-}
-
-const TARGETS: readonly Target[] = [
-  {
-    triple: "bun-darwin-arm64",
-    outSuffix: "darwin-arm64",
-    bufSubpkg: "@bufbuild/buf-darwin-arm64",
-    lcssSubpkg: "lightningcss-darwin-arm64",
-    platform: "darwin",
-    arch: "arm64",
-  },
-  {
-    triple: "bun-darwin-x64",
-    outSuffix: "darwin-x64",
-    bufSubpkg: "@bufbuild/buf-darwin-x64",
-    lcssSubpkg: "lightningcss-darwin-x64",
-    platform: "darwin",
-    arch: "x64",
-  },
-  {
-    triple: "bun-linux-arm64",
-    outSuffix: "linux-arm64",
-    bufSubpkg: "@bufbuild/buf-linux-aarch64",
-    lcssSubpkg: "lightningcss-linux-arm64-gnu",
-    platform: "linux",
-    arch: "arm64",
-  },
-  {
-    triple: "bun-linux-x64",
-    outSuffix: "linux-x64",
-    bufSubpkg: "@bufbuild/buf-linux-x64",
-    lcssSubpkg: "lightningcss-linux-x64-gnu",
-    platform: "linux",
-    arch: "x64",
-  },
-]
 
 const BUF_SUBPKGS = TARGETS.map((t) => t.bufSubpkg)
 const LCSS_SUBPKGS = TARGETS.map((t) => t.lcssSubpkg)
@@ -89,36 +46,40 @@ const copySchema = async (): Promise<void> => {
   console.log(`[compile] copied schema -> ${schemaDst}`)
 }
 
-// Bun does not dead-code-eliminate `with { type: "file" }` imports. Without the
-// `--external` flags every binary would embed all four `@bufbuild/buf-*/bin/buf`
-// files (about 200 MB) and all four lightningcss `.node` bindings (about 24 MB).
-const compileTarget = async (target: Target): Promise<void> => {
-  const outfile = resolve(DIST, "bin", `aid-${target.outSuffix}`)
-  const bufExternals = BUF_SUBPKGS.filter((pkg) => pkg !== target.bufSubpkg).flatMap((pkg) => [
-    "--external",
-    `${pkg}/bin/buf`,
-  ])
-  const lcssExternals = LCSS_SUBPKGS.filter((pkg) => pkg !== target.lcssSubpkg).flatMap((pkg) => [
-    "--external",
-    `${pkg}/*`,
-  ])
-  await run(
-    [
-      "bun",
-      "build",
-      "--compile",
-      `--target=${target.triple}`,
-      ...bufExternals,
-      ...lcssExternals,
-      "--define",
-      `process.platform="${target.platform}"`,
-      "--define",
-      `process.arch="${target.arch}"`,
-      `--outfile=${outfile}`,
-      CLI_ENTRY,
+// jsonc-parser's `main` is a UMD build whose `require` calls go through the
+// factory argument, so `--compile` never bundles `./impl/*`. Point every
+// importer at its own copy's ESM build instead.
+const jsoncEsm: Bun.BunPlugin = {
+  name: "jsonc-parser-esm",
+  setup(build) {
+    build.onResolve({ filter: /^jsonc-parser$/ }, ({ importer }) => {
+      const pkgJson = Bun.resolveSync("jsonc-parser/package.json", dirname(importer))
+      return { path: resolve(dirname(pkgJson), "lib", "esm", "main.js") }
+    })
+  },
+}
+
+/** Compile the CLI into a standalone binary for one target. */
+export const compileTarget = async (target: Target, outfile: string): Promise<void> => {
+  const started = performance.now()
+  await Bun.build({
+    entrypoints: [CLI_ENTRY],
+    compile: { target: target.triple, outfile },
+    // Bun does not dead-code-eliminate `with { type: "file" }` imports. Without these
+    // externals every binary would embed all four `@bufbuild/buf-*/bin/buf` files
+    // (about 200 MB) and all four lightningcss `.node` bindings (about 24 MB).
+    external: [
+      ...BUF_SUBPKGS.filter((pkg) => pkg !== target.bufSubpkg).map((pkg) => `${pkg}/bin/buf`),
+      ...LCSS_SUBPKGS.filter((pkg) => pkg !== target.lcssSubpkg).map((pkg) => `${pkg}/*`),
     ],
-    `compile ${target.triple}`,
-  )
+    define: {
+      "process.platform": JSON.stringify(target.platform),
+      "process.arch": JSON.stringify(target.arch),
+    },
+    plugins: [jsoncEsm],
+  })
+  const elapsed = ((performance.now() - started) / 1000).toFixed(2)
+  console.log(`[compile] compile ${target.triple} done in ${elapsed}s`)
 }
 
 const printArtefacts = async (): Promise<void> => {
@@ -129,11 +90,13 @@ const printArtefacts = async (): Promise<void> => {
   }
 }
 
-await cleanDist()
-await run(["bun", "scripts/emit-schema.ts"], "emit-schema")
-await copySchema()
-await run(["bun", "scripts/bundle-web.ts"], "bundle-web")
-for (const target of TARGETS) {
-  await compileTarget(target)
+if (import.meta.main) {
+  await cleanDist()
+  await run(["bun", "scripts/emit-schema.ts"], "emit-schema")
+  await copySchema()
+  await run(["bun", "scripts/bundle-web.ts"], "bundle-web")
+  for (const target of TARGETS) {
+    await compileTarget(target, resolve(DIST, "bin", `aid-${target.outSuffix}`))
+  }
+  await printArtefacts()
 }
-await printArtefacts()

@@ -15,24 +15,13 @@
  */
 
 import { resolve } from "node:path"
+import { lcssNodeFile, TARGETS } from "./natives"
 
 const ROOT = resolve(import.meta.dir, "..")
 const VENDOR = resolve(ROOT, "vendor", "natives")
 
-const PKGS = [
-  "lightningcss-darwin-arm64",
-  "lightningcss-darwin-x64",
-  "lightningcss-linux-arm64-gnu",
-  "lightningcss-linux-x64-gnu",
-]
-
-for (const pkg of PKGS) {
-  const src = resolve(
-    ROOT,
-    "node_modules",
-    pkg,
-    `lightningcss.${pkg.slice("lightningcss-".length)}.node`,
-  )
+for (const { lcssSubpkg: pkg } of TARGETS) {
+  const src = resolve(ROOT, "node_modules", pkg, lcssNodeFile(pkg))
   const dst = resolve(VENDOR, `${pkg}.bin`)
   const srcFile = Bun.file(src)
   if (!(await srcFile.exists())) {
