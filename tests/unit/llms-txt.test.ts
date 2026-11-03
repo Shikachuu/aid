@@ -2,8 +2,9 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { buildLlmsTxt } from "../../src/core/llms-txt"
-import type { RenderedPage, Route } from "../../src/core/types"
+import { buildLlmsTxt as buildWithNav } from "../../src/core/llms-txt"
+import { buildNav } from "../../src/core/nav"
+import type { BuildContext, RenderedPage, Route } from "../../src/core/types"
 import { makeCtx } from "../helpers"
 
 let cwd: string
@@ -15,6 +16,10 @@ beforeEach(async () => {
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true })
 })
+
+async function buildLlmsTxt(ctx: BuildContext, pages: RenderedPage[]): Promise<string> {
+  return buildWithNav(ctx, pages, (await buildNav(ctx, pages)).tree)
+}
 
 function makePage(args: {
   routePath: string
@@ -81,7 +86,7 @@ describe("buildLlmsTxt — bundled default template", () => {
     expect(out).not.toContain("{{")
   })
 
-  test("Docs group is pinned first; other groups alphabetical", async () => {
+  test("Docs group is pinned first; other groups follow sidebar order", async () => {
     const ctx = makeCtx(cwd)
     const out = await buildLlmsTxt(ctx, [
       makePage({ routePath: "/zeta/a", title: "Z" }),
@@ -104,6 +109,35 @@ describe("buildLlmsTxt — bundled default template", () => {
       makePage({ routePath: "/getting-started/intro", title: "Intro" }),
     ])
     expect(out).toContain("## Getting Started")
+  })
+})
+
+describe("buildLlmsTxt — sections follow the sidebar", () => {
+  test("a folder landing page joins its folder's section, named by its title", async () => {
+    const ctx = makeCtx(cwd)
+    const out = await buildLlmsTxt(ctx, [
+      makePage({ routePath: "/", title: "Home" }),
+      makePage({ routePath: "/guides", title: "User guides" }),
+      makePage({ routePath: "/guides/intro", title: "Intro" }),
+    ])
+    const section = out.slice(out.indexOf("## User guides"))
+    expect(section).toContain("[User guides](/guides.md)")
+    expect(section).toContain("[Intro](/guides/intro.md)")
+    expect(out.slice(0, out.indexOf("## User guides"))).not.toContain("[User guides]")
+  })
+
+  test("_meta.yaml order and labels reorder and rename sections", async () => {
+    await Bun.write(
+      path.join(cwd, "docs", "_meta.yaml"),
+      "zeta: { label: Last but first, order: 1 }\nalpha: { order: 2 }\n",
+    )
+    const ctx = makeCtx(cwd)
+    const out = await buildLlmsTxt(ctx, [
+      makePage({ routePath: "/alpha/a", title: "A" }),
+      makePage({ routePath: "/zeta/z", title: "Z" }),
+    ])
+    expect(out.indexOf("## Last but first")).toBeGreaterThan(-1)
+    expect(out.indexOf("## Last but first")).toBeLessThan(out.indexOf("## Alpha"))
   })
 })
 

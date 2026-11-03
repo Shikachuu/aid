@@ -76,7 +76,7 @@ export async function build(ctx: BuildContext): Promise<void> {
     })),
   )
 
-  const llmsTxt = await buildLlmsTxt(ctx, rendered)
+  const llmsTxt = await buildLlmsTxt(ctx, rendered, nav.tree)
   const llmsTxtPath = path.join(ctx.outputDir, "llms.txt")
   registry.register(llmsTxtPath, "<generated:llms.txt>")
 

@@ -1,8 +1,7 @@
 import path from "node:path"
-import { titleCase } from "../renderers/shared"
 import type { AidConfig } from "./config"
 import { exportPath } from "./router"
-import type { BuildContext, RenderedPage } from "./types"
+import type { BuildContext, NavNode, RenderedPage } from "./types"
 
 const BUNDLED_DEFAULT = `# {{name}}
 
@@ -25,7 +24,6 @@ type Entry = {
   title: string
   description: string | undefined
   url: string
-  group: string
   optional: boolean
 }
 
@@ -34,18 +32,28 @@ type Entry = {
  * via `<templatesDir>/llms.txt` with `{{name}}`, `{{description}}`,
  * `{{base_url}}`, `{{toc}}`, and `{{toc:optional}}` placeholders; aid fills in
  * the routing/TOC. A bundled default template is used when no override exists,
- * so the file is emitted zero-config.
+ * so the file is emitted zero-config. Sections follow the sidebar: each
+ * top-level nav group is one section with the group's label, and top-level
+ * pages go under `Docs`, which comes first.
  */
-export async function buildLlmsTxt(ctx: BuildContext, pages: RenderedPage[]): Promise<string> {
+export async function buildLlmsTxt(
+  ctx: BuildContext,
+  pages: RenderedPage[],
+  nav: NavNode[],
+): Promise<string> {
   const template = await resolveTemplate(ctx)
-  const entries = pages
-    .toSorted((a, b) => (a.route.path < b.route.path ? -1 : 1))
-    .map((page) => buildEntry(page, ctx.config))
-  const grouped = Map.groupBy(
-    entries.filter((e) => !e.optional),
-    (e) => e.group,
+  const entryByPath = new Map(pages.map((p) => [p.route.path, buildEntry(p, ctx.config)]))
+  const sections = new Map<string, Entry[]>([[ROOT_GROUP, []]])
+  for (const node of nav) {
+    const key = node.children && node.children.length > 0 ? node.label : ROOT_GROUP
+    const entries = navPaths(node).flatMap((p) => entryByPath.get(p) ?? [])
+    sections.set(key, [...(sections.get(key) ?? []), ...entries])
+  }
+  const all = [...sections.values()].flat()
+  const grouped = new Map(
+    [...sections].map(([key, entries]) => [key, entries.filter((e) => !e.optional)]),
   )
-  const optional = entries.filter((e) => e.optional)
+  const optional = all.filter((e) => e.optional)
 
   return renderTemplate(template, {
     name: ctx.config.name,
@@ -72,7 +80,6 @@ function buildEntry(page: RenderedPage, config: AidConfig): Entry {
     title: page.searchTokens.title,
     description: page.description,
     url: machineUrlFor(page, config),
-    group: groupLabelFor(page.route.path),
     optional: page.route.frontmatter?.llms === "optional",
   }
 }
@@ -85,25 +92,17 @@ function machineUrlFor(page: RenderedPage, config: AidConfig): string {
   return config.base_url ? new URL(withBase, config.base_url).toString() : withBase
 }
 
-function groupLabelFor(routePath: string): string {
-  const [first, ...rest] = routePath.split("/").filter(Boolean)
-  return first && rest.length > 0 ? titleCase(first) : ROOT_GROUP
-}
-
-function compareGroups(a: string, b: string): number {
-  if (a === ROOT_GROUP) {
-    return -1
-  }
-  if (b === ROOT_GROUP) {
-    return 1
-  }
-  return a < b ? -1 : a > b ? 1 : 0
+function navPaths(node: NavNode): string[] {
+  return [
+    ...(node.path === undefined ? [] : [node.path]),
+    ...(node.children ?? []).flatMap(navPaths),
+  ]
 }
 
 function renderGroupedToc(groups: Map<string, Entry[]>): string {
-  return [...groups.keys()]
-    .sort(compareGroups)
-    .map((key) => `## ${key}\n\n${(groups.get(key) ?? []).map(renderBullet).join("\n")}`)
+  return [...groups]
+    .filter(([, entries]) => entries.length > 0)
+    .map(([key, entries]) => `## ${key}\n\n${entries.map(renderBullet).join("\n")}`)
     .join("\n\n")
 }
 
