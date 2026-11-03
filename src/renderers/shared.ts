@@ -24,6 +24,12 @@ export function nonEmpty(buckets: Record<string, string[]>): Record<string, stri
   return Object.fromEntries(Object.entries(buckets).filter(([, list]) => list.length > 0))
 }
 
+/** First paragraph of `text` on one line, used as the llms.txt description of a page. */
+export function firstParagraph(text: string | null | undefined): string | undefined {
+  const para = text?.split(/\r?\n\s*\r?\n/, 1)[0]?.trim()
+  return para ? para.replace(/\s+/g, " ") : undefined
+}
+
 const ANCHOR_RE = /\s(?:id|name)\s*=\s*["']?([^"'\s>]+)/g
 
 /** Every `id` and `name` attribute value in rendered HTML, including raw HTML authors wrote. */

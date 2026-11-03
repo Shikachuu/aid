@@ -53,6 +53,7 @@ Cross-format search configuration.
 | `search.weights.html` | number (min 0) | `1` | Search ranking boost for HTML pages. |
 | `search.weights.openapi` | number (min 0) | `2` | Search ranking boost for OpenAPI operations and schemas. |
 | `search.weights.proto` | number (min 0) | `1.5` | Search ranking boost for proto messages and RPCs. |
+| `search.weights.jsonschema` | number (min 0) | `1.5` | Search ranking boost for JSON Schema fields and definitions. |
 
 ## `dev`
 
@@ -89,6 +90,7 @@ search:
     html: 1
     openapi: 2
     proto: 1.5
+    jsonschema: 1.5
 on_broken_links: error
 dev:
   port: 3000

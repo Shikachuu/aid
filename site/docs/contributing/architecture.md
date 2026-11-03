@@ -19,7 +19,7 @@ flowchart LR
   cli --> fmt["src/fmt"]
   dev --> pipeline
   pipeline --> router["src/core/router.ts"]
-  pipeline --> renderers["src/renderers<br/>markdown, html, openapi, proto"]
+  pipeline --> renderers["src/renderers<br/>markdown, html, openapi, proto, jsonschema"]
   pipeline --> nav["src/core/nav.ts"]
   pipeline --> links["src/core/links.ts"]
   pipeline --> search["src/core/search-index.ts"]
@@ -62,7 +62,7 @@ Theme components use the house style (`class`, not `className`). React runs only
 
 | Type | Role |
 | --- | --- |
-| `PageKind` | `"markdown" \| "html" \| "openapi" \| "proto"`. It picks the renderer. |
+| `PageKind` | `"markdown" \| "html" \| "openapi" \| "proto" \| "jsonschema"`. It picks the renderer. |
 | `Route` | One source file: absolute `source`, public route `path` (without `base_path`), `kind`, and the parsed `frontmatter` once rendered. |
 | `RenderedPage` | Renderer output: body `html`, `searchTokens`, side-channel `exports`, the `hasMermaid`, `hasOpenApi`, and `hasProto` flags, `description`, and the `anchors`, `anchorRefs`, and `diagnostics` for link checking. |
 | `SideChannelExport` | A machine-readable copy of a page with suffix `.md`, `.json`, or `.proto`. |
@@ -74,7 +74,7 @@ Theme components use the house style (`class`, not `className`). React runs only
 A new source format touches these places:
 
 1. Add the kind to `PageKind` in `src/core/types.ts`. If it exports a new suffix, widen `SideChannelExport["suffix"]`.
-2. Teach the router about the file. Add the extension to the glob in `buildRoutes` (`src/core/router.ts`) and to `KIND_BY_EXT`. For an extension that other files share, add a content sniffer to `classify`, the way `sniffOpenApi` (`src/renderers/openapi/sniff.ts`) handles `.yaml`, `.yml`, and `.json`.
+2. Teach the router about the file. Add the extension to the glob in `buildRoutes` (`src/core/router.ts`) and to `KIND_BY_EXT`. For an extension that other files share, add a content sniffer to `classify`, the way `sniffOpenApi` (`src/renderers/openapi/sniff.ts`) and `sniffJsonSchema` (`src/renderers/jsonschema/sniff.ts`) share `.yaml`, `.yml`, and `.json`.
 3. Write the renderer under `src/renderers/<kind>/` and return a `RenderedPage`. Return `anchors` if the page has heading ids at build time, so `checkAnchors` can check links into it.
 4. Add a `case` to `dispatchRenderer` in `src/core/pipeline.ts`. Markdown and HTML pass `copyAsset` and `resolveLink`. Add the renderer only if the format has relative links or images.
 5. Add a `case` to `renderPageBody` in `src/core/pipeline.ts`, either wrapping the body in a page component or passing it through.

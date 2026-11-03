@@ -4,7 +4,7 @@ import { exportPath } from "../../core/router"
 import type { RenderedPage, Route, SearchTokens } from "../../core/types"
 import { render } from "../../jsx-runtime"
 import { PageProto } from "../../theme/components/PageProto"
-import { nonEmpty } from "../shared"
+import { firstParagraph, nonEmpty } from "../shared"
 
 /** Arguments for {@link renderProto}. */
 export type RenderProtoArgs = {
@@ -45,17 +45,6 @@ export const renderProto = async (args: RenderProtoArgs): Promise<RenderedPage> 
     hasProto: true,
     description,
   }
-}
-
-const firstParagraph = (text: string | null): string | undefined => {
-  if (!text) {
-    return undefined
-  }
-  const para = text.split(/\r?\n\s*\r?\n/, 1)[0]?.trim()
-  if (!para) {
-    return undefined
-  }
-  return para.replace(/\s+/g, " ")
 }
 
 const collectMessageTokens = (m: ProtoMessage, fqns: string[], comments: string[]): void => {

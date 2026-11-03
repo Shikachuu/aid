@@ -7,7 +7,7 @@ const BUNDLED_DEFAULT = `# {{name}}
 
 > {{description}}
 
-This documentation is available in machine-readable form. Append \`.md\` to a markdown route, \`.json\` to an OpenAPI route, or \`.proto\` to a Proto route to receive the parseable variant.
+This documentation is available in machine-readable form. Append \`.md\` to a markdown route, \`.json\` to an OpenAPI or JSON Schema route, or \`.proto\` to a Proto route to receive the parseable variant.
 
 {{toc}}
 

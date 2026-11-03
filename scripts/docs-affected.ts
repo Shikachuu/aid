@@ -34,7 +34,11 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
     ],
   },
   {
-    sources: ["src/core/router.ts", "src/renderers/openapi/sniff.ts"],
+    sources: [
+      "src/core/router.ts",
+      "src/renderers/openapi/sniff.ts",
+      "src/renderers/jsonschema/sniff.ts",
+    ],
     pages: [`${DOCS}/content-types/index.md`, `${DOCS}/configuration/paths-and-urls.md`],
   },
   {
@@ -49,6 +53,10 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
   {
     sources: ["src/renderers/proto/**", "src/web/proto-entry.ts", "packages/proto-ui/src/**"],
     pages: [`${DOCS}/content-types/proto.md`, `${DOCS}/content-types/proto-example.proto`],
+  },
+  {
+    sources: ["src/renderers/jsonschema/**", "src/theme/components/PageJsonSchema.tsx"],
+    pages: [`${DOCS}/content-types/jsonschema.md`, `${DOCS}/reference/aid-schema.json`],
   },
   {
     sources: [

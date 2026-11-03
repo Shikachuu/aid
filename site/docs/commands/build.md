@@ -33,12 +33,14 @@ aid writes to `dir.output`, which defaults to `dist`. Each page gets a folder wi
 | `docs/about.html` | `/about` | `dist/about/index.html` | `dist/about.md` |
 | `docs/api.yaml` | `/api` | `dist/api/index.html` | `dist/api.json` |
 | `docs/events.proto` | `/events` | `dist/events/index.html` | `dist/events.proto` |
+| `docs/user.json` | `/user` | `dist/user/index.html` | `dist/user.json` |
 
 The export suffix depends on the source type:
 
 - Markdown and HTML pages export `.md`. aid writes it from the parsed page, so it has no frontmatter and its image links point at the copied images.
 - OpenAPI pages export `.json`, the parsed spec.
 - Protobuf pages export `.proto`, the source file unchanged.
+- JSON Schema pages export `.json`, the parsed schema.
 
 The output root also holds these files:
 

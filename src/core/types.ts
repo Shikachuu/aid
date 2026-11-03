@@ -3,7 +3,7 @@ import type { Frontmatter } from "../renderers/markdown/frontmatter"
 import type { AidConfig } from "./config"
 
 /** Source format of a route. It picks the renderer. */
-export type PageKind = "markdown" | "html" | "openapi" | "proto"
+export type PageKind = "markdown" | "html" | "openapi" | "proto" | "jsonschema"
 
 /** One page discovered under `contentDir` by `buildRoutes`. */
 export type Route = {

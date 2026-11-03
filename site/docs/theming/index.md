@@ -106,12 +106,25 @@ Every element aid renders carries a stable `.aid-*` class. Style these, not the 
 | `aid-nav-link`, `aid-nav-label` | a nav link, or a folder label without a page; the current page's link has `aria-current="page"` |
 | `aid-main` | `<main>` |
 | `aid-page` | the `<article>` of every page |
-| `aid-page-markdown`, `aid-page-html`, `aid-page-openapi`, `aid-page-proto` | the page kind, on the same `<article>` |
+| `aid-page-markdown`, `aid-page-html`, `aid-page-openapi`, `aid-page-proto`, `aid-page-jsonschema` | the page kind, on the same `<article>` |
 | `aid-page-toolbar` | the toolbar above the page body |
 | `aid-callout`, `aid-callout-note`, `aid-callout-tip`, `aid-callout-important`, `aid-callout-warning`, `aid-callout-caution` | a callout and its type |
 | `aid-callout-title` | the callout title line |
 | `aid-heading-link`, `aid-heading-anchor` | the `#` link appended to each heading |
 | `aid-footer` | `<footer>` |
+| `aid-schema-meta` | the chip row under a JSON Schema page title |
+| `aid-schema-fields`, `aid-schema-children` | the top-level field list, and the indented list of nested fields |
+| `aid-schema-field`, `aid-schema-field-summary`, `aid-schema-field-name`, `aid-schema-field-body` | one collapsible field `<details>`, its summary row, its name, and its body |
+| `aid-schema-chip` | every chip |
+| `aid-schema-chip-required`, `aid-schema-chip-deprecated`, `aid-schema-chip-nullable`, `aid-schema-chip-readonly`, `aid-schema-chip-writeonly`, `aid-schema-chip-type`, `aid-schema-chip-format`, `aid-schema-chip-pattern`, `aid-schema-chip-dialect` | the chip kind, on the same `<span>` |
+| `aid-schema-title` | a field or definition `title` |
+| `aid-schema-type-line`, `aid-schema-type` | the `Type:` line and the type name |
+| `aid-schema-description` | a rendered `description` |
+| `aid-schema-value`, `aid-schema-value-label`, `aid-schema-value-item` | an allowed values, value, default, or example line and its parts |
+| `aid-schema-variants`, `aid-schema-variants-label` | a `oneOf`, `anyOf`, or `allOf` group and its label |
+| `aid-schema-constraints`, `aid-schema-constraints-summary`, `aid-schema-constraint-list`, `aid-schema-constraint` | the constraints toggle, its summary, its `<dl>`, and one keyword row |
+| `aid-schema-example` | the schema example section |
+| `aid-schema-definitions`, `aid-schema-definition`, `aid-schema-definition-title` | the definitions section, one definition, and its heading |
 
 ## Style the hooks
 
@@ -132,6 +145,10 @@ The aid repository writes CSS with Tailwind directives only: `@theme` for tokens
 
   .aid-callout {
     @apply rounded-md;
+  }
+
+  .aid-schema-chip-required {
+    @apply bg-aid-caution text-aid-bg;
   }
 }
 ```

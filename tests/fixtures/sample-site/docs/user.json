@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/user.json",
+  "title": "User",
+  "description": "An account that can sign in to the **sample** service.",
+  "type": "object",
+  "required": ["id", "name"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "readOnly": true,
+      "description": "Stable identifier assigned by the server."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Display name."
+    },
+    "email": {
+      "type": ["string", "null"],
+      "format": "email"
+    },
+    "role": {
+      "enum": ["admin", "member"],
+      "default": "member"
+    },
+    "nickname": {
+      "type": "string",
+      "deprecated": true
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "address": { "$ref": "#/$defs/Address" },
+    "manager": { "$ref": "#", "description": "The user this one reports to." },
+    "categories": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Category" }
+    }
+  },
+  "$defs": {
+    "Address": {
+      "type": "object",
+      "required": ["city"],
+      "properties": {
+        "street": { "type": "string" },
+        "city": { "type": "string", "examples": ["Budapest"] }
+      }
+    },
+    "Category": {
+      "type": "object",
+      "properties": {
+        "label": { "type": "string" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Category" }
+        }
+      }
+    }
+  }
+}

@@ -19,6 +19,7 @@ describe("AidConfigSchema", () => {
       html: 1.0,
       openapi: 2.0,
       proto: 1.5,
+      jsonschema: 1.5,
     })
     expect(parsed.dev.port).toBe(3000)
     expect(parsed.dev.host).toBe("localhost")

@@ -2,6 +2,7 @@ import { realpath } from "node:fs/promises"
 import path from "node:path"
 import { render, renderDocument } from "../jsx-runtime"
 import { renderHtml } from "../renderers/html"
+import { renderJsonSchema } from "../renderers/jsonschema"
 import { renderMarkdown } from "../renderers/markdown"
 import type { CopyAsset } from "../renderers/markdown/colocated-assets"
 import { renderOpenApi } from "../renderers/openapi"
@@ -128,6 +129,14 @@ async function dispatchRenderer(
       return renderOpenApi({ route, sourcePath: route.source })
     case "proto":
       return renderProto({ route, sourcePath: route.source, basePath: ctx.config.base_path })
+    case "jsonschema":
+      return renderJsonSchema({
+        route,
+        sourcePath: route.source,
+        index,
+        basePath: ctx.config.base_path,
+        resolveLink: makeResolveLink(route, ctx, index, makeCopyAsset(route, ctx, registry)),
+      })
     default:
       throw new Error(`renderer not implemented: ${route.kind}`)
   }
@@ -214,6 +223,7 @@ function renderPageBody(page: RenderedPage): string {
   switch (page.route.kind) {
     case "openapi":
     case "proto":
+    case "jsonschema":
       return page.html
     case "html":
       return render(PageHtml({ bodyHtml: page.html, machineUrl: "" }))
