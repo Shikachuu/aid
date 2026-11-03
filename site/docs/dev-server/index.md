@@ -125,6 +125,7 @@ When the first build fails, there is no good build to serve. Every request then 
 ## Routing
 
 - A URL that ends in `/` or has no file extension maps to `index.html` in that folder, so `/guides` serves `guides/index.html`.
+- A URL with a dot in its last segment serves the file of that name. When no such file exists, it serves `index.html` in the folder of that name, so the JSON Schema route `/user.schema` serves `user.schema/index.html`.
 - A path that resolves outside the build folder, such as an encoded `..`, returns 400 Bad Request.
 - A missing file returns 404 Not Found.
 

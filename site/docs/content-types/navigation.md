@@ -2,7 +2,7 @@
 title: Navigation
 description: How aid builds the sidebar from the content folder, and how frontmatter and _meta.yaml files set labels and order.
 sidebar:
-  order: 7
+  order: 8
 ---
 
 aid builds the sidebar from the folder structure of the content folder. Every page appears in it. Folders become groups, and labels and order come from `_meta.yaml` files and page frontmatter.

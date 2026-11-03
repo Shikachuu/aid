@@ -75,6 +75,34 @@ test("fragment links into OpenAPI pages are not checked", async () => {
   await build(ctx)
 })
 
+test("fragment links into JSON Schema pages are checked against field ids", async () => {
+  const ctx = await makeSite(cwd)
+  await writeContent(ctx, {
+    "index.md": "# Home\n\n[ok](./user.json#prop-name) [bad](./user.json#prop-nope)\n",
+    "user.json": JSON.stringify({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      properties: { name: { type: "string" } },
+    }),
+  })
+  const message = await buildError(ctx)
+  expect(message).toContain("aid: 1 broken reference")
+  expect(message).toContain("./user.json#prop-nope")
+})
+
+test("relative links in JSON Schema descriptions rewrite, and broken ones fail the build", async () => {
+  const ctx = await makeSite(cwd)
+  await writeContent(ctx, {
+    "setup.md": "# Setup\n",
+    "user.json": JSON.stringify({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      description: "See [setup](./setup.md) and [gone](./gone.md).",
+    }),
+  })
+  const message = await buildError(ctx)
+  expect(message).toContain("aid: 1 broken reference")
+  expect(message).toContain("docs/user.json  link/missing")
+})
+
 test("a missing colocated image fails the build in markdown and HTML pages", async () => {
   const ctx = await makeSite(cwd)
   await writeContent(ctx, {

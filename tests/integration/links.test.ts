@@ -81,6 +81,46 @@ test("links to .html, OpenAPI and .proto sources rewrite to their routes", async
   expect(html).toContain('href="/ping"')
 })
 
+test("links to a JSON Schema source rewrite to its route, keeping the field fragment", async () => {
+  const ctx = await makeSite(cwd)
+  await writeContent(ctx, {
+    "index.md": "# Home\n\n[User name](./user.json#prop-name)\n",
+    "user.json": JSON.stringify({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      properties: { name: { type: "string" } },
+    }),
+  })
+  await build(ctx)
+  expect(await readOut(ctx, "index.html")).toContain('href="/user#prop-name"')
+})
+
+test("relative links in a JSON Schema description rewrite to route URLs", async () => {
+  const ctx = await makeSite(cwd)
+  await writeContent(ctx, {
+    "setup.md": "# Setup\n\n## Install\n",
+    "user.json": JSON.stringify({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      description: "See [install](./setup.md#install).",
+    }),
+  })
+  await build(ctx)
+  expect(await readOut(ctx, "user", "index.html")).toContain('href="/setup#install"')
+})
+
+test("relative images in a JSON Schema description are copied next to the page", async () => {
+  const ctx = await makeSite(cwd)
+  await writeContent(ctx, {
+    "diagram.svg": "<svg xmlns='http://www.w3.org/2000/svg'/>",
+    "user.json": JSON.stringify({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      description: "![diagram](./diagram.svg)",
+    }),
+  })
+  await build(ctx)
+  expect(await readOut(ctx, "user", "index.html")).toContain('src="/user/diagram.svg"')
+  expect(await Bun.file(path.join(ctx.outputDir, "user", "diagram.svg")).exists()).toBe(true)
+})
+
 test("query and fragment survive the rewrite", async () => {
   const ctx = await makeSite(cwd)
   await writeContent(ctx, {

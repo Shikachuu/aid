@@ -103,79 +103,81 @@
     @apply min-w-0 px-8 py-6;
   }
 
-  .aid-page-markdown {
+  .aid-page-markdown,
+  .aid-page-jsonschema {
     @apply mx-auto w-full max-w-3xl;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) {
     @apply leading-7;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) :is(p, ul, ol, table, blockquote, details, figure) {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema)
+    :is(p, ul, ol, table, blockquote, details, figure) {
     @apply my-4;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) h1 {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) h1 {
     @apply mt-2 mb-6 text-3xl font-bold tracking-tight;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) h2 {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) h2 {
     @apply mt-10 mb-4 border-b border-aid-border pb-2 text-2xl font-semibold;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) h3 {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) h3 {
     @apply mt-8 mb-3 text-xl font-semibold;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) :is(h4, h5, h6) {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) :is(h4, h5, h6) {
     @apply mt-6 mb-2 font-semibold;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) ul {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) ul {
     @apply list-disc pl-6;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) ol {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) ol {
     @apply list-decimal pl-6;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) li {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) li {
     @apply my-1;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) li > :is(ul, ol, p) {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) li > :is(ul, ol, p) {
     @apply my-1;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) .contains-task-list {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) .contains-task-list {
     @apply list-none pl-0;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) a {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) a {
     @apply text-aid-accent underline underline-offset-2 hover:no-underline;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) table {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) table {
     @apply block w-full overflow-x-auto border-collapse text-sm;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) :is(th, td) {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) :is(th, td) {
     @apply border border-aid-border px-3 py-2 text-left align-top;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) th {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) th {
     @apply bg-aid-muted/8 font-semibold;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) blockquote {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) blockquote {
     @apply border-l-4 border-aid-border pl-4 text-aid-muted;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) hr {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) hr {
     @apply my-8 border-aid-border;
   }
 
-  :where(.aid-page-markdown, .aid-page-html) img {
+  :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) img {
     @apply max-w-full;
   }
 
@@ -203,11 +205,13 @@
     @apply [--proto-font-mono:var(--font-aid-mono)];
   }
 
-  .aid-page-markdown pre {
+  .aid-page-markdown pre,
+  .aid-page-jsonschema pre {
     @apply overflow-x-auto rounded-lg p-4 font-aid-mono text-sm leading-relaxed;
   }
 
-  .aid-page-markdown :not(pre) > code {
+  .aid-page-markdown :not(pre) > code,
+  .aid-schema-description :not(pre) > code {
     @apply rounded bg-aid-muted/12 px-1 py-0.5 font-aid-mono text-[0.875em];
   }
 
@@ -250,5 +254,143 @@
 
   .aid-heading-anchor {
     @apply text-aid-muted;
+  }
+
+  .aid-schema-meta {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .aid-schema-fields {
+    @apply border-t border-aid-border;
+  }
+
+  .aid-schema-field {
+    @apply my-0 border-b border-aid-border py-4;
+  }
+
+  .aid-schema-children .aid-schema-field {
+    @apply py-3 last:border-b-0;
+  }
+
+  .aid-schema-field-summary {
+    @apply flex cursor-pointer list-none flex-wrap items-center gap-2 [&::-webkit-details-marker]:hidden;
+    @apply before:inline-block before:w-3 before:text-xs before:text-aid-muted before:transition-transform before:content-['▸'];
+    @apply [[open]>&]:before:rotate-90;
+  }
+
+  .aid-schema-field-name {
+    @apply font-aid-mono text-sm font-semibold text-aid-text;
+  }
+
+  .aid-schema-field-body {
+    @apply mt-2 pl-5;
+  }
+
+  .aid-schema-field-body > :is(p, div) {
+    @apply my-2;
+  }
+
+  .aid-schema-chip {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 font-aid-sans text-xs leading-4 font-medium whitespace-nowrap;
+  }
+
+  .aid-schema-chip-required {
+    @apply bg-aid-caution/12 text-aid-caution;
+  }
+
+  .aid-schema-chip-deprecated {
+    @apply bg-aid-warning/12 text-aid-warning line-through;
+  }
+
+  .aid-schema-chip-type {
+    @apply bg-aid-accent/12 font-aid-mono text-aid-accent;
+  }
+
+  .aid-schema-chip-format {
+    @apply ml-1 bg-aid-tip/12 font-aid-mono text-aid-tip;
+  }
+
+  .aid-schema-chip-nullable {
+    @apply bg-aid-important/12 text-aid-important;
+  }
+
+  .aid-schema-chip-pattern {
+    @apply bg-aid-note/12 text-aid-note;
+  }
+
+  .aid-schema-chip-readonly,
+  .aid-schema-chip-writeonly,
+  .aid-schema-chip-dialect {
+    @apply bg-aid-muted/12 text-aid-muted;
+  }
+
+  .aid-schema-title {
+    @apply font-medium text-aid-text;
+  }
+
+  .aid-schema-type-line {
+    @apply text-sm text-aid-muted;
+  }
+
+  .aid-schema-type {
+    @apply font-aid-mono text-aid-accent;
+  }
+
+  .aid-schema-value {
+    @apply flex flex-wrap items-baseline gap-1.5 text-sm;
+  }
+
+  .aid-schema-value-label {
+    @apply text-aid-muted;
+  }
+
+  .aid-schema-value-item {
+    @apply rounded bg-aid-muted/12 px-1.5 py-0.5 font-aid-mono text-xs;
+  }
+
+  .aid-schema-children {
+    @apply ml-1 border-l-2 border-aid-accent/20 pl-4;
+  }
+
+  .aid-schema-variants {
+    @apply my-2 rounded-md border border-dashed border-aid-border px-3;
+  }
+
+  .aid-schema-variants-label {
+    @apply mt-2 mb-0 text-xs font-semibold tracking-wide text-aid-muted uppercase;
+  }
+
+  .aid-schema-constraints {
+    @apply text-sm text-aid-muted;
+  }
+
+  .aid-schema-constraints-summary {
+    @apply cursor-pointer list-none [&::-webkit-details-marker]:hidden;
+    @apply before:mr-1 before:inline-block before:text-xs before:transition-transform before:content-['▸'];
+    @apply [[open]>&]:before:rotate-90 hover:text-aid-text;
+  }
+
+  .aid-schema-constraint-list {
+    @apply mt-2 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 rounded-md bg-aid-muted/6 p-3;
+  }
+
+  .aid-schema-constraint {
+    @apply contents;
+  }
+
+  .aid-schema-constraint-list :is(dt, dd) {
+    @apply m-0 font-aid-mono text-xs break-all;
+  }
+
+  .aid-schema-constraint-list dd {
+    @apply text-aid-text;
+  }
+
+  .aid-schema-definition {
+    @apply mt-8;
+  }
+
+  .aid-schema-definition-title {
+    @apply flex flex-wrap items-center gap-2;
   }
 }

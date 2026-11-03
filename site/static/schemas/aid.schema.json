@@ -135,6 +135,12 @@
               "description": "Search ranking boost for proto messages and RPCs.",
               "type": "number",
               "minimum": 0
+            },
+            "jsonschema": {
+              "default": 1.5,
+              "description": "Search ranking boost for JSON Schema fields and definitions.",
+              "type": "number",
+              "minimum": 0
             }
           },
           "description": "Per-format search ranking weights, applied via MiniSearch boostDocument."

@@ -330,6 +330,7 @@ function referenceIndex(): string {
       "- [Frontmatter reference](./frontmatter.md)",
       "- [Lint and format defaults](./lint-defaults.md)",
       "- [Configuration schema](./config-schema.yaml), the same schemas as interactive OpenAPI models",
+      "- [aid.yaml JSON Schema](./aid-schema.json), the published editor schema rendered as field docs",
     ].join("\n\n"),
   )
 }
@@ -340,6 +341,7 @@ function stripTrailingSpaces(text: string): string {
 
 /** Every file this script owns, with its expected content. */
 export async function generateAll(): Promise<GeneratedFile[]> {
+  const publishedSchema = await Bun.file(path.join(ROOT, "schemas/aid.schema.json")).text()
   return [
     { path: `${REFERENCE_DIR}/index.md`, content: referenceIndex() },
     { path: `${REFERENCE_DIR}/cli.md`, content: await cliReference() },
@@ -347,10 +349,8 @@ export async function generateAll(): Promise<GeneratedFile[]> {
     { path: `${REFERENCE_DIR}/frontmatter.md`, content: frontmatterReference() },
     { path: `${REFERENCE_DIR}/lint-defaults.md`, content: lintDefaultsReference() },
     { path: `${REFERENCE_DIR}/config-schema.yaml`, content: configSchemaOpenApi() },
-    {
-      path: "site/static/schemas/aid.schema.json",
-      content: await Bun.file(path.join(ROOT, "schemas/aid.schema.json")).text(),
-    },
+    { path: `${REFERENCE_DIR}/aid-schema.json`, content: publishedSchema },
+    { path: "site/static/schemas/aid.schema.json", content: publishedSchema },
   ]
 }
 

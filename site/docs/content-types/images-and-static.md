@@ -2,7 +2,7 @@
 title: Images and static files
 description: How aid copies images and other files that pages reference, and how it mirrors the static folder into the output.
 sidebar:
-  order: 6
+  order: 7
 ---
 
 aid puts non-page files into the output two ways. It copies each file that a markdown or HTML page references with a relative path next to that page, and it mirrors the static folder into the output root.

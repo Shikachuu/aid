@@ -1,4 +1,5 @@
 import path from "node:path"
+import { sniffJsonSchema } from "../renderers/jsonschema/sniff"
 import { sniffOpenApi } from "../renderers/openapi/sniff"
 import type { BuildContext, PageKind, Route } from "./types"
 
@@ -6,8 +7,9 @@ import type { BuildContext, PageKind, Route } from "./types"
  * Walk `ctx.contentDir` and produce a Route for every supported source file.
  * Segments starting with `_` are excluded (drafts, partials, includes).
  * `.md` is markdown, `.html` is html, and `.proto` is proto. `.yaml`/`.yml`/`.json`
- * are content-sniffed and become OpenAPI routes if they carry a top-level
- * `openapi:`/`swagger:` key, and are silently skipped otherwise.
+ * are content-sniffed: they become OpenAPI routes if they carry a top-level
+ * `openapi:`/`swagger:` key, JSON Schema routes if they carry a `json-schema.org`
+ * `$schema` key, and are silently skipped otherwise.
  */
 export async function buildRoutes(ctx: BuildContext): Promise<Route[]> {
   const glob = new Bun.Glob("**/*.{md,html,yaml,yml,json,proto}")
@@ -26,7 +28,7 @@ export async function buildRoutes(ctx: BuildContext): Promise<Route[]> {
     const existing = byPath.get(routePath)
     if (existing) {
       throw new Error(
-        `aid: route collision — both "${existing.source}" and "${source}" resolve to ${routePath}. Rename one (e.g. drop the index.md, or move the bare .md into a subdirectory).`,
+        `aid: route collision — both "${existing.source}" and "${source}" resolve to ${routePath}. Rename one (e.g. drop the index.md, or move the bare .md into a subdirectory), or prefix a file that should not be a page with "_".`,
       )
     }
     byPath.set(routePath, { source, path: routePath, kind })
@@ -53,7 +55,10 @@ const KIND_BY_EXT: Record<string, PageKind> = {
 async function classify(source: string): Promise<PageKind | null> {
   const ext = path.extname(source).toLowerCase()
   if (ext === ".yaml" || ext === ".yml" || ext === ".json") {
-    return (await sniffOpenApi(source)) ? "openapi" : null
+    if (await sniffOpenApi(source)) {
+      return "openapi"
+    }
+    return (await sniffJsonSchema(source)) ? "jsonschema" : null
   }
   return KIND_BY_EXT[ext] ?? null
 }

@@ -27,6 +27,11 @@ const SearchWeights = z
       .nonnegative()
       .default(1.5)
       .describe("Search ranking boost for proto messages and RPCs."),
+    jsonschema: z
+      .number()
+      .nonnegative()
+      .default(1.5)
+      .describe("Search ranking boost for JSON Schema fields and definitions."),
   })
   .describe("Per-format search ranking weights, applied via MiniSearch boostDocument.")
 

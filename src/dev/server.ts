@@ -114,7 +114,9 @@ function openSseStream(state: DevState): Response {
 /**
  * Serve `pathname` from `distDir`. Rejects paths that resolve outside
  * `distDir`, and maps directory-style URLs (`/`, `/api/`, `/api`) to their
- * `index.html`.
+ * `index.html`. A URL whose last segment has a dot, such as the route of
+ * `user.schema.json`, falls back to its folder's `index.html` when no file
+ * has that name.
  */
 export async function serveFile(distDir: string, pathname: string): Promise<Response> {
   const candidate = resolve(distDir, `.${pathname}`)
@@ -126,10 +128,14 @@ export async function serveFile(distDir: string, pathname: string): Promise<Resp
       ? resolve(candidate, "index.html")
       : candidate
   const file = Bun.file(target)
-  if (!(await file.exists())) {
-    return new Response("Not Found", { status: 404 })
+  if (await file.exists()) {
+    return new Response(file)
   }
-  return new Response(file)
+  const routeIndex = Bun.file(resolve(candidate, "index.html"))
+  if (target === candidate && (await routeIndex.exists())) {
+    return new Response(routeIndex)
+  }
+  return new Response("Not Found", { status: 404 })
 }
 
 function injectReloadScript(html: string): string {

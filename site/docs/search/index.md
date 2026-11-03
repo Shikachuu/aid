@@ -1,6 +1,6 @@
 ---
 title: Search
-description: How aid builds one MiniSearch index over markdown, HTML, OpenAPI, and proto pages at build time, and how the search box queries it in the browser.
+description: How aid builds one MiniSearch index over markdown, HTML, OpenAPI, proto, and JSON Schema pages at build time, and how the search box queries it in the browser.
 sidebar:
   order: 9
 ---
@@ -28,7 +28,7 @@ search:
 
 - `search.enabled: false` removes the search box from every page, and aid does not write the index file.
 - `search.typo_tolerance` sets the fuzzy match distance as a fraction of the term length. `0.2` allows one edit per five characters. `0` turns fuzzy matching off.
-- `search.weights` multiplies the score of every result of one page kind: `markdown`, `html`, `openapi`, or `proto`. The defaults give OpenAPI pages the highest weight and proto pages the next highest.
+- `search.weights` multiplies the score of every result of one page kind: `markdown`, `html`, `openapi`, `proto`, or `jsonschema`. The defaults give OpenAPI pages the highest weight, and proto and JSON Schema pages the next highest.
 
 ## What each page kind indexes
 
@@ -40,6 +40,7 @@ Every entry has four fields: `title`, `headings`, `body`, and `extras`.
 | [HTML](../content-types/html.md) | `<title>` or file name | none | the rendered body HTML, markup included | none |
 | [OpenAPI](../content-types/openapi.md) | `info.title` or file name | none | none | operation ids, paths, schema names, parameter names, operation summaries |
 | [Protobuf](../content-types/proto.md) | package name or file name | none | comments on the package, services, RPCs, messages, fields, and enums | fully qualified message, enum, and service names, `<service>.<rpc>` names, field names of top-level messages |
+| [JSON Schema](../content-types/jsonschema.md) | root `title` or file name | definition names | every `description` | dotted property paths, definition names |
 
 ## How it works
 

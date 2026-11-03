@@ -98,7 +98,7 @@ test("compiled CSS carries the fixture's @theme accent override", async () => {
 test("compiled CSS includes the bundled aid theme components and base tokens", async () => {
   const css = await readOutput(singleHashedEntry(/^main\.[0-9a-f]{8}\.css$/))
   expect(css).toMatch(/\.aid-shell\s*\{/)
-  expect(css).toMatch(/\.aid-page-markdown\s+pre\s*\{/)
+  expect(css).toMatch(/\.aid-page-markdown\s+pre\s*[,{]/)
   expect(css).toContain("--color-aid-bg")
 })
 
@@ -199,4 +199,30 @@ test("search index matches OpenAPI operation ids to the API page", async () => {
   const hits = parseSearchIndexScript(source).search("listPets")
   expect(hits.length).toBeGreaterThan(0)
   expect(hits[0]?.title).toBe("Sample API")
+})
+
+test("JSON Schema route renders static field docs without the OpenAPI or proto runtimes", async () => {
+  const userHtml = await readOutput("user", "index.html")
+  expect(userHtml).toContain('class="aid-page aid-page-jsonschema"')
+  expect(userHtml).toContain('<details class="aid-schema-field" id="prop-id" open>')
+  expect(userHtml).toContain("aid-schema-chip-required")
+  expect(userHtml).toContain('<a href="#def-Category">')
+  expect(userHtml).not.toMatch(/aid-openapi\.[0-9a-f]{8}\.(js|css)/)
+  expect(userHtml).not.toMatch(/aid-proto\.[0-9a-f]{8}\.(js|css)/)
+})
+
+test("theme CSS carries the JSON Schema chip classes", async () => {
+  const css = await readOutput(singleHashedEntry(/^main\.[0-9a-f]{8}\.css$/))
+  expect(css).toMatch(/\.aid-schema-chip-required\s*\{/)
+  expect(css).toMatch(/\.aid-schema-field-summary\s*\{/)
+})
+
+test("JSON Schema route exports the schema as user.json and lists it in llms.txt and search", async () => {
+  const schema = (await Bun.file(path.join(outputDir, "user.json")).json()) as { title?: string }
+  expect(schema.title).toBe("User")
+  expect(await readOutput("llms.txt")).toContain("[User](/user.json)")
+  const source = await readOutput(singleHashedEntry(/^search-index\.[0-9a-f]{8}\.js$/))
+  const index = parseSearchIndexScript(source)
+  expect(index.docs).toContainEqual({ type: "jsonschema", title: "User", url: "/user" })
+  expect(index.search("nickname")[0]?.title).toBe("User")
 })

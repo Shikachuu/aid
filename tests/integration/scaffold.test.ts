@@ -35,9 +35,11 @@ test("compiled theme styles the search results dropdown", () => {
 })
 
 test("compiled theme styles markdown and HTML page content", () => {
-  expect(css).toMatch(/:where\(\.aid-page-markdown, \.aid-page-html\) h2\s*\{/)
   expect(css).toMatch(
-    /:where\(\.aid-page-markdown, \.aid-page-html\) ul\s*\{[^}]*list-style-type:\s*disc/,
+    /:where\(\.aid-page-markdown, \.aid-page-html, \.aid-page-jsonschema\) h2\s*\{/,
+  )
+  expect(css).toMatch(
+    /:where\(\.aid-page-markdown, \.aid-page-html, \.aid-page-jsonschema\) ul\s*\{[^}]*list-style-type:\s*disc/,
   )
 })
 

@@ -71,6 +71,61 @@ describe("buildRoutes", () => {
     expect(routes.map((r) => r.path)).toEqual(["/"])
   })
 
+  test("emits a jsonschema route for json and yaml files with a json-schema.org $schema", async () => {
+    const ctx = makeCtx(cwd)
+    await Bun.write(
+      path.join(ctx.contentDir, "user.json"),
+      `{"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object"}`,
+    )
+    await Bun.write(
+      path.join(ctx.contentDir, "order.yaml"),
+      `$schema: "http://json-schema.org/draft-07/schema#"\ntype: object\n`,
+    )
+    await Bun.write(
+      path.join(ctx.contentDir, "biome.json"),
+      `{"$schema": "https://biomejs.dev/schemas/2.4.15/schema.json"}`,
+    )
+    const routes = await buildRoutes(ctx)
+    expect(routes.map((r) => ({ path: r.path, kind: r.kind }))).toEqual([
+      { path: "/order", kind: "jsonschema" },
+      { path: "/user", kind: "jsonschema" },
+    ])
+  })
+
+  test("json data that only nests a json-schema.org $schema is skipped", async () => {
+    const ctx = makeCtx(cwd)
+    await Bun.write(
+      path.join(ctx.contentDir, "data.json"),
+      JSON.stringify({ items: [{ $schema: "https://json-schema.org/draft/2020-12/schema" }] }),
+    )
+    expect(await buildRoutes(ctx)).toEqual([])
+  })
+
+  test("a schema next to a markdown page with the same stem fails with a hint about _", async () => {
+    const ctx = makeCtx(cwd)
+    await writeMd(ctx, "user.md")
+    await Bun.write(
+      path.join(ctx.contentDir, "user.json"),
+      `{"$schema": "https://json-schema.org/draft/2020-12/schema"}`,
+    )
+    await expect(buildRoutes(ctx)).rejects.toThrow(/route collision.*\/user.*prefix a file/)
+  })
+
+  test("an OpenAPI spec with nested $schema keys stays an openapi route", async () => {
+    const ctx = makeCtx(cwd)
+    await Bun.write(
+      path.join(ctx.contentDir, "api.json"),
+      JSON.stringify({
+        openapi: "3.1.0",
+        components: {
+          schemas: { A: { $schema: "https://json-schema.org/draft/2020-12/schema" } },
+        },
+      }),
+    )
+    const routes = await buildRoutes(ctx)
+    expect(routes.map((r) => r.kind)).toEqual(["openapi"])
+  })
+
   test("throws on collision between api.md and api.yaml", async () => {
     const ctx = makeCtx(cwd)
     await writeMd(ctx, "api.md")

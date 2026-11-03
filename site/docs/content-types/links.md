@@ -2,7 +2,7 @@
 title: Links
 description: How aid rewrites relative links to route URLs, which links it leaves alone, and how the build reports broken links, anchors, and images.
 sidebar:
-  order: 8
+  order: 9
 ---
 
 Link to another page by its source file with a relative path. aid rewrites the link to the target's route URL with `base_path` and fails the build when the target does not exist.

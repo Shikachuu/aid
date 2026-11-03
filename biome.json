@@ -20,6 +20,7 @@
       "!!**/.bun",
       "!!**/*.svg",
       "!!**/schemas/aid.schema.json",
+      "!!site/docs/reference/aid-schema.json",
       "!!tests/fixtures/lint-fixtures/openapi-bad-json"
     ]
   },

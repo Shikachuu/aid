@@ -45,7 +45,7 @@ flowchart TD
 
 - A path segment that starts with `_` excludes the file.
 - `KIND_BY_EXT` maps `.md`, `.html`, and `.proto` to a `PageKind`.
-- `.yaml`, `.yml`, and `.json` files go through `sniffOpenApi` (`src/renderers/openapi/sniff.ts`), which matches an `openapi:` or `swagger:` version key in the first 64 KiB. A file without one is skipped.
+- `.yaml`, `.yml`, and `.json` files go through `sniffOpenApi` (`src/renderers/openapi/sniff.ts`), which matches an `openapi:` or `swagger:` version key in the first 64 KiB. A file without one goes through `sniffJsonSchema` (`src/renderers/jsonschema/sniff.ts`), which matches a `$schema` key with a `json-schema.org` URL. A file that matches neither is skipped.
 - `routePathFromStem` strips the extension and a trailing `index`, so `guides/index.md` and `guides.md` both map to `/guides`. Two sources with one route path throw a route collision error.
 - The routes come back sorted by path.
 
@@ -96,6 +96,10 @@ The `.md` export comes from the same mdast through `remark-stringify`, after the
 
 `renderProto` (`src/renderers/proto/index.ts`) parses the source with `parseProto` from `@aid/proto-ui/parser`, which wraps protobufjs. The parse gives the title (the package name, or the filename), the description (the first paragraph of the package comment), and search extras for messages, services, RPCs, enums, and fields. The page from `PageProto` holds a mount point whose `data-proto-url` points at the `.proto` export. The browser bundle fetches that file and renders the UI. The export is the unchanged source.
 
+### JSON Schema
+
+`renderJsonSchema` (`src/renderers/jsonschema/index.ts`) parses the source with `JSON.parse` or `Bun.YAML.parse`. `buildSchemaDocument` (`model.ts`) turns the schema into a tree of `SchemaNode`s. It resolves `$ref`s inside the file itself, merges compatible `allOf` members, and collapses a `$ref` that is already on the expansion path into a link. It also builds the schema example. Descriptions and the example render through `renderMarkdownFragment` (`markdown.ts`), a remark and rehype pipeline with Shiki that shows raw HTML as escaped text, turns unsafe URL schemes into `#`, and rewrites relative description links through the same `resolveLink` as markdown pages. `PageJsonSchema` renders the static page. The renderer returns `anchors`, so `checkAnchors` checks links into it. The export is the schema as `.json`.
+
 ## Colocated asset check
 
 `assertInsideContent` in `src/core/pipeline.ts` runs before every `copyAsset` copy. The source must sit lexically inside `contentDir`, and its `realpath` must sit inside the `realpath` of `contentDir`. The second check stops a symlink inside the content directory from pulling in a file outside it. A failed check throws `aid: colocated asset "<path>" referenced from <page> escapes contentDir`. `tests/integration/security.test.ts` covers both cases.
@@ -104,7 +108,7 @@ The `.md` export comes from the same mdast through `remark-stringify`, after the
 
 `buildNav` (`src/core/nav.ts`) groups the rendered pages by route segment. A folder's `index` page becomes the group link. Labels and order come from the folder's `_meta.yaml`, then the page's frontmatter `sidebar`, then the title. A `_meta.yaml` key that matches no page or folder becomes a `nav/unknown-entry` diagnostic. An invalid `_meta.yaml` throws. See [navigation](../content-types/navigation.md).
 
-The pipeline then hands `reportBrokenLinks` three lists: the renderer diagnostics, the `checkAnchors` results (`link/anchor`, for fragments that match no `id` or `name` on the target page), and the nav diagnostics. OpenAPI and proto pages publish no anchors, so links into them are not checked. `reportBrokenLinks` sorts every problem by file and position and throws one error that lists all of them. With `on_broken_links: warn`, it prints the same report and the build continues.
+The pipeline then hands `reportBrokenLinks` three lists: the renderer diagnostics, the `checkAnchors` results (`link/anchor`, for fragments that match no `id` or `name` on the target page), and the nav diagnostics. OpenAPI and proto pages publish no anchors, so links into them are not checked. JSON Schema pages publish their field and definition ids. `reportBrokenLinks` sorts every problem by file and position and throws one error that lists all of them. With `on_broken_links: warn`, it prints the same report and the build continues.
 
 ## Web bundles
 
@@ -120,7 +124,7 @@ From a source checkout, `bundleWebEntry` runs `Bun.build` with code splitting in
 
 ## Layout wrap
 
-`wrapInLayout` renders `Layout` with `renderDocument`. `renderPageBody` wraps markdown bodies in `PageMarkdown` and HTML bodies in `PageHtml`. OpenAPI and proto bodies are already full page components. The stylesheet href is the placeholder `__AID_STYLESHEET_HREF__`, because the CSS hash is unknown until Tailwind has scanned every page.
+`wrapInLayout` renders `Layout` with `renderDocument`. `renderPageBody` wraps markdown bodies in `PageMarkdown` and HTML bodies in `PageHtml`. OpenAPI, proto, and JSON Schema bodies are already full page components. The stylesheet href is the placeholder `__AID_STYLESHEET_HREF__`, because the CSS hash is unknown until Tailwind has scanned every page.
 
 ## llms.txt
 
