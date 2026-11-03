@@ -5,8 +5,8 @@ import { z } from "zod"
 import { version } from "../package.json"
 import { main } from "../src/cli/main"
 import { AidConfigSchema } from "../src/core/config"
-import { biomeDefault } from "../src/lint/configs/biome.default"
 import { bufDefault } from "../src/lint/configs/buf.default"
+import { formatOptions, lintRules } from "../src/lint/configs/bun.default"
 import { markdownlintDefault } from "../src/lint/configs/markdownlint.default"
 import { CSS_RULES } from "../src/lint/css"
 import { KNOWN_TOOLS } from "../src/lint/diagnostics"
@@ -279,15 +279,32 @@ export function lintDefaultsReference(): string {
       order: 4,
     },
     [
-      "`aid lint` dispatches to five tools and `aid fmt` to four: `css` only lints. Each tool except `css` looks for its own config file, starting in the target directory and walking up until it reaches a directory that holds `.git`. Without one, the bundled default below applies. `aid lint` leaves CSS files to `css`, so Biome only formats them.",
+      "`aid lint` dispatches to five tools and `aid fmt` to four: `css` only lints. Each tool except `css` looks for its own config file, starting in the target directory and walking up until it reaches a directory that holds `.git`. Without one, the bundled default below applies. `aid lint` leaves CSS files to `css`, so `bun` only formats them.",
       table(["Tool", "Files", "Config files"], rows),
       `Discovery never walks into these directories: ${[...DEFAULT_IGNORES].map(code).join(", ")}.`,
       "## markdownlint default (`md`)",
       fence("json", JSON.stringify(markdownlintDefault, null, 2)),
       "## Spectral default (`openapi`)",
       "The bundled ruleset is `spectral:oas`.",
-      "## Biome default (`biome`)",
-      fence("json", JSON.stringify(biomeDefault, null, 2)),
+      "## bun default (`bun`)",
+      "Without a lint config, `aid lint` turns off every `bun lint` rule category and runs only these rules. Without a formatter config, `aid fmt` passes these `bun fmt` options:",
+      fence(
+        "toml",
+        Object.entries(formatOptions)
+          .map(([k, v]) => `${k} = ${JSON.stringify(v)}`)
+          .join("\n"),
+      ),
+      table(
+        ["Rule", "Severity", "Options"],
+        Object.entries(lintRules).map(([name, rule]) => {
+          const [severity, ...options] = Array.isArray(rule) ? rule : [rule]
+          return [
+            code(name),
+            String(severity),
+            options.length === 0 ? "None" : code(JSON.stringify(options)),
+          ]
+        }),
+      ),
       "## CSS checks (`css`)",
       "The `css` tool has no config file and always runs these checks. Codes match the Stylelint rule with the same intent.",
       table(

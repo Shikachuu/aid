@@ -93,6 +93,34 @@ Option 2 only wins if aid must keep an in-process formatter API or must not depe
 - The aid repository uses Biome for its own lint, including the `plugins/no-promise-chains.grit` plugin. Switching the repo's dev tooling is a separate decision. It needs a replacement for the GritQL rule, for example an ESLint-style JS plugin, which `bun lint` supports.
 - I could not test `bun lint` behavior inside a compiled binary, because it is not in a stable release yet.
 
+## Canary spike (2026-11-03)
+
+These results come from Bun `1.4.4-canary.20261103.1`, which reports `bun --revision` as `1.4.4-canary.1+3bf1a0646`. They guided the switch to `bun lint` and `bun fmt`.
+
+- **Commands:**
+  - `bun lint` and `bun fmt` both exist.
+  - `bun lint --rules` lists 1,048 rules. It prints them with oxlint-style prefixes such as `eslint/curly` and `typescript/consistent-type-definitions`, but configs take the ESLint names such as `curly` and `@typescript-eslint/consistent-type-definitions`.
+- **Compiled binaries:**
+  - A binary compiled on the canary runs `lint` and `fmt` with `BUN_BE_BUN=1`.
+  - The global `-c=<bunfig.toml>` flag applies `[lint]` and `[fmt]` from any path.
+  - `lint --config <file>` takes an ESLint or oxlint config instead.
+- **Cross-compiling:**
+  - `--target` downloads the stable `bun-<platform>-v1.4.4` runtime, because the canary reports its version as `1.4.4`.
+  - The stable runtime contains the lint code, but the command is off in release builds.
+  - Cross-compiled binaries need the canary runtime from the `@oven/bun-<platform>` npm packages, passed through `--compile-executable-path`. The canary linux-x64 runtime is 134 MB.
+- **Output:**
+  - `--format json` prints ESLint's JSON shape to stdout: `filePath`, then `messages[]` with `ruleId`, `severity` (1 or 2), `message`, `line`, and `column`.
+  - The "Linted N files" line goes to stderr.
+  - `eslint-disable` comments work. Suppressed findings move to `suppressedMessages`.
+- **Default rules:**
+  - Without config, about 100 rules are on.
+  - Setting every `[lint.categories]` entry to `"off"` leaves only the rules in `[lint.rules]`.
+- **JSON and markdown rules:** the `json/*` and `markdown/*` rules need an ESLint flat config that imports `@eslint/json` or `@eslint/markdown`. So they need npm packages in the user's project.
+- **Tailwind:** `[fmt] sortTailwindcss = true` sorts classes in `className`, `cn(...)`, and `cva(...)` when `tailwindcss` is installed. `tailwindFunctions` and `tailwindAttributes` are not `[fmt]` keys.
+- **Pinning:**
+  - mise's `npm:bun` backend skips the platform package, so the binary never installs.
+  - mise's `http` backend works, with one npm tarball URL per platform and `bin_path = "package/bin"`.
+
 ## Sources
 
 - [Bun v1.4.4 release notes (`bun fmt`)](https://bun.com/blog/bun-v1.4.4.md)

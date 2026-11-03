@@ -3,7 +3,8 @@
   "permissions": {
     "allow": [
       "Bash(bun run *)",
-      "Bash(bun x biome *)",
+      "Bash(bun lint *)",
+      "Bash(bun fmt *)",
       "Bash(bun test*)",
       "Bash(git status*)",
       "Bash(git diff*)",

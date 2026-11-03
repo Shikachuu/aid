@@ -12,7 +12,7 @@ export type Diagnostic = {
 }
 
 /** Tools that `aid lint` and `aid fmt` dispatch to, in report order. */
-export const KNOWN_TOOLS = ["md", "openapi", "biome", "css", "proto"] as const
+export const KNOWN_TOOLS = ["md", "openapi", "bun", "css", "proto"] as const
 
 /** Tool name as accepted by `--filter` and printed in reports. */
 export type Tool = (typeof KNOWN_TOOLS)[number]
@@ -33,7 +33,7 @@ export type ToolResult = {
 export type Report = { ok: boolean; results: ToolResult[] }
 
 /**
- * Parse a `--filter` value such as `md,biome` into a tool set. Names outside
+ * Parse a `--filter` value such as `md,bun` into a tool set. Names outside
  * `allowed` are dropped; `null` (run every tool) is returned when nothing valid remains.
  */
 export const parseFilter = (

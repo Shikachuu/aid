@@ -1,6 +1,6 @@
 import { KNOWN_TOOLS, type Report, type Tool } from "../lint/diagnostics"
 import { runTools } from "../lint/discovery"
-import { formatWithBiome } from "./biome"
+import { formatWithBun } from "./bun"
 import { formatMarkdown } from "./markdown"
 import { formatOpenApi } from "./openapi"
 import { formatProto } from "./proto"
@@ -23,6 +23,6 @@ export const formatAll = (opts: FormatOptions): Promise<Report> =>
   runTools(opts.dir, opts.filter, {
     md: (paths) => formatMarkdown(paths, opts.dir, { check: opts.check }),
     openapi: (paths) => formatOpenApi(paths, opts.dir, { check: opts.check }),
-    biome: (paths) => formatWithBiome(paths, opts.dir, { check: opts.check }),
+    bun: (paths) => formatWithBun(paths, opts.dir, { check: opts.check }),
     proto: (paths) => formatProto(paths, opts.dir, { check: opts.check }),
   })

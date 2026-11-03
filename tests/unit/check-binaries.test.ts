@@ -3,7 +3,6 @@ import {
   checkFamily,
   checkRuntime,
   checkStaged,
-  schemaVersion,
   updateCommands,
   updateStatus,
 } from "../../scripts/check-binaries"
@@ -110,6 +109,11 @@ describe("checkRuntime", () => {
     ])
   })
 
+  test("checks a canary pin against engines.bun by its base version", () => {
+    const canary = "1.4.4-canary.20261103.1"
+    expect(checkRuntime({ ...ok, running: canary, pinned: canary })).toEqual([])
+  })
+
   test("accepts a @types/bun patch that differs from the pin", () => {
     expect(checkRuntime({ ...ok, types: "1.4.2" })).toEqual([])
   })
@@ -128,17 +132,6 @@ describe("checkRuntime", () => {
 
   test("flags a mise.toml with no bun pin", () => {
     expect(checkRuntime({ ...ok, pinned: null })).toEqual(["mise.toml does not pin bun"])
-  })
-})
-
-describe("schemaVersion", () => {
-  test("reads the version from a biome.json $schema URL", () => {
-    expect(schemaVersion("https://biomejs.dev/schemas/2.6.4/schema.json")).toBe("2.6.4")
-  })
-
-  test("returns null for a missing or local schema", () => {
-    expect(schemaVersion(undefined)).toBeNull()
-    expect(schemaVersion("./node_modules/@biomejs/biome/configuration_schema.json")).toBeNull()
   })
 })
 
@@ -166,21 +159,22 @@ describe("updateCommands", () => {
     expect(cmds.every((c) => c.startsWith("#"))).toBe(true)
   })
 
-  test("bumps Biome's CLI and wasm together and migrates biome.json", () => {
+  test("bumps the Bun pin, the lockfile, the runtime packages, and @types/bun", () => {
+    const cmds = updateCommands({ family: "bun", current: "1.4.4", latest: "1.5.0" })
+    expect(cmds).toContain("mise lock --platform linux-x64,linux-arm64,macos-arm64,macos-x64")
     expect(
-      updateCommands({ family: "@biomejs/biome", current: "2.4.15", latest: "2.6.4" }),
-    ).toEqual([
-      "bun add -d @biomejs/biome@^2.6.4",
-      "bun add @biomejs/wasm-nodejs@^2.6.4",
-      "mise install",
-      "bun x biome migrate --write",
-    ])
+      cmds.find((c) => c.includes("--exact"))?.match(/@oven\/bun-[a-z0-9-]+@1\.5\.0/g),
+    ).toHaveLength(4)
+    expect(cmds).toContain("bun add -d @types/bun@^1.5.0")
   })
 
-  test("bumps the Bun pin, the lockfile, and @types/bun", () => {
-    const cmds = updateCommands({ family: "bun", current: "1.4.4", latest: "1.5.0" })
-    expect(cmds).toContain("mise lock")
-    expect(cmds).toContain("bun add -d @types/bun@^1.5.0")
+  test("pins @types/bun to a canary's base version", () => {
+    const cmds = updateCommands({
+      family: "bun",
+      current: "1.4.4",
+      latest: "1.4.4-canary.20261103.1",
+    })
+    expect(cmds).toContain("bun add -d @types/bun@^1.4.4")
   })
 
   test("returns nothing for an unknown family", () => {

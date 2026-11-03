@@ -1,0 +1,5 @@
+schemas/aid.schema.json
+site/docs/reference/
+site/static/schemas/
+src/lint/css-data.json
+tests/fixtures/lint-fixtures/openapi-bad-json/

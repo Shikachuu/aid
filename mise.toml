@@ -1,5 +1,12 @@
-[tools]
-bun = "1.4.4"
+[tools."http:bun"]
+version = "1.4.4-canary.20261103.1"
+bin_path = "package/bin"
+
+[tools."http:bun".platforms]
+macos-arm64 = { url = "https://registry.npmjs.org/@oven/bun-darwin-aarch64/-/bun-darwin-aarch64-{{ version }}.tgz" }
+macos-x64 = { url = "https://registry.npmjs.org/@oven/bun-darwin-x64/-/bun-darwin-x64-{{ version }}.tgz" }
+linux-arm64 = { url = "https://registry.npmjs.org/@oven/bun-linux-aarch64/-/bun-linux-aarch64-{{ version }}.tgz" }
+linux-x64 = { url = "https://registry.npmjs.org/@oven/bun-linux-x64/-/bun-linux-x64-{{ version }}.tgz" }
 
 [settings]
 experimental = true

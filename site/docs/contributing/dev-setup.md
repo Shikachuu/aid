@@ -16,9 +16,9 @@ Install [mise](https://mise.jdx.dev), then run this in the repository root:
 mise install
 ```
 
-`mise install` installs Bun 1.4.4 and then runs the `postinstall` hook from `mise.toml`. The hook runs three commands in order:
+`mise install` installs the Bun canary that `mise.toml` pins and then runs the `postinstall` hook from `mise.toml`. The hook runs three commands in order:
 
-1. `bun install --cpu='*' --os='*'` installs every platform subpackage of `@tailwindcss/oxide`, `@bufbuild/buf`, and `lightningcss`, not only the ones for your machine. `scripts/compile.ts` needs all of them to cross-compile the four release binaries.
+1. `bun install --cpu='*' --os='*'` installs every platform subpackage of `@tailwindcss/oxide`, `@bufbuild/buf`, `lightningcss`, and `@oven/bun`, not only the ones for your machine. `scripts/compile.ts` needs all of them to cross-compile the four release binaries.
 2. `bun scripts/stage-natives.ts` copies each `lightningcss-<platform>` `.node` binding to `vendor/natives/lightningcss-<platform>.bin`. See [single binary](./single-binary.md) for why the extension changes.
 3. `bun run -F @aid/proto-ui build` builds `packages/proto-ui/dist`, which holds the `styles.css` that aid serves on proto pages.
 
@@ -44,8 +44,9 @@ To add a dependency, run `bun add <pkg>` to update `package.json`, then `mise in
 | `bun run deps:binaries` | `scripts/check-binaries.ts`: checks the platform packages, the staged lightningcss bindings, and the Bun version, then reports newer upstream versions. Add `--offline` to skip the upstream lookup. |
 | `bun test` | The Bun test runner over `tests/`. |
 | `bun run typecheck` | `tsc --noEmit`. |
-| `bun run lint` | `biome check .`. |
-| `bun run fmt` | `biome format --write .`. |
+| `bun run lint` | `bun lint` over `src`, `scripts`, `tests`, and `packages`, then `aid lint . --filter css` over every CSS file. |
+| `bun run fmt` | `bun fmt` over the JS, TS, JSON, and CSS files in `src`, `scripts`, `tests`, `packages`, and `site`, and the root `*.json` files. |
+| `bun run gen-bunfig` | `scripts/gen-bunfig.ts`: regenerates `bunfig.toml` from the bundled lint rules plus the repo rules. Add `--check` to fail on drift instead of writing. |
 
 [Docs site](./docs-site.md) covers the `docs:*` and `gen-docs` scripts in detail.
 
@@ -58,8 +59,8 @@ aid embeds native binaries from npm packages, and each platform's package must m
 | `@bufbuild/buf` | The four `@bufbuild/buf-<platform>` pins in `package.json` and their installed versions. |
 | `@tailwindcss/oxide` | The four `@tailwindcss/oxide-<platform>` pins in `package.json` and their installed versions. |
 | `lightningcss` | The exact version that `@tailwindcss/node` declares, for aid's own `lightningcss` pin in `package.json`, the installed `lightningcss`, and its four platform packages. |
-| `@biomejs/biome` | `@biomejs/wasm-nodejs` and the version in the `$schema` URL of `biome.json`. |
-| Bun | The running Bun, the `mise.toml` pin, `engines.bun`, and the major and minor version of `@types/bun`. |
+| Bun runtime | The four `@oven/bun-<platform>` pins in `package.json`, which must equal the `mise.toml` pin. `scripts/compile.ts` passes each one to `Bun.build` as the target's runtime, because cross-compiling a canary would otherwise download the stable runtime. |
+| Bun | The running Bun, the `mise.toml` pin, `engines.bun` (against the pin's base version), and the major and minor version of `@types/bun`. A canary reports only its base version, so for a canary pin the running binary must match the host's `@oven/bun-<platform>` binary byte for byte. |
 
 It also compares each `vendor/natives/lightningcss-<platform>.bin` with its source in `node_modules`. Any mismatch prints a `drift:` list and exits with code 1.
 

@@ -156,7 +156,7 @@ function resolveAndEnsureLeadingH1(opts: {
 }) {
   return (tree: HastRoot): void => {
     const firstEl = tree.children.find((c): c is HastElement => c.type === "element")
-    if (firstEl && firstEl.tagName === "h1") {
+    if (firstEl?.tagName === "h1") {
       opts.sink.value = opts.frontmatterTitle ?? hastText(firstEl)
       return
     }

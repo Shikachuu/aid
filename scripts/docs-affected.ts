@@ -132,7 +132,13 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
     pages: [`${DOCS}/contributing/testing.md`],
   },
   {
-    sources: [".claude/rules/**", ".claude/hooks/**", "biome.json", "plugins/**"],
+    sources: [
+      ".claude/rules/**",
+      ".claude/hooks/**",
+      "bunfig.toml",
+      ".prettierignore",
+      "scripts/gen-bunfig.ts",
+    ],
     pages: [`${DOCS}/contributing/conventions.md`],
   },
   {

@@ -207,13 +207,13 @@ describe("lintCss", () => {
 })
 
 describe("css in the lint and fmt pipelines", () => {
-  test("lint reports CSS through the css tool only, not Biome", async () => {
+  test("lint reports CSS through the css tool only, not bun", async () => {
     await Bun.write(join(dir, "a.css"), ".a { colr: red; }\n")
     const report = await lintAll({ dir, fix: false, filter: null })
     const byTool = Object.fromEntries(report.results.map((r) => [r.tool, r.diagnostics.length]))
     expect(byTool.css).toBe(1)
-    expect(byTool.biome).toBe(0)
-    expect(renderPretty(report.results)).toContain("(md 0, openapi 0, biome 0, css 1, proto 0)")
+    expect(byTool.bun).toBe(0)
+    expect(renderPretty(report.results)).toContain("(md 0, openapi 0, bun 0, css 1, proto 0)")
   })
 
   test("fmt drops css from --filter", () => {

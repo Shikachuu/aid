@@ -1,4 +1,5 @@
 import { resolve as resolvePath } from "node:path"
+import { FORMAT_CONFIGS, LINT_CONFIGS } from "./bun"
 import { KNOWN_TOOLS, type Report, type Tool, type ToolResult } from "./diagnostics"
 
 /** Directory names discovery never walks into, whatever the tool. */
@@ -27,7 +28,7 @@ export const PATTERNS: Record<Tool, readonly string[]> = {
     "**/*.openapi.{yaml,yml,json}",
     "**/openapi/**/*.{yaml,yml,json}",
   ],
-  biome: ["**/*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,css}"],
+  bun: ["**/*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,css}"],
   css: ["**/*.css"],
   proto: ["**/*.proto"],
 }
@@ -39,7 +40,7 @@ export const PATTERNS: Record<Tool, readonly string[]> = {
 export const USER_CONFIGS: Record<Tool, readonly string[]> = {
   md: [".markdownlint.json", ".markdownlint.jsonc", ".markdownlint.yaml", ".markdownlint.yml"],
   openapi: [".spectral.yaml", ".spectral.yml", ".spectral.json"],
-  biome: ["biome.json", "biome.jsonc"],
+  bun: [...LINT_CONFIGS, ...FORMAT_CONFIGS, "bunfig.toml"],
   css: [],
   proto: ["buf.yaml"],
 }

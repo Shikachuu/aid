@@ -6,9 +6,9 @@
 
 | Area | Choice |
 | --- | --- |
-| Runtime | Bun >= 1.3.6 (mise-pinned to 1.4.4) |
+| Runtime | Bun canary `1.4.4-canary.20261103.1` (mise `http:bun` pin), the first build with `bun lint` |
 | Language | TypeScript, strict mode, ESM only |
-| Lint and format | Biome 2.6.x |
+| Lint and format | `bun lint` and `bun fmt`, configured in the generated `bunfig.toml` |
 | Styling | Tailwind 4 |
 | JSX runtime | custom (`@aid/jsx`, mapped in `tsconfig.json`) |
 
@@ -19,8 +19,10 @@
 | `bun run build` | Run `scripts/compile.ts`: emit the schema, bundle the browser runtime, and cross-compile the release binaries |
 | `bun run emit-schema` | Emit `schemas/aid.schema.json` from Zod |
 | `bun run typecheck` | `tsc --noEmit` |
-| `bun run lint` | `biome check .` |
-| `bun run fmt` | `biome format --write .` |
+| `bun run lint` | `bun lint` over the code, then `aid lint --filter css` over every CSS file |
+| `bun run fmt` | `bun fmt` over the code, JSON, and CSS |
+| `bun run gen-bunfig` | Generate `bunfig.toml` from the bundled lint rules plus the repo extras (`--check` fails on drift) |
+| `bun run gen-css-data` | Generate `src/lint/css-data.json` from the webref packages (`--check` fails on drift) |
 | `bun test` | Bun test runner |
 | `bun run gen-docs` | Generate `site/docs/reference/**` from the Zod schemas, CLI definitions, and lint tables (`--check` fails on drift) |
 | `bun run docs:dev` | Serve the docs site at `http://localhost:3000/aid/` with live reload |
@@ -41,4 +43,4 @@ Style and convention rules are split across `.claude/rules/`. Files without `pat
 
 ## Hooks
 
-A PostToolUse hook formats every edited file (`.claude/hooks/format-on-edit.sh`): Biome for code, aid's own markdown formatter for `.md`. Do not format files yourself. The hook formats them.
+A PostToolUse hook formats every edited file (`.claude/hooks/format-on-edit.sh`): `bun fmt` and `bun lint --fix` for code, aid's own markdown formatter for `.md`. Do not format files yourself. The hook formats them.

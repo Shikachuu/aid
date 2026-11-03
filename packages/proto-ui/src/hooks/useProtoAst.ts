@@ -68,7 +68,7 @@ export const useProtoAst = (options: UseProtoAstOptions): UseProtoAstResult => {
     if (fetchError) {
       return { status: "error", ast: null, error: fetchError, source: null }
     }
-    if (fetched && fetched.url === protoUrl) {
+    if (fetched?.url === protoUrl) {
       return parseSafe(fetched.source)
     }
     return LOADING

@@ -64,7 +64,11 @@ export const compileTarget = async (target: Target, outfile: string): Promise<vo
   const started = performance.now()
   await Bun.build({
     entrypoints: [CLI_ENTRY],
-    compile: { target: target.triple, outfile },
+    compile: {
+      target: target.triple,
+      outfile,
+      executablePath: resolve(ROOT, "node_modules", target.bunSubpkg, "bin", "bun"),
+    },
     // Bun does not dead-code-eliminate `with { type: "file" }` imports. Without these
     // externals every binary would embed all four `@bufbuild/buf-*/bin/buf` files
     // (about 200 MB) and all four lightningcss `.node` bindings (about 24 MB).
