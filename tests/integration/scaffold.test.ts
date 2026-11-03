@@ -33,3 +33,16 @@ test("compiled theme styles the search results dropdown", () => {
   expect(css).toMatch(/\.aid-search-result\s*\{/)
   expect(css).toContain('aria-selected="true"')
 })
+
+test("compiled theme styles markdown and HTML page content", () => {
+  expect(css).toMatch(/:where\(\.aid-page-markdown, \.aid-page-html\) h2\s*\{/)
+  expect(css).toMatch(
+    /:where\(\.aid-page-markdown, \.aid-page-html\) ul\s*\{[^}]*list-style-type:\s*disc/,
+  )
+})
+
+test("aid tokens reach the proto-ui root, which declares its own defaults", () => {
+  expect(css).toMatch(
+    /\.aid-page-proto \.proto-root\s*\{[^}]*--proto-color-accent:\s*var\(--color-aid-accent\)/,
+  )
+})

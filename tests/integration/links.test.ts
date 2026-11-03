@@ -169,5 +169,6 @@ test("proto pages fetch their .proto export by absolute URL under base_path", as
   await build(ctx)
   const html = await readOut(ctx, "api", "ping", "index.html")
   expect(html).toContain('data-proto-url="/docs/api/ping.proto"')
+  expect(html).toContain('<div id="aid-proto-mount" data-proto-url=')
   expect(await Bun.file(path.join(ctx.outputDir, "api", "ping.proto")).exists()).toBe(true)
 })

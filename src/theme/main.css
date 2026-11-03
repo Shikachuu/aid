@@ -99,8 +99,88 @@
     @apply flex justify-end;
   }
 
+  .aid-main {
+    @apply min-w-0 px-8 py-6;
+  }
+
   .aid-page-markdown {
-    @apply mx-auto w-full max-w-prose;
+    @apply mx-auto w-full max-w-3xl;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) {
+    @apply leading-7;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) :is(p, ul, ol, table, blockquote, details, figure) {
+    @apply my-4;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) h1 {
+    @apply mt-2 mb-6 text-3xl font-bold tracking-tight;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) h2 {
+    @apply mt-10 mb-4 border-b border-aid-border pb-2 text-2xl font-semibold;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) h3 {
+    @apply mt-8 mb-3 text-xl font-semibold;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) :is(h4, h5, h6) {
+    @apply mt-6 mb-2 font-semibold;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) ul {
+    @apply list-disc pl-6;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) ol {
+    @apply list-decimal pl-6;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) li {
+    @apply my-1;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) li > :is(ul, ol, p) {
+    @apply my-1;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) .contains-task-list {
+    @apply list-none pl-0;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) a {
+    @apply text-aid-accent underline underline-offset-2 hover:no-underline;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) table {
+    @apply block w-full overflow-x-auto border-collapse text-sm;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) :is(th, td) {
+    @apply border border-aid-border px-3 py-2 text-left align-top;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) th {
+    @apply bg-aid-muted/8 font-semibold;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) blockquote {
+    @apply border-l-4 border-aid-border pl-4 text-aid-muted;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) hr {
+    @apply my-8 border-aid-border;
+  }
+
+  :where(.aid-page-markdown, .aid-page-html) img {
+    @apply max-w-full;
+  }
+
+  .aid-callout > :is(p, ul, ol) {
+    @apply my-1;
   }
 
   :where(.aid-page-openapi) {
@@ -113,7 +193,7 @@
     @apply [--scalar-font-code:var(--font-aid-mono)];
   }
 
-  :where(.aid-page-proto) {
+  .aid-page-proto .proto-root {
     @apply [--proto-color-bg:var(--color-aid-bg)];
     @apply [--proto-color-text:var(--color-aid-text)];
     @apply [--proto-color-muted:var(--color-aid-muted)];

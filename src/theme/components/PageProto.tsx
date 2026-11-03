@@ -18,7 +18,7 @@ export function PageProto({ title, protoUrl, machineUrl }: PageProtoProps) {
         <AIButton machineUrl={machineUrl} />
       </div>
       <h1>{title}</h1>
-      <div id="aid-proto-mount" class="proto-root" data-proto-url={protoUrl}>
+      <div id="aid-proto-mount" data-proto-url={protoUrl}>
         <p class="aid-proto-loading">Loading proto documentation…</p>
       </div>
     </article>

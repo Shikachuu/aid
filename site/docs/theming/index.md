@@ -64,7 +64,7 @@ Write colors as `oklch()`. With the default `theme.dark_mode: auto`, aid derives
 
 OpenAPI pages render with Scalar, and proto pages render with aid's proto UI. Each has its own variables. The bundled theme maps your tokens onto them, so one override changes all page types.
 
-| aid token | Scalar variable, on `.aid-page-openapi` | Proto UI variable, on `.aid-page-proto` |
+| aid token | Scalar variable, on `.aid-page-openapi` | Proto UI variable, on `.aid-page-proto .proto-root` |
 | --- | --- | --- |
 | `--color-aid-text` | `--scalar-color-1` | `--proto-color-text` |
 | `--color-aid-muted` | `--scalar-color-2` | `--proto-color-muted` |
