@@ -6,7 +6,7 @@ sidebar:
   order: 1
 ---
 
-aid pins its toolchain with mise. `mise.toml` pins Bun 1.3.13, and `package.json` requires Bun 1.3.6 or newer through `engines.bun`.
+aid pins its toolchain with mise. `mise.toml` pins Bun 1.3.13, and `package.json` requires Bun 1.3.6 or newer through `engines.bun`. `mise.lock` records the resolved tool versions and is committed, so every checkout and CI run installs the same Bun.
 
 ## Install
 
