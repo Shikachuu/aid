@@ -19,11 +19,12 @@ import {
   reportBrokenLinks,
 } from "./links"
 import { buildLlmsTxt } from "./llms-txt"
+import { buildNav } from "./nav"
 import { buildRoutes, exportPath } from "./router"
 import { buildSearchIndex, type SearchIndexResult } from "./search-index"
 import { copyStaticAssets } from "./static"
 import { compileTailwind } from "./tailwind"
-import type { BuildContext, RenderedPage, Route } from "./types"
+import type { BuildContext, NavNode, RenderedPage, Route } from "./types"
 import { type BuildWebBundleResult, buildWebBundle, writeHashed } from "./web-bundle"
 
 const STYLESHEET_PLACEHOLDER = "__AID_STYLESHEET_HREF__"
@@ -43,8 +44,14 @@ export async function build(ctx: BuildContext): Promise<void> {
     routes.map((route) => dispatchRenderer(route, ctx, registry, index)),
   )
 
+  const nav = await buildNav(ctx, rendered)
+
   reportBrokenLinks(
-    [...rendered.flatMap((p) => p.diagnostics ?? []), ...checkAnchors(rendered)],
+    [
+      ...rendered.flatMap((p) => p.diagnostics ?? []),
+      ...checkAnchors(rendered),
+      ...nav.diagnostics,
+    ],
     ctx,
   )
 
@@ -58,7 +65,7 @@ export async function build(ctx: BuildContext): Promise<void> {
 
   const docs = rendered.map((page) => ({
     fsPath: outputPathForRoute(page.route, ctx),
-    html: wrapInLayout(page, ctx, STYLESHEET_PLACEHOLDER, web, searchIndex),
+    html: wrapInLayout(page, ctx, nav.tree, STYLESHEET_PLACEHOLDER, web, searchIndex),
   }))
 
   const sideExports = rendered.flatMap((page) =>
@@ -170,6 +177,7 @@ async function realpathOrNull(p: string): Promise<string | null> {
 function wrapInLayout(
   page: RenderedPage,
   ctx: BuildContext,
+  nav: NavNode[],
   stylesheetHref: string,
   web: BuildWebBundleResult,
   searchIndex: SearchIndexResult | null,
@@ -187,7 +195,8 @@ function wrapInLayout(
       config: ctx.config,
       title: page.searchTokens.title,
       description,
-      nav: [],
+      nav,
+      currentPath: page.route.path,
       stylesheetHref,
       webBundleHref: web.baseHref,
       mermaidBundleHref: page.hasMermaid ? web.mermaidHref : null,

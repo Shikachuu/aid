@@ -26,6 +26,30 @@
     @apply mx-auto grid grid-cols-[16rem_1fr];
   }
 
+  .aid-sidebar {
+    @apply sticky top-0 max-h-screen self-start overflow-y-auto border-r border-aid-border p-4 text-sm;
+  }
+
+  .aid-nav-list {
+    @apply m-0 list-none p-0;
+  }
+
+  .aid-nav-list .aid-nav-list {
+    @apply ml-2 border-l border-aid-border pl-2;
+  }
+
+  .aid-nav-link {
+    @apply block rounded px-2 py-1 text-aid-text no-underline hover:bg-aid-muted/10;
+  }
+
+  .aid-nav-link[aria-current="page"] {
+    @apply font-semibold text-aid-accent;
+  }
+
+  .aid-nav-label {
+    @apply block px-2 py-1 font-semibold text-aid-muted;
+  }
+
   .aid-header {
     @apply border-b border-aid-border p-4;
   }

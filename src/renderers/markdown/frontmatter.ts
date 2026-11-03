@@ -1,5 +1,23 @@
 import { z } from "zod"
 
+/** Sidebar label and position, shared by page frontmatter and `_meta.yaml` entries. */
+export const SidebarEntrySchema = z
+  .object({
+    label: z.string().min(1).optional().describe("Sidebar label. Defaults to the page title."),
+    order: z
+      .number()
+      .optional()
+      .describe("Sort key among siblings, ascending. Entries without one sort last, by name."),
+  })
+  .strict()
+
+/**
+ * Schema for a folder's `_meta.yaml`: sidebar overrides keyed by child route
+ * segment (a page name without extension, or a subfolder name). The key
+ * `index` addresses the site root page in the content root.
+ */
+export const NavMetaSchema = z.record(z.string(), SidebarEntrySchema)
+
 /**
  * Schema for the YAML frontmatter block at the top of a markdown source. Known
  * keys are typed. Unknown keys pass through, so users can keep their own
@@ -13,6 +31,7 @@ export const FrontmatterSchema = z
       .literal("optional")
       .optional()
       .describe("Move this page to the `## Optional` section of llms.txt."),
+    sidebar: SidebarEntrySchema.optional().describe("Sidebar label and position for this page."),
   })
   .catchall(z.unknown())
 

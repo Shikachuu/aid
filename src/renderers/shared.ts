@@ -10,6 +10,15 @@ export function hastText(node: HastElement | ElementContent): string {
   return node.type === "element" ? node.children.map(hastText).join("") : ""
 }
 
+/** Display label for a slug such as `getting-started`, used where a folder has no page title. */
+export function titleCase(slug: string): string {
+  return slug
+    .split(/[-_]/)
+    .filter((s) => s.length > 0)
+    .map((s) => s[0]?.toUpperCase() + s.slice(1))
+    .join(" ")
+}
+
 /** Copy of `buckets` without its empty lists, so search extras carry only real fields. */
 export function nonEmpty(buckets: Record<string, string[]>): Record<string, string[]> {
   return Object.fromEntries(Object.entries(buckets).filter(([, list]) => list.length > 0))

@@ -11,6 +11,8 @@ type LayoutProps = {
   title: string
   description?: string
   nav: NavNode[]
+  /** Route path of this page, so the sidebar can mark it active. */
+  currentPath: string
   stylesheetHref: string
   webBundleHref: string
   mermaidBundleHref?: string | null
@@ -32,6 +34,7 @@ export function Layout(props: LayoutProps) {
     title,
     description,
     nav,
+    currentPath,
     stylesheetHref,
     webBundleHref,
     mermaidBundleHref,
@@ -59,7 +62,7 @@ export function Layout(props: LayoutProps) {
         <Header config={config} search={search} />
         <div class="aid-shell">
           <aside class="aid-sidebar">
-            <Nav tree={nav} />
+            <Nav tree={nav} currentPath={currentPath} basePath={config.base_path} />
           </aside>
           <main class="aid-main">
             <RawHtml html={bodyHtml} />

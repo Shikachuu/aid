@@ -131,6 +131,14 @@ test("OpenAPI route emits a sibling api.json with the normalized spec", async ()
   expect(spec.paths?.["/pets"]).toBeDefined()
 })
 
+test("fixture sidebar links every page and marks the current one", () => {
+  const nav = html.match(/<nav class="aid-nav"[\s\S]*?<\/nav>/)?.[0] ?? ""
+  expect(nav).toContain('href="/" aria-current="page"')
+  expect(nav).toContain('href="/about"')
+  expect(nav).toContain('href="/api"')
+  expect(nav).toContain('href="/events"')
+})
+
 test("about.html is wrapped in the layout shell and its <title> becomes the document title", async () => {
   expect(await outputExists("about", "index.html")).toBe(true)
   const aboutHtml = await readOutput("about", "index.html")

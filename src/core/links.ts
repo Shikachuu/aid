@@ -172,6 +172,9 @@ function anchorDiagnostic(file: string, ref: AnchorRef): Diagnostic {
   }
 }
 
+const location = (d: Diagnostic): string =>
+  d.line === undefined ? d.file : `${d.file}:${d.line}:${d.col ?? 1}`
+
 /**
  * Report every broken reference in one message, sorted by file and position.
  * Throws unless `on_broken_links` is `warn`, so one build run lists every
@@ -189,7 +192,7 @@ export function reportBrokenLinks(problems: Diagnostic[], ctx: BuildContext): vo
         (a.line ?? 0) - (b.line ?? 0) ||
         (a.col ?? 0) - (b.col ?? 0),
     )
-    .map((d) => `  ${d.file}:${d.line ?? 0}:${d.col ?? 0}  ${d.code}  ${d.message}`)
+    .map((d) => `  ${location(d)}  ${d.code}  ${d.message}`)
   const message = `aid: ${problems.length} broken reference${problems.length === 1 ? "" : "s"}\n${lines.join("\n")}`
   if (ctx.config.on_broken_links === "warn") {
     console.warn(message)

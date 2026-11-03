@@ -1,4 +1,5 @@
 import path from "node:path"
+import { titleCase } from "../renderers/shared"
 import type { AidConfig } from "./config"
 import { exportPath } from "./router"
 import type { BuildContext, RenderedPage } from "./types"
@@ -87,14 +88,6 @@ function machineUrlFor(page: RenderedPage, config: AidConfig): string {
 function groupLabelFor(routePath: string): string {
   const [first, ...rest] = routePath.split("/").filter(Boolean)
   return first && rest.length > 0 ? titleCase(first) : ROOT_GROUP
-}
-
-function titleCase(slug: string): string {
-  return slug
-    .split(/[-_]/)
-    .filter((s) => s.length > 0)
-    .map((s) => s[0]?.toUpperCase() + s.slice(1))
-    .join(" ")
 }
 
 function compareGroups(a: string, b: string): number {
