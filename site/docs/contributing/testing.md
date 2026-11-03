@@ -63,11 +63,15 @@ tests/fixtures/sample-site/
 
 `tests/fixtures/lint-fixtures/with-user-md-config` holds an `index.md` and a `.markdownlint.json` that turns off MD012 and four other rules. `tests/unit/lint.test.ts` uses it to check that `aid lint` reads a project's own markdownlint config.
 
+`tests/fixtures/lint-fixtures/openapi-bad-json` holds an `openapi.json` with an unterminated string. `biome.json` excludes it. `tests/integration/compiled-binary.test.ts` uses it.
+
 `.claude/rules/tests.md` asks for new fixtures next to `sample-site`, not in a new top-level layout. Commit any snapshot file together with the test that produced it.
 
 ## Smoke-test the binary
 
-`bun test` runs aid from source. To check the compiled binary, run:
+`bun test` runs aid from source, with one exception. `tests/integration/compiled-binary.test.ts` compiles the host binary with `compileTarget` from `scripts/compile.ts`, runs `lint --filter openapi --format json` on the bad-JSON fixture with both the binary and the source CLI, and checks that the two outputs match. It skips on platforms without a release target.
+
+To check the compiled binary end to end, run:
 
 ```sh
 bun scripts/manual-test.ts

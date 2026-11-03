@@ -26,7 +26,7 @@ aid is one Bun and TypeScript codebase that compiles to a single binary per plat
 | `src/fmt` | `aid fmt`: markdownlint fixes, Biome, buf format, and OpenAPI formatting. |
 | `src/dev` | `aid dev`: a `Bun.serve` server, a file watcher, and the rebuild loop with live reload over server-sent events. |
 | `packages/proto-ui` | `@aid/proto-ui`, a React package with the `.proto` parser (protobufjs) and the proto reference UI. |
-| `scripts/` | Build and docs scripts: `compile.ts`, `bundle-web.ts`, `stage-natives.ts`, `emit-schema.ts`, `gen-docs.ts`, `docs-affected.ts`, `manual-test.ts`. |
+| `scripts/` | Build and docs scripts: `compile.ts`, `natives.ts`, `bundle-web.ts`, `stage-natives.ts`, `check-binaries.ts`, `emit-schema.ts`, `gen-docs.ts`, `docs-affected.ts`, `manual-test.ts`. |
 | `schemas/` | `aid.schema.json`, the JSON Schema that `scripts/emit-schema.ts` emits from the Zod config schema. |
 | `assets/scaffold` | A starter project (`aid.yaml`, `main.css`, `docs/index.md`). `tests/integration/scaffold.test.ts` builds it. `aid init` does not copy it yet. |
 | `tests/unit` | Unit tests for single modules. |

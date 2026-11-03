@@ -67,12 +67,12 @@
       <tr>
         <td>Release workflow (<code>.github/workflows/release.yml</code>)</td>
         <td>On a <code>v*</code> tag the workflow compiles the binaries and uploads them with the JSON Schema to a GitHub release.</td>
-        <td>It installs dependencies with <code>bun install</code> instead of mise, so <code>scripts/stage-natives.ts</code> never runs. <code>bun publish</code> fails because <code>package.json</code> sets <code>"private": true</code>. It uses <code>bun-version: latest</code> instead of the pinned 1.3.13. Every matrix job compiles all four targets, because <code>scripts/compile.ts</code> ignores the matrix. No tag exists yet, so the workflow has never run.</td>
+        <td>It installs dependencies with <code>bun install</code> instead of mise, so <code>scripts/stage-natives.ts</code> never runs. <code>bun publish</code> fails because <code>package.json</code> sets <code>"private": true</code>. It uses <code>bun-version: latest</code> instead of the pinned 1.4.4. Every matrix job compiles all four targets, because <code>scripts/compile.ts</code> ignores the matrix. No tag exists yet, so the workflow has never run.</td>
       </tr>
       <tr>
         <td>Compiled binaries</td>
         <td><code>bun run build</code> writes four binaries to <code>dist/bin/</code>, and they build sites when run inside a checkout of the aid repository.</td>
-        <td>On macOS the binaries carry an invalid ad-hoc signature, and macOS kills them on start until you re-sign them. Outside the aid repository the <code>darwin-arm64</code> binary fails on start with <code>Cannot find module '@bufbuild/buf-darwin-x64/bin/buf'</code>. See <a href="./getting-started/installation.md">installation</a>.</td>
+        <td>A <code>darwin-x64</code> binary cross-compiled on Apple silicon carries an invalid ad-hoc signature, and macOS kills it on start until you re-sign it. Outside the aid repository the <code>darwin-arm64</code> binary fails on start with <code>Cannot find module '@bufbuild/buf-darwin-x64/bin/buf'</code>. Every binary also reads Biome's <code>biome_wasm_bg.wasm</code> from the build machine's <code>node_modules</code> path, so <code>aid lint</code> fails with <code>ENOENT</code> elsewhere. See <a href="./getting-started/installation.md">installation</a>.</td>
       </tr>
       <tr>
         <td>Rebuilds</td>

@@ -23,7 +23,7 @@ Claude Code loads a rule file without `paths:` frontmatter in every session. It 
 
 ## Biome
 
-`biome.json` configures formatting and linting for `src/`, `scripts/`, `tests/`, `packages/`, `site/`, and the root `*.json` and `*.md` files. It skips `node_modules`, `dist`, `.bun`, and `schemas/aid.schema.json`.
+`biome.json` configures formatting and linting for `src/`, `scripts/`, `tests/`, `packages/`, `site/`, and the root `*.json` and `*.md` files. It skips `node_modules`, `dist`, `.bun`, every `*.svg`, `schemas/aid.schema.json`, and the invalid JSON fixture in `tests/fixtures/lint-fixtures/openapi-bad-json`. It turns off Biome's markdown and YAML formatter and linter, so Biome leaves `.md` files to aid's own formatter and markdownlint.
 
 Formatter settings:
 
@@ -32,7 +32,7 @@ Formatter settings:
 - No semicolons, except where automatic semicolon insertion needs one.
 - Trailing commas everywhere and parentheses around every arrow function parameter.
 
-Lint rules beyond Biome's recommended set:
+Lint rules beyond Biome's `recommended` preset:
 
 | Rule | Level | Effect |
 | --- | --- | --- |
@@ -41,7 +41,7 @@ Lint rules beyond Biome's recommended set:
 | `style/useConsistentTypeDefinitions` | error | Use `type`, not `interface`. |
 | `complexity/useArrowFunction` | error | Use arrow functions instead of function expressions. |
 | `performance/noNamespaceImport` | error | No `import * as`. |
-| `nursery/useSortedClasses` | warn | Tailwind classes in `class`, `className`, and `clsx`, `cn`, `cva`, `tw`, and `twMerge` calls must be sorted. |
+| `nursery/useTailwindSortedClasses` | warn | Tailwind classes must be sorted. The top-level `tailwind` block applies it to the `class` and `className` attributes, the `clsx`, `cn`, `tw`, and `twMerge` calls, and `cva` variants. |
 
 The CSS parser has `tailwindDirectives` on, so Biome accepts `@theme`, `@apply`, and the other Tailwind directives.
 

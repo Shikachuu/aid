@@ -12,7 +12,7 @@ aid has no published release: the repository has no tags and no downloadable bin
 - git
 - [mise](https://mise.jdx.dev), which installs the pinned Bun version
 
-`mise.toml` pins Bun 1.3.13. `package.json` requires Bun 1.3.6 or newer.
+`mise.toml` pins Bun 1.4.4. `package.json` requires Bun 1.3.6 or newer.
 
 ## Set up the checkout
 
@@ -25,7 +25,7 @@ mise install
 
 `mise trust` marks the repository's `mise.toml` as trusted. mise does not apply an untrusted config file and reports an error instead.
 
-Run `mise install`, not `bun install`. `mise install` installs Bun 1.3.13 and then runs the `postinstall` hook from `mise.toml`, which runs three commands:
+Run `mise install`, not `bun install`. `mise install` installs Bun 1.4.4 and then runs the `postinstall` hook from `mise.toml`, which runs three commands:
 
 1. `bun install --cpu='*' --os='*'` installs the dependencies for every platform. The flags pull in the native packages of `@tailwindcss/oxide` and `@bufbuild/buf` for every operating system and CPU, which the cross-compile step needs. A bare `bun install` skips the packages for other platforms without a warning.
 2. `bun scripts/stage-natives.ts` copies each platform's lightningcss `.node` binding to `vendor/natives/` with a `.bin` extension, so the compiled binary can embed it.
@@ -42,10 +42,10 @@ bun src/cli/index.ts build ../my-docs
 bun src/cli/index.ts dev ../my-docs
 ```
 
-mise selects Bun 1.3.13 only inside the checkout. In other folders `bun` may be another version, and older versions fail with `undefined is not an object (evaluating 'Bun.YAML.parse')`. To run aid from your project folder, call the pinned Bun through mise:
+mise selects Bun 1.4.4 only inside the checkout. In other folders `bun` may be another version, and older versions fail with `undefined is not an object (evaluating 'Bun.YAML.parse')`. To run aid from your project folder, call the pinned Bun through mise:
 
 ```sh
-alias aid='mise exec bun@1.3.13 -- bun /path/to/aid/src/cli/index.ts'
+alias aid='mise exec bun@1.4.4 -- bun /path/to/aid/src/cli/index.ts'
 aid build
 ```
 
@@ -71,9 +71,9 @@ bun run build
 | Linux, arm64 | `dist/bin/aid-linux-arm64` |
 | Linux, x64 | `dist/bin/aid-linux-x64` |
 
-There is no Windows target. Each binary is between 175 and 216 MB, because it embeds Bun, the Tailwind compiler, `buf`, and the browser scripts.
+There is no Windows target. Each binary is between 199 and 222 MB, because it embeds Bun, the Tailwind compiler, `buf`, and the browser scripts.
 
 Step 3 rewrites `src/web/_bundled.ts`, a tracked file. Restore it with `git checkout -- src/web/_bundled.ts` before you commit; the repository keeps only the empty placeholders.
 
 > [!WARNING]
-> The compiled binaries do not work as standalone installs yet. On macOS, the binaries carry an invalid ad-hoc signature, and macOS kills them on start. Re-sign a copy with `codesign --force --sign - <file>` to run it. Outside the aid checkout, the `darwin-arm64` binary then fails on start with `Cannot find module '@bufbuild/buf-darwin-x64/bin/buf'`. Run aid from source until this is fixed. The [status page](../status.html) tracks it.
+> The compiled binaries do not work as standalone installs yet. A `darwin-x64` binary cross-compiled on Apple silicon carries an invalid ad-hoc signature, and macOS kills it on start. Re-sign a copy with `codesign --force --sign - <file>` to run it. Outside the aid checkout, the `darwin-arm64` binary fails on start with `Cannot find module '@bufbuild/buf-darwin-x64/bin/buf'`. Every binary also reads Biome's `biome_wasm_bg.wasm` from the `node_modules` path of the machine that built it, so `aid lint` fails with `ENOENT` on any other machine. Run aid from source until this is fixed. The [status page](../status.html) tracks it.

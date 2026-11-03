@@ -66,7 +66,8 @@ The page holds the parsed spec as JSON in `<script type="application/json" id="a
 - the `modern` layout;
 - Scalar's own search box hidden, because aid's search indexes the spec;
 - Scalar's own dark mode toggle hidden;
-- Scalar's agent feature turned off.
+- Scalar's agent feature turned off;
+- Scalar's developer toolbar hidden, which Scalar otherwise shows on `localhost`.
 
 aid emits the Scalar bundle and its stylesheet only when the site has at least one OpenAPI page, and only OpenAPI pages load them. The bundled theme maps aid's color and font tokens onto Scalar's `--scalar-*` CSS variables.
 

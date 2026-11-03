@@ -6,9 +6,9 @@
 
 | Area | Choice |
 | --- | --- |
-| Runtime | Bun >= 1.3.6 (mise-pinned to 1.3.13) |
+| Runtime | Bun >= 1.3.6 (mise-pinned to 1.4.4) |
 | Language | TypeScript, strict mode, ESM only |
-| Lint and format | Biome 2.4.x |
+| Lint and format | Biome 2.6.x |
 | Styling | Tailwind 4 |
 | JSX runtime | custom (`@aid/jsx`, mapped in `tsconfig.json`) |
 
@@ -27,6 +27,7 @@
 | `bun run docs:build` | Build the docs site into `site/dist` |
 | `bun run docs:lint` | Run `aid lint --filter md` over `site/` |
 | `bun run docs:affected` | List docs pages mapped to the files changed since `origin/main` |
+| `bun run deps:binaries` | Check platform packages, staged natives, and the Bun pin for drift, and list upstream updates (`--offline` skips the lookup) |
 
 Run the CLI from source with `bun src/cli/index.ts <command>`, for example `bun src/cli/index.ts dev`.
 

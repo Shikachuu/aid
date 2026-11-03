@@ -18,7 +18,7 @@ In the repository, open Settings, then Pages, and set Source under "Build and de
 The `build` job:
 
 1. checks out the repository;
-2. runs `jdx/mise-action`, which installs Bun 1.3.13 from `mise.toml` and runs `mise install` with its `postinstall` hook (see [installation](../getting-started/installation.md));
+2. runs `jdx/mise-action`, which installs Bun 1.4.4 from `mise.toml` and runs `mise install` with its `postinstall` hook (see [installation](../getting-started/installation.md));
 3. runs `actions/configure-pages`;
 4. runs `bun run docs:build`, which is `bun src/cli/index.ts build site --clean`;
 5. uploads `site/dist` with `actions/upload-pages-artifact`.
@@ -68,12 +68,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the site
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Check out aid
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Shikachuu/aid
           ref: main
@@ -81,7 +81,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up mise
-        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
 
       - name: Install aid
         working-directory: .aid-src
@@ -116,7 +116,7 @@ jobs:
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 ```
 
-The aid steps run inside `.aid-src`, where `mise.toml` selects Bun 1.3.13. The build command takes your repository root, `$GITHUB_WORKSPACE`, as the project folder. Replace `ref: main` with a commit SHA to pin the aid version.
+The aid steps run inside `.aid-src`, where `mise.toml` selects Bun 1.4.4. The build command takes your repository root, `$GITHUB_WORKSPACE`, as the project folder. Replace `ref: main` with a commit SHA to pin the aid version.
 
 > [!NOTE]
 > This workflow uses the same actions and build steps as this site's workflow. It has not been run from a separate repository.

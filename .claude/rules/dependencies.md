@@ -35,5 +35,6 @@ The canonical command is `mise install`, **not** `bun install`. `mise.toml` has 
 
 - Install the **current latest** (`bun add pkg`). Do not pin an older version by hand unless there is a specific compatibility reason. If there is one, document it inline.
 - Pin the resolved version in `package.json` with an explicit caret range (e.g. `"zod": "^4.4.3"`). `bun add` writes this range by default. Never leave a dependency as `"*"`, because that hides the actual resolution behind `bun.lock` and makes the metadata non-reproducible. Platform-specific subpackages (e.g. `@bufbuild/buf-darwin-arm64`) stay exact-pinned to match their parent.
+- Bump a binary family (`@bufbuild/buf`, `@tailwindcss/oxide`, Biome) with its platform subpackages in the same change, then run `bun run deps:binaries`. It prints the exact commands and fails on any drift.
 - Reuse what is already in the repo before adding a new package in the same space.
 - Do not add peer dependencies, runtime polyfills, or shims without explicit user direction.

@@ -17,6 +17,7 @@ aid has three GitHub Actions workflows in `.github/workflows/`: `ci.yml` checks 
 | Typecheck | `bun run typecheck` | `tsc --noEmit` reports an error. |
 | Lint | `bun run lint` | `biome check .` reports an error. |
 | Test | `bun test` | A test fails. |
+| Binary and runtime drift | `bun run deps:binaries --offline` | A platform package, a staged lightningcss binding, or the Bun version does not match. [Development setup](./dev-setup.md#check-the-binaries-and-the-runtime) lists the checks. |
 | Schema parity | `bun run scripts/emit-schema.ts --check` | `schemas/aid.schema.json` differs from the Zod schema. |
 | Docs reference parity | `bun run gen-docs --check` | A file under `site/docs/reference/` or `site/static/schemas/` differs from what `scripts/gen-docs.ts` generates. |
 | Build docs site | `bun run docs:build` | aid fails to build `site/`, for example on a broken link or anchor. |
@@ -46,8 +47,7 @@ To fix a parity failure, run `bun run emit-schema` or `bun run gen-docs` and com
 > [!WARNING]
 > `release.yml` has known bugs and is not fixed yet. `.claude/cleanup/README.md` and `.claude/cleanup/ponytail/slice-A-core-cli-scripts.md` list them:
 >
-> - It pins actions to tags such as `actions/checkout@v4`, while `ci.yml` and `docs.yml` pin commit SHAs.
-> - It installs Bun with `bun-version: latest`, not the 1.3.13 that `mise.toml` pins.
+> - It installs Bun with `bun-version: latest`, not the 1.4.4 that `mise.toml` pins.
 > - It skips mise and runs `bun install --frozen-lockfile`. That install omits the other platforms' packages, and `scripts/stage-natives.ts` never runs, so the `vendor/natives/*.bin` imports that `src/core/internal/lightningcss-native.ts` needs are missing.
 > - `scripts/compile.ts` ignores `matrix.target` and compiles all four targets, so every matrix job builds the same four binaries and uploads them under the same file names.
 > - `bun publish` fails, because the root `package.json` sets `"private": true`.

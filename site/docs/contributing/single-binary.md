@@ -6,7 +6,7 @@ sidebar:
   order: 4
 ---
 
-`bun run build` runs `scripts/compile.ts`, which produces `dist/bin/aid-<os>-<arch>` for four targets with `bun build --compile`. Each binary carries the browser runtime, the theme stylesheet, the buf binary, and the lightningcss native binding for its platform.
+`bun run build` runs `scripts/compile.ts`, which produces `dist/bin/aid-<os>-<arch>` for four targets with `Bun.build` and its `compile` option. Each binary carries the browser runtime, the theme stylesheet, the buf binary, and the lightningcss native binding for its platform.
 
 ## compile.ts
 
@@ -16,7 +16,7 @@ sidebar:
 2. `bun scripts/emit-schema.ts` rewrites `schemas/aid.schema.json` from the Zod schema.
 3. `copySchema` copies the schema to `dist/schemas/aid.schema.json`.
 4. `bun scripts/bundle-web.ts` bundles the browser runtime into `src/web/_bundled.ts`.
-5. `compileTarget` runs `bun build --compile src/cli/index.ts` once per target, in this order:
+5. `compileTarget` compiles `src/cli/index.ts` once per target, in this order. `scripts/natives.ts` holds this table as `TARGETS`, which `stage-natives.ts` and `check-binaries.ts` also read:
 
    | Output | Bun target | buf package | lightningcss package |
    | --- | --- | --- | --- |
@@ -29,10 +29,13 @@ sidebar:
 
 There is no Windows target.
 
-Each compile passes two kinds of flags:
+Each compile passes three kinds of options:
 
-- `--external <pkg>/bin/buf` for the three other targets' buf packages, and `--external <pkg>/*` for the three other lightningcss packages. Bun does not drop unused `with { type: "file" }` imports, so without these flags every binary would embed all four buf binaries (about 200 MB) and all four lightningcss bindings (about 24 MB).
-- `--define process.platform="<os>"` and `--define process.arch="<arch>"`. The platform checks in `src/lint/proto.ts` and `src/core/internal/lightningcss-native.ts` then pick the target's files at compile time, not the build machine's.
+- `external` lists `<pkg>/bin/buf` for the three other targets' buf packages and `<pkg>/*` for the three other lightningcss packages. Bun does not drop unused `with { type: "file" }` imports, so without this list every binary would embed all four buf binaries (about 200 MB) and all four lightningcss bindings (about 24 MB).
+- `define` sets `process.platform` to `"<os>"` and `process.arch` to `"<arch>"`. The platform checks in `src/lint/proto.ts` and `src/core/internal/lightningcss-native.ts` then pick the target's files at compile time, not the build machine's.
+- `plugins` holds `jsonc-parser-esm`, which [the jsonc-parser section](#jsonc-parser) explains.
+
+`compileTarget` is exported, so `tests/integration/compiled-binary.test.ts` can compile the host target alone.
 
 Cross-compiling needs every platform package in `node_modules`. `mise install` provides them, as [development setup](./dev-setup.md) explains.
 
@@ -74,6 +77,14 @@ Tailwind's `@tailwindcss/node` loads lightningcss, which loads its native bindin
 4. `compileTailwind` awaits `installLightningcssShim` before it imports `@tailwindcss/node`. The shim installs once per process.
 
 The shim runs from a source checkout too. If `vendor/natives/` is empty, the import of the `.bin` files fails, so run `mise install` before any build.
+
+## jsonc-parser
+
+Spectral parses JSON specs through `@stoplight/json`, which calls `require("jsonc-parser")`. The package's `main` entry is a UMD build that calls `require("./impl/format")` and its siblings through the UMD factory argument. Bun's bundler does not follow those calls, so a compiled binary fails with `Cannot find module './impl/format'` on the first JSON OpenAPI file.
+
+The `jsonc-parser-esm` plugin in `scripts/compile.ts` resolves every `jsonc-parser` import to `lib/esm/main.js` of the copy that the importer resolves, so each consumer keeps the version it declares. The plugin runs only at compile time. A source checkout loads the UMD build through Bun's runtime `require`, which follows the calls.
+
+`tests/integration/compiled-binary.test.ts` compiles the host binary, lints a malformed JSON spec from `tests/fixtures/lint-fixtures/openapi-bad-json/`, and checks that the output matches the source CLI.
 
 ## The theme stylesheet
 
