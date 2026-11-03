@@ -27,7 +27,6 @@ export type RenderHtmlArgs = {
    * output dir; omit during unit tests for a pure render with no side effects.
    */
   copyAsset?: CopyAsset
-  /** Optional resolver for relative `<a href>` values. The pipeline supplies one per route. */
   resolveLink?: ResolveLink
 }
 

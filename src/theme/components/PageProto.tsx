@@ -2,7 +2,6 @@ import { AIButton } from "./AIButton"
 
 type PageProtoProps = {
   title: string
-  /** Absolute URL of the `.proto` export the React component fetches. */
   protoUrl: string
   machineUrl: string
 }

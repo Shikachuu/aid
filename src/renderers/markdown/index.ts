@@ -34,7 +34,6 @@ export type RenderMarkdownArgs = {
    * omit during unit tests for a pure render with no side effects.
    */
   copyAsset?: CopyAsset
-  /** Optional resolver for relative links. The pipeline supplies one per route. */
   resolveLink?: ResolveLink
 }
 

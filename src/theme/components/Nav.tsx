@@ -3,7 +3,6 @@ import type { NavNode } from "../../core/types"
 
 type NavProps = {
   tree: NavNode[]
-  /** Route path of the page being rendered. Its link gets `aria-current="page"`. */
   currentPath: string
   basePath: string
 }

@@ -11,7 +11,6 @@ type LayoutProps = {
   title: string
   description?: string
   nav: NavNode[]
-  /** Route path of this page, so the sidebar can mark it active. */
   currentPath: string
   stylesheetHref: string
   webBundleHref: string

@@ -34,9 +34,7 @@ export type RenderedPage = {
   description?: string
   /** Element ids a link fragment may target. Undefined when ids only exist in the browser. */
   anchors?: string[]
-  /** Fragment links found in the page, checked against the target's `anchors`. */
   anchorRefs?: AnchorRef[]
-  /** Broken links and images found while rendering. */
   diagnostics?: Diagnostic[]
 }
 

@@ -11,15 +11,16 @@ export type RenderProtoArgs = {
   route: Route
   /** Absolute path of the source `.proto` file on disk. */
   sourcePath: string
-  /** `config.base_path`, so the browser fetches the `.proto` export by absolute URL. Default `/`. */
+  /** `config.base_path`, so the browser fetches the `.proto` export by absolute URL. */
   basePath?: string
 }
 
 /**
  * Render a `.proto` source as a hydration shell. The page holds a mount div
- * whose `data-proto-url` holds the absolute URL of the `.proto` export (page
- * URLs have no trailing slash, so a relative URL would resolve one level too high), and `aid-proto.js`
- * fetches that file and renders the UI in the browser. The build still parses
+ * whose `data-proto-url` holds the absolute URL of the `.proto` export, and
+ * `aid-proto.js` fetches that file and renders the UI in the browser. The URL
+ * is absolute because page URLs have no trailing slash, so a relative one
+ * would resolve one level too high. The build still parses
  * the AST to fill `searchTokens` and the page description.
  *
  * The only export is the `.proto` source itself, which agents read as is.
