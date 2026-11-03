@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+// Example API that aid renders as a page of this site. It has a unary and a
+// server-streaming RPC, a oneof, a nested message, an enum, and a deprecated field.
+//
+// Comments are markdown, so `code`, **bold**, and [links](https://protobuf.dev) render in the browser.
+package aid.example.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Reads and watches documentation pages.
+service PageService {
+  // Returns one page by its route path.
+  rpc GetPage(GetPageRequest) returns (GetPageResponse);
+
+  // Streams a page event every time a page under `prefix` changes.
+  rpc WatchPages(WatchPagesRequest) returns (stream WatchPagesResponse);
+}
+
+// The kind of source a page comes from.
+enum PageKind {
+  // Default value. Never set on a real page.
+  PAGE_KIND_UNSPECIFIED = 0;
+  // A `.md` file.
+  PAGE_KIND_MARKDOWN = 1;
+  // A full `.html` document.
+  PAGE_KIND_HTML = 2;
+  // A YAML or JSON file with a top-level `openapi` or `swagger` key.
+  PAGE_KIND_OPENAPI = 3;
+  // A `.proto` file.
+  PAGE_KIND_PROTO = 4;
+}
+
+// One rendered documentation page.
+message Page {
+  // Route path without `base_path`, for example `/guides/intro`.
+  string path = 1;
+  // Title shown in the sidebar and in search results.
+  string title = 2;
+  // Source kind.
+  PageKind kind = 3;
+  // Headings in document order.
+  repeated Heading headings = 4;
+  // Former single-string summary. Read `description` instead.
+  string summary = 5 [deprecated = true];
+  // One-sentence summary used in `<meta>` and llms.txt.
+  string description = 6;
+
+  // A heading inside a page.
+  message Heading {
+    // Heading level, 1 to 6.
+    int32 level = 1;
+    // Heading text.
+    string text = 2;
+    // Slug used as the heading id.
+    string id = 3;
+  }
+}
+
+// Request for `GetPage`.
+message GetPageRequest {
+  // Route path of the page to return.
+  string path = 1;
+}
+
+// Response for `GetPage`.
+message GetPageResponse {
+  // The requested page.
+  Page page = 1;
+}
+
+// Request for `WatchPages`.
+message WatchPagesRequest {
+  // Only report pages whose route path starts with this prefix. Empty means all pages.
+  string prefix = 1;
+}
+
+// Response for `WatchPages`: one change to one page.
+message WatchPagesResponse {
+  // What happened to the page.
+  oneof event {
+    // The page was added or its source changed.
+    Page upserted = 1;
+    // Route path of a page whose source was deleted.
+    string removed_path = 2;
+  }
+  // When aid saw the change.
+  google.protobuf.Timestamp changed_at = 3;
+}

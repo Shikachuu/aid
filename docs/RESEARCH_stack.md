@@ -1,6 +1,6 @@
 # Research: implementation language and stack for `aid`
 
-Status: historical research brief. The project chose Bun and TypeScript; see docs/BUILD.md for the current design.
+Status: historical research brief. The project chose Bun and TypeScript; see `site/docs/contributing/build-pipeline.md` for the current design.
 
 ## Problem statement
 

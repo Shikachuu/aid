@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=../schemas/aid.schema.json
+
+name: aid
+description: Single-binary documentation generator for markdown, HTML, OpenAPI, and Protobuf sources.
+base_url: https://shikachuu.github.io
+base_path: /aid
+
+dir:
+  templates: templates

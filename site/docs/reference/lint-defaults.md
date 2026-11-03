@@ -14,7 +14,7 @@ sidebar:
 | `md` | `**/*.md`, `**/*.markdown` | `.markdownlint.json`, `.markdownlint.jsonc`, `.markdownlint.yaml`, `.markdownlint.yml` |
 | `openapi` | `**/openapi.{yaml,yml,json}`, `**/*.openapi.{yaml,yml,json}`, `**/openapi/**/*.{yaml,yml,json}` | `.spectral.yaml`, `.spectral.yml`, `.spectral.json` |
 | `biome` | `**/*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,css}` | `biome.json`, `biome.jsonc` |
-| `proto` | `**/*.proto` | `buf.yaml`, `buf.yml` |
+| `proto` | `**/*.proto` | `buf.yaml` |
 
 Discovery never walks into these directories: `node_modules`, `dist`, `.bun`, `.git`, `.turbo`, `build`, `coverage`, `.next`, `.cache`, `.vercel`.
 

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Status</title>
+  <meta name="description" content="Which aid features work, which work in part, and which are not implemented yet.">
+</head>
+<body>
+  <h1>Status</h1>
+  <p>aid has no published release. This page lists the features that exist in the code but do not work yet, and the ones that work with known gaps.</p>
+
+  <h2>Not implemented</h2>
+  <table>
+    <thead>
+      <tr><th>Feature</th><th>Current behavior</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a href="./commands/init.md"><code>aid init</code></a></td>
+        <td>Prints <code>aid init &lt;dir&gt;: not implemented</code> and exits 1. Create the project files by hand as <a href="./getting-started/index.md">getting started</a> shows.</td>
+      </tr>
+      <tr>
+        <td><code>ai_targets</code> config key</td>
+        <td>aid validates the value against <code>chatgpt</code>, <code>claude</code> and <code>gemini</code>, then never reads it.</td>
+      </tr>
+      <tr>
+        <td>"Open in AI" button</td>
+        <td>Markdown, HTML, OpenAPI and Protobuf pages render the button. Its click handler in <code>src/web/ai-button.ts</code> is empty, so a click does nothing.</td>
+      </tr>
+      <tr>
+        <td>Dark-mode toggle button</td>
+        <td>The header renders the button. Its click handler in <code>src/web/dark-mode.ts</code> is empty. The <code>theme.dark_mode</code> key still controls the dark palette; see <a href="./theming/dark-mode.md">dark mode</a>.</td>
+      </tr>
+      <tr>
+        <td>Template and partial overrides</td>
+        <td>The page layout is built into aid and cannot be replaced. <code>dir.templates</code> supplies only the <code>llms.txt</code> template, and Tailwind scans that folder for class names.</td>
+      </tr>
+      <tr>
+        <td>HTML body fragments</td>
+        <td>An <code>.html</code> page must be a full document with <code>&lt;html&gt;</code> and <code>&lt;body&gt;</code>. A fragment fails the build.</td>
+      </tr>
+      <tr>
+        <td>Mobile sidebar layout</td>
+        <td>The page is a fixed two-column grid with a 16rem sidebar at every screen width. There is no collapsed menu for narrow screens.</td>
+      </tr>
+      <tr>
+        <td><code>sitemap.xml</code>, <code>robots.txt</code>, 404 page, canonical tags</td>
+        <td>aid generates none of them. A <code>robots.txt</code> or <code>404.html</code> placed in the static folder is copied to the output root as-is.</td>
+      </tr>
+      <tr>
+        <td>Versioned docs</td>
+        <td>A build produces one version of the site. There is no version switcher.</td>
+      </tr>
+      <tr>
+        <td>Windows binaries</td>
+        <td><code>scripts/compile.ts</code> builds only <code>darwin-arm64</code>, <code>darwin-x64</code>, <code>linux-arm64</code> and <code>linux-x64</code>.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Partly working</h2>
+  <table>
+    <thead>
+      <tr><th>Feature</th><th>What works</th><th>Known gaps</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Release workflow (<code>.github/workflows/release.yml</code>)</td>
+        <td>On a <code>v*</code> tag the workflow compiles the binaries and uploads them with the JSON Schema to a GitHub release.</td>
+        <td>It installs dependencies with <code>bun install</code> instead of mise, so <code>scripts/stage-natives.ts</code> never runs. <code>bun publish</code> fails because <code>package.json</code> sets <code>"private": true</code>. It uses <code>bun-version: latest</code> instead of the pinned 1.3.13. Every matrix job compiles all four targets, because <code>scripts/compile.ts</code> ignores the matrix. No tag exists yet, so the workflow has never run.</td>
+      </tr>
+      <tr>
+        <td>Compiled binaries</td>
+        <td><code>bun run build</code> writes four binaries to <code>dist/bin/</code>, and they build sites when run inside a checkout of the aid repository.</td>
+        <td>On macOS the binaries carry an invalid ad-hoc signature, and macOS kills them on start until you re-sign them. Outside the aid repository the <code>darwin-arm64</code> binary fails on start with <code>Cannot find module '@bufbuild/buf-darwin-x64/bin/buf'</code>. See <a href="./getting-started/installation.md">installation</a>.</td>
+      </tr>
+      <tr>
+        <td>Rebuilds</td>
+        <td><code>aid build</code> and <code>aid dev</code> build the whole site.</td>
+        <td>There is no incremental rebuild. Every <code>aid build</code> and every dev-server rebuild renders every page again.</td>
+      </tr>
+      <tr>
+        <td>OpenAPI detection in <code>aid lint</code> and <code>aid fmt</code></td>
+        <td>The build detects OpenAPI files by content: a top-level <code>openapi:</code> or <code>swagger:</code> key.</td>
+        <td><code>aid lint</code> and <code>aid fmt</code> find OpenAPI files by name only: <code>openapi.*</code>, <code>*.openapi.*</code>, and files under an <code>openapi/</code> folder. A spec named <code>api.yaml</code> builds as an OpenAPI page but is not linted or formatted. See <a href="./linting/index.md">linting</a>.</td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>

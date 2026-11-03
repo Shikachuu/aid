@@ -89,7 +89,7 @@ It works as follows:
 - Rebuilds the site into two alternating directories on disk, `.aid/dev/build-a` and `.aid/dev/build-b`, using the same pipeline as `aid build`.
 - Reloads the browser over Server-Sent Events after each rebuild.
 
-See docs/DEV_SERVER.md for details.
+See `site/docs/dev-server/index.md` for details.
 
 ### `aid build`
 
@@ -103,7 +103,7 @@ See docs/DEV_SERVER.md for details.
 - `llms.txt` at the site root.
 - `search-index.<hash>.js`, the precomputed search index.
 
-aid stops at writing static files. Any static host can serve the output directory, for example S3, GitHub Pages, Netlify, Cloudflare Pages, or nginx. aid has no deploy command. See docs/BUILD.md for details.
+aid stops at writing static files. Any static host can serve the output directory, for example S3, GitHub Pages, Netlify, Cloudflare Pages, or nginx. aid has no deploy command. See `site/docs/deployment/index.md` for details.
 
 ### `aid lint` and `aid fmt`
 
@@ -164,12 +164,12 @@ aid has no versioning feature. Users can keep versions in folders (`docs/v1/`, `
 
 | Source file type | Rendering | Auto-exported formats |
 | ----------------- | ----------- | ---------------------- |
-| `.md` (Markdown) | GitHub Flavored Markdown with Mermaid diagrams. aid reads SEO metadata (title, description) from frontmatter. | `.md` (original source) |
+| `.md` (Markdown) | GitHub Flavored Markdown with Mermaid diagrams and callouts. aid reads SEO metadata (title, description) from frontmatter. | `.md` (re-serialized, without frontmatter) |
 | `.html` | Inserted as-is into the site layout template. | `.md` |
 | `.yaml` / `.json` (OpenAPI v2-v3) | Embedded Scalar API reference UI (`@scalar/api-reference`). | `.json` |
 | `.proto` (Protocol Buffers) | `@aid/proto-ui` (React and protobufjs), rendered in the browser. | `.proto` (original source) |
 
-aid wraps every page in the site layout template, so every page has the same header, footer, and styling. The layout has a navigation sidebar, but the build passes it an empty tree for now, so it renders no links.
+aid wraps every page in the site layout template, so every page has the same header, footer, and styling. The layout has a navigation sidebar built from the content folders, ordered by frontmatter `sidebar` keys and per-folder `_meta.yaml` files (`src/core/nav.ts`).
 
 ---
 
@@ -236,7 +236,6 @@ aid ships default templates as TSX components in `src/theme/components/`, render
 - `PageHtml` wraps the HTML body inside the site layout.
 - `PageOpenAPI` embeds the Scalar API reference UI with the spec loaded.
 - `PageProto` renders a mount point that the proto UI fills in the browser.
-- `PageIndex` is meant for directory listings. The build does not use it yet.
 
 `Layout`, `Header`, `Nav`, `Footer`, `SearchBox`, `AIButton`, and `DarkToggle` make up the shared page frame. All templates use Tailwind 4 utility classes and read their theme from `main.css` through CSS custom properties.
 
@@ -244,7 +243,7 @@ aid ships default templates as TSX components in `src/theme/components/`, render
 
 Most teams only edit `main.css`. Its Tailwind 4 tokens (colors, fonts, spacing, radii) style every page type, and aid derives the dark palette from the same tokens.
 
-Template overrides are planned but not implemented. The plan is that a `.tsx` file with a partial's name in the templates directory replaces that partial, and aid falls back to the bundled default for every other partial. `resolvePartial` in `src/theme/partials.ts` is still a stub that always returns the bundled default. The one override that works today is `llms.txt`. A `llms.txt` file in the templates directory replaces the bundled `llms.txt` template.
+Template overrides are planned but not implemented. The plan is that a `.tsx` file with a partial's name in the templates directory replaces that partial, and aid falls back to the bundled default for every other partial. The one override that works today is `llms.txt`. A `llms.txt` file in the templates directory replaces the bundled `llms.txt` template.
 
 Templates can use:
 
@@ -268,7 +267,7 @@ The build writes `llms.txt` at the site root, following the [llmstxt.org](https:
   - Append `.json` to OpenAPI page URLs for the spec as JSON.
   - Append `.proto` to proto page URLs for the source file.
 
-A `llms.txt` file in the templates directory replaces the bundled template. It can use the `{{name}}`, `{{description}}`, `{{base_url}}`, `{{toc}}`, and `{{toc:optional}}` placeholders. See docs/LLMS_TXT.md.
+A `llms.txt` file in the templates directory replaces the bundled template. It can use the `{{name}}`, `{{description}}`, `{{base_url}}`, `{{toc}}`, and `{{toc:optional}}` placeholders. See `site/docs/llms-txt/index.md`.
 
 ### 7.2 Auto-exported page formats
 
@@ -281,7 +280,7 @@ A `llms.txt` file in the templates directory replaces the bundled template. It c
 
 ### 7.3 "Open in AI" button
 
-The "Open in AI" button is a stub. Every page type renders one "Open in AI" button that carries the page's machine-readable URL, but clicking it does nothing. `buildAiButtons` in `src/core/ai-targets.ts` returns an empty list, and the click handler in `src/web/ai-button.ts` is empty.
+The "Open in AI" button is a stub. Every page type renders one "Open in AI" button that carries the page's machine-readable URL, but clicking it does nothing. The click handler in `src/web/ai-button.ts` is empty, and nothing reads `ai_targets`.
 
 The plan is that clicking the button opens the configured chat (ChatGPT, Claude, or Gemini) with a prompt that points at the page's machine-readable version. The `ai_targets` key in `aid.yaml` will choose the targets:
 
@@ -435,10 +434,10 @@ Each renderer also returns search tokens. The search index builder collects them
 | Config loader | Reads `aid.yaml` with `Bun.YAML` and validates it with Zod (`src/core/config.ts`) |
 | Router | Walks the content directory, builds the route list, excludes `_` folders (`src/core/router.ts`) |
 | Renderers | Format-specific rendering: GFM with Mermaid, HTML passthrough, OpenAPI, proto (`src/renderers`) |
-| Templates | TSX components (`src/theme/components`). Partial overrides are planned; `src/theme/partials.ts` is a stub. |
+| Templates | TSX components (`src/theme/components`). Partial overrides are planned and not implemented. |
 | Tailwind pipeline | Runs the embedded Tailwind compiler against `main.css` and derives the dark-mode palette from light tokens (`src/core/tailwind.ts`, `src/core/dark-mode.ts`) |
 | Export generator | Writes the `.md`, `.json`, and `.proto` exports and generates `llms.txt` (`src/core/pipeline.ts`, `src/core/llms-txt.ts`) |
 | Search index builder | Builds the MiniSearch index from each page's search tokens and writes `search-index.<hash>.js` (`src/core/search-index.ts`) |
-| AI link builder | Planned. Will generate per-page "Open in AI" URLs for ChatGPT, Claude, and Gemini. `src/core/ai-targets.ts` is a stub. |
+| AI link builder | Planned. Will generate per-page "Open in AI" URLs for ChatGPT, Claude, and Gemini. No code exists yet. |
 | Dev server | HTTP server, file watcher, and live reload over Server-Sent Events (`src/dev`) |
 | Linter and formatter | Runs the embedded tools: Biome, markdownlint, Spectral, Buf (`src/lint`, `src/fmt`) |

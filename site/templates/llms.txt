@@ -1,0 +1,13 @@
+# {{name}}
+
+> {{description}}
+
+aid builds a static documentation site from markdown, HTML, OpenAPI, and Protobuf files with one binary. Every link below points at the machine-readable variant of a page: `.md` for markdown and HTML pages, `.json` for OpenAPI pages, `.proto` for Protobuf pages.
+
+{{toc}}
+
+## Optional
+
+Contributor notes: architecture, build pipeline, release process, and repository conventions.
+
+{{toc:optional}}

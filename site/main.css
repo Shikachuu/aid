@@ -1,0 +1,6 @@
+@import "tailwindcss";
+@import "aid/theme";
+
+@theme {
+  --color-aid-accent: oklch(55% 0.13 175);
+}

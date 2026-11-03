@@ -1,0 +1,15 @@
+index: { order: 0 }
+getting-started: { order: 1 }
+commands: { order: 2 }
+configuration: { order: 3 }
+content-types: { order: 4 }
+linting: { order: 5 }
+formatting: { order: 6 }
+dev-server: { order: 7 }
+theming: { order: 8 }
+search: { order: 9 }
+llms-txt: { order: 10, label: llms.txt }
+deployment: { order: 11 }
+status: { order: 12 }
+reference: { order: 13 }
+contributing: { order: 14 }

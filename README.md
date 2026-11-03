@@ -6,7 +6,7 @@ aid generates one themed documentation site from your existing content with a si
 
 ## Status
 
-`aid build` and `aid dev` work. `aid init`, the "Open in AI" button, the dark-mode toggle, and site navigation are not implemented yet.
+`aid build`, `aid dev`, `aid lint`, and `aid fmt` work. `aid init`, the "Open in AI" button, and the dark-mode toggle are not implemented yet. See `site/docs/status.html` for the full list.
 
 ## Quick start (development)
 
@@ -18,7 +18,9 @@ bun test
 
 ## Documentation
 
-The spec is in [`docs/PRODUCT_OVERVIEW.md`](docs/PRODUCT_OVERVIEW.md). Architectural research is in `docs/RESEARCH_*.md`.
+The user and contributor documentation is an aid site in [`site/`](site/docs/index.md), published at https://shikachuu.github.io/aid/. Preview it locally with `bun run docs:dev` and open http://localhost:3000/aid/.
+
+The product spec is in [`docs/PRODUCT_OVERVIEW.md`](docs/PRODUCT_OVERVIEW.md). Architectural research is in `docs/RESEARCH_*.md`.
 
 ## License
 
