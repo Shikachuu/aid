@@ -9,10 +9,12 @@ jobs:
   check:
     name: Lint, typecheck, test
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 2
 
       - name: Set up mise
         uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
@@ -28,3 +30,16 @@ jobs:
 
       - name: Schema parity (zod ↔ schemas/aid.schema.json)
         run: bun run scripts/emit-schema.ts --check
+
+      - name: Docs reference parity
+        run: bun run gen-docs --check
+
+      - name: Build docs site
+        run: bun run docs:build
+
+      - name: Lint docs
+        run: bun run docs:lint
+
+      - name: Docs pages to review
+        if: github.event_name == 'pull_request'
+        run: bun run docs:affected --base HEAD^1 --github
