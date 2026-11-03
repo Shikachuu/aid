@@ -34,7 +34,6 @@ aid is one Bun and TypeScript codebase that compiles to a single binary per plat
 | `tests/fixtures` | The `sample-site` project and the lint fixtures. |
 | `site/` | This documentation site, built by aid. |
 | `.claude/` | Claude Code setup: style rules in `rules/`, the format hook in `hooks/`, and the `docs-sync` skill in `skills/`. |
-| `.github/workflows` | CI and release workflows. |
 
 ## Contributor pages
 
@@ -43,6 +42,5 @@ aid is one Bun and TypeScript codebase that compiles to a single binary per plat
 - [Build pipeline](./build-pipeline.md): every phase of `build()`, in order.
 - [Single binary](./single-binary.md): how `scripts/compile.ts` embeds the web runtime and native binaries.
 - [Testing](./testing.md): the test layout, helpers, and fixtures.
-- [Release and CI](./release-and-ci.md): the GitHub Actions workflows.
 - [Conventions](./conventions.md): code style, lint rules, the format hook, and commit style.
 - [Docs site](./docs-site.md): how this site is built, generated, and kept in sync.

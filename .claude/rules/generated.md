@@ -12,7 +12,7 @@ paths:
 
 - Never hand-edit `schemas/aid.schema.json`.
 - To change the schema, edit `src/core/config.ts`, then run `bun run emit-schema`.
-- CI runs `bun run scripts/emit-schema.ts --check` and fails the build on drift.
+- Run `bun run scripts/emit-schema.ts --check` before committing. It fails on drift.
 - Do not add ad-hoc validation that duplicates Zod rules. Extend the Zod schema instead, so the runtime validator and the published JSON Schema stay identical.
 
 ## Reference pages
@@ -21,4 +21,4 @@ paths:
 
 - Never hand-edit them. Change the source, then run `bun run gen-docs`.
 - Run `bun run emit-schema` first when `config.ts` changed, because the static schema copy is read from `schemas/aid.schema.json`.
-- CI runs `bun run gen-docs --check` and fails on drift.
+- Run `bun run gen-docs --check` before committing. It fails on drift.
