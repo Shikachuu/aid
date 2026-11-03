@@ -4,6 +4,7 @@ import type { Root as MdastRoot } from "mdast"
 import rehypeParse from "rehype-parse"
 import rehypeRemark from "rehype-remark"
 import rehypeStringify from "rehype-stringify"
+import remarkGfm from "remark-gfm"
 import remarkStringify from "remark-stringify"
 import { unified } from "unified"
 import { visit } from "unist-util-visit"
@@ -116,7 +117,7 @@ export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
 }
 
 async function toMarkdown(tree: HastRoot): Promise<string> {
-  const processor = unified().use(rehypeRemark).use(remarkStringify)
+  const processor = unified().use(rehypeRemark).use(remarkGfm).use(remarkStringify)
   return processor.stringify((await processor.run(tree)) as MdastRoot)
 }
 

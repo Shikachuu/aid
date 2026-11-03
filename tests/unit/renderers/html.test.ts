@@ -164,4 +164,17 @@ describe("renderHtml", () => {
     expect(page.route.frontmatter?.description).toBeUndefined()
     expect(page.description).toBeUndefined()
   })
+
+  test("tables and strikethrough survive into the .md export", async () => {
+    const page = await renderFixture(
+      "table.html",
+      doc(
+        "<title>T</title>",
+        "<table><thead><tr><th>Key</th></tr></thead><tbody><tr><td>a</td></tr></tbody></table><p><del>old</del></p>",
+      ),
+    )
+    const md = page.exports[0]?.body ?? ""
+    expect(md).toContain("| Key |")
+    expect(md).toContain("~~old~~")
+  })
 })
