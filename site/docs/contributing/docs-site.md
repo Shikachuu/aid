@@ -80,16 +80,16 @@ bun run docs:affected --base origin/main
 `scripts/docs-affected.ts` collects the changed files: the diff between `--base` (default `origin/main`) and `HEAD`, uncommitted changes, and untracked files. It matches them against `DOCS_MAP`, a list of source globs and the pages that document them, and prints one line per result:
 
 ```text
-updated  site/docs/contributing/build-pipeline.md
+changed  site/docs/contributing/build-pipeline.md
 review   site/docs/commands/build.md
 unmapped src/core/new-module.ts
 ```
 
-- `updated` means a mapped page changed in the same diff.
+- `changed` means a mapped page changed in the same diff.
 - `review` means a mapped source changed but the page did not.
 - `unmapped` means a changed file under `src/`, `scripts/`, `packages/proto-ui/src/`, or `.github/` matches no entry. The catch-all entry that maps all of `src/**` to this section's [index page](./index.md) does not count as a match.
 
-With `--github`, the script prints GitHub `::notice` annotations for the `review` and `unmapped` lines instead. CI runs it this way on pull requests, and it never fails the job. `HUB_PAGES` lists the pages that no source maps to on purpose, such as the site root.
+With `--github`, the script prints GitHub `::notice` annotations for the `review` and `unmapped` lines instead. CI runs it this way on pull requests, and the findings never fail the job. The script exits 1 only when git cannot resolve `--base`. `HUB_PAGES` lists the pages that no source maps to on purpose, such as the site root.
 
 ## The docs-sync skill
 

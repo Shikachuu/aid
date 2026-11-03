@@ -13,7 +13,7 @@ Keep `site/docs` true to the code after a change. The site is aid's own document
 bun run docs:affected --base origin/main
 ```
 
-It prints every page mapped to a changed source file (`review` or `updated`) and every changed source file no page maps (`unmapped`). Read each listed page in full. For `unmapped` files, decide whether readers see the behavior. If they do, add the file to `DOCS_MAP` in `scripts/docs-affected.ts`.
+It prints every page mapped to a changed source file (`review`, or `changed` when the change already touches it) and every changed source file no page maps (`unmapped`). Read each listed page in full. For `unmapped` files, decide whether readers see the behavior. If they do, add the file to `DOCS_MAP` in `scripts/docs-affected.ts`.
 
 ## 2. Read the change
 

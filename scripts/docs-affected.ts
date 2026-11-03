@@ -25,7 +25,7 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
     pages: [`${DOCS}/commands/init.md`, `${DOCS}/getting-started/index.md`, `${DOCS}/status.html`],
   },
   {
-    sources: ["src/core/config.ts"],
+    sources: ["src/core/config.ts", "scripts/emit-schema.ts"],
     pages: [
       `${DOCS}/configuration/index.md`,
       `${DOCS}/configuration/paths-and-urls.md`,
@@ -37,7 +37,7 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
     pages: [`${DOCS}/content-types/index.md`, `${DOCS}/configuration/paths-and-urls.md`],
   },
   {
-    sources: ["src/renderers/markdown/**", "src/renderers/shared.ts"],
+    sources: ["src/renderers/markdown/**", "src/renderers/shared.ts", "src/web/mermaid.ts"],
     pages: [`${DOCS}/content-types/markdown.md`],
   },
   { sources: ["src/renderers/html.ts"], pages: [`${DOCS}/content-types/html.md`] },
@@ -188,8 +188,14 @@ export function affectedPages(changed: readonly string[]): Affected {
 }
 
 async function changedFiles(base: string): Promise<string[]> {
-  const run = async (...args: string[]) =>
-    (await Bun.$`git ${args}`.quiet().text()).split("\n").filter(Boolean)
+  const run = async (...args: string[]) => {
+    const result = await Bun.$`git ${args}`.quiet().nothrow()
+    if (result.exitCode !== 0) {
+      console.error(`git ${args.join(" ")} failed. Pass an existing ref with --base <ref>.`)
+      process.exit(1)
+    }
+    return result.text().split("\n").filter(Boolean)
+  }
   const files = [
     ...(await run("diff", "--name-only", `${base}...HEAD`)),
     ...(await run("diff", "--name-only", "HEAD")),
@@ -208,7 +214,7 @@ if (import.meta.main) {
     if (github && !touched) {
       console.log(`::notice file=${page}::Source files documented here changed. Review this page.`)
     } else if (!github) {
-      console.log(`${touched ? "updated " : "review  "} ${path.normalize(page)}`)
+      console.log(`${touched ? "changed " : "review  "} ${path.normalize(page)}`)
     }
   }
   for (const file of unmapped) {

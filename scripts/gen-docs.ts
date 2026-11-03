@@ -256,7 +256,7 @@ export function frontmatterReference(): string {
       "A markdown page may start with a YAML block between `---` lines. Other keys are allowed and ignored. Malformed YAML or a wrong type fails the build.",
       keyTable(schemaRows(inputSchema(FrontmatterSchema))),
       "## `_meta.yaml`",
-      "Any content folder may hold a `_meta.yaml` that maps a child name (a page file name without its extension, or a subfolder name) to sidebar overrides. In the content root, the key `index` addresses the home page. An entry here wins over the page's own `sidebar` frontmatter. A key that matches nothing fails the build.",
+      "Any content folder may hold a `_meta.yaml` that maps a child name (a page file name without its extension, or a subfolder name) to sidebar overrides. In the content root, the key `index` addresses the home page. An entry here wins over the page's own `sidebar` frontmatter. A key that matches nothing is a `nav/unknown-entry` problem, which fails the build unless `on_broken_links` is `warn`.",
       keyTable(schemaRows(entryNode)),
       "```yaml\ngetting-started: { order: 1 }\napi: { label: HTTP API, order: 2 }\n```",
     ].join("\n\n"),
