@@ -78,21 +78,57 @@ Tailwind Labs ships its checks only inside the IntelliSense language server (`@t
 | Config users know | None | None | `.stylelintrc*` | `.stylelintrc*` (Gale) |
 | Maturity | Tailwind 4 core, `__unstable__` API | Stable, but aid owns the rules | 11.5k stars, 13.9M weekly downloads | 0.x alpha |
 
-Options 1 and 3 cover different mistakes, and neither covers what the other catches. Stylelint catches CSS mistakes and is blind to Tailwind. The Tailwind engine catches Tailwind mistakes and is blind to plain CSS. Option 2 could cover the CSS side for 0 MB, but aid would rebuild a small Stylelint by hand to save 2 MB.
+Options 1 and 3 cover different mistakes, and neither covers what the other catches. Stylelint catches CSS mistakes and is blind to Tailwind. The Tailwind engine catches Tailwind mistakes and is blind to plain CSS. Option 2 covers most of the CSS side for 0 MB.
+
+## Combining Options 1 and 2 (prototyped)
+
+aid's CSS is a Tailwind stylesheet and theme CSS, not a general CSS codebase. For that scope, lightningcss and the Tailwind engine together cover the mistakes that matter, so aid needs no Stylelint. The prototype has four parts:
+
+1. Run lightningcss `transform({ errorRecovery: true })` and keep its warnings. Drop "Unknown at rule" warnings for Tailwind's directives: `theme`, `apply`, `utility`, `variant`, `custom-variant`, `source`, `plugin`, `config`, `reference`, `tailwind`.
+2. In a lightningcss `visitor`, walk each style rule's declarations and run three checks:
+   - an unknown property: a `custom` declaration whose name does not start with `--`
+   - a duplicate property in one rule
+   - an invalid value: an `unparsed` declaration whose value has no `var`, `env`, or function token, which skips `var(--m)`, `--theme()`, and `--spacing()`
+3. Run Tailwind's `compile()` and report its error.
+4. Later, check classes in templates with the design system, as Option 1 describes.
+
+Results on a test file with one planted mistake per check:
+
+| Mistake | Caught by |
+| --- | --- |
+| `@tailwnd base;` | lightningcss warning |
+| `.y:hovr` | lightningcss warning |
+| `a > > b` | lightningcss warning |
+| `colr: red` | visitor, unknown property |
+| `color` declared twice | visitor, duplicate property |
+| `width: 10pxx`, `display: flexx` | visitor, invalid value |
+| `grid-template-areas: "a b" "c"` | visitor, invalid value (`"a b" "c d"` passes) |
+| `@apply px-4 pyy-2` | Tailwind `compile()` |
+| `@media (min-widht: 100px)` | Missed |
+
+On aid's real CSS, `src/theme/main.css` and `packages/proto-ui/src/tailwind-entry.css`, the prototype reported 0 findings. `site/main.css` reported one Tailwind error, "Can't resolve 'aid/theme'". That came from the prototype, which skipped the `aid/theme` inlining that `src/core/tailwind.ts` does. A real implementation would reuse that inlining and its CSS resolver.
+
+The combination has these gaps compared with Stylelint's recommended preset:
+
+- Media feature names arrive as plain strings, so `min-widht` passes. A small list of known features would fix this.
+- Declarations carry no source position. Only style rules carry a `loc`, and its line is 0-based, while warning lines are 1-based. aid reports the rule's line, or finds the declaration by searching for the property name after the rule start.
+- `compile()` errors have no position. aid finds the line by searching for the token named in the message.
+- It has none of Stylelint's other recommended rules, such as `no-descending-specificity`, `block-no-empty`, `font-family-no-duplicate-names`, and `no-duplicate-selectors`. A visitor rule can add any of them later.
+- It has no user config. aid owns the rule list and can turn rules off through `aid.yaml` if that's ever needed.
 
 ## Recommendation
 
-Combine Options 1 and 3 into one CSS tool in `aid lint`.
+Use the combination of Options 1 and 2 as the `css` tool in `aid lint`. It adds 0 MB, adds no dependency, and needs no build plugins. It already runs inside the binary, because `aid build` loads lightningcss and Tailwind. It reported nothing on aid's own CSS and caught every planted mistake except the media feature typo.
 
-1. Run Stylelint with `stylelint-config-recommended` on discovered `.css` files. Add `ignoreAtRules` for Tailwind's directives on both `at-rule-no-unknown` and `at-rule-prelude-no-invalid`. Leave out `stylelint-config-standard`, because the formatter owns style. Ship the two build plugins in `scripts/compile.ts`, next to the existing `jsonc-parser` redirect.
-2. Run Tailwind's `compile()` on the configured `stylesheet` and report its errors as diagnostics. aid finds the line by searching the source for the token named in the message.
+1. Add a `css` lint tool that runs on discovered `.css` files and returns lightningcss warnings, with Tailwind's directives filtered out, plus the three visitor checks.
+2. Run Tailwind's `compile()` on the configured `stylesheet`, through the same inlining and resolver as `src/core/tailwind.ts`, and report its errors.
 3. As a second step, check classes inside `class` and `className` attributes in templates and HTML content. Report unknown classes with `candidatesToCss` and non-canonical classes with `canonicalizeCandidates`. Leave markdown prose out, because the scanner reports prose words as candidates.
 
-Adding `stylelint` and `stylelint-config-recommended` is a dependency change and needs approval first. Pin 17.16.0 or wait for an 18.0.x patch release; 18.0.0 is one day old.
+Choose Stylelint (Option 3) instead if users ask for config they already know or for the long tail of rules. It costs 2 MB and two build plugins.
 
 ## Open questions
 
-- Should a user's `.stylelintrc*` replace the bundled preset, the way `biome.json` replaces Biome's default today? Or should it merge with the preset, so the Tailwind ignores stay?
+- Should aid add a known-media-features list now, or wait for a user to hit the gap?
 - What severity should a non-canonical class get? A `warn` fits, because `w-[100%]` renders correctly.
 - Does aid have rehype parse the HTML before it checks classes? Or does it scan `class` attributes with a regex in `.tsx` templates, where no HTML parser runs?
 - `__unstable__loadDesignSystem` may change in a Tailwind minor release. A unit test that calls it would catch a break when Tailwind is bumped.
