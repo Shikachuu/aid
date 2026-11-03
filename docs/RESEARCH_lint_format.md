@@ -87,7 +87,7 @@ Option 2 only wins if aid must keep an in-process formatter API or must not depe
 
 ## Open questions
 
-- Is losing CSS lint acceptable? Biome's recommended CSS rules catch unknown properties and duplicate declarations in custom theme CSS. Neither replacement has CSS lint.
+- Is losing CSS lint acceptable? Biome's recommended CSS rules catch unknown properties and duplicate declarations in custom theme CSS. Neither replacement has CSS lint. [RESEARCH_css_lint.md](./RESEARCH_css_lint.md) evaluates the replacements.
 - How should aid map its bundled default to `bun fmt` flags? Bun's `[fmt]` section in `bunfig.toml` is per project, so aid would pass flags such as `--print-width=100 --no-semi` when it finds no user config.
 - `bun fmt` formats YAML and keeps comments. `aid fmt` currently drops every comment from OpenAPI YAML files. Should `bun fmt` handle OpenAPI YAML too? This brief does not cover that.
 - The aid repository uses Biome for its own lint, including the `plugins/no-promise-chains.grit` plugin. Switching the repo's dev tooling is a separate decision. It needs a replacement for the GritQL rule, for example an ESLint-style JS plugin, which `bun lint` supports.
