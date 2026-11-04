@@ -44,10 +44,10 @@ export const FORMAT_CONFIGS = [
   "oxfmt.config.mts",
 ] as const
 
-/** A `bunfig.toml` holding `[lint]` and `[fmt]`, as aid writes it for its bundled defaults. */
+/** A `bunfig.toml` holding `[lint]` and, optionally, `[fmt]`. */
 export type Bunfig = {
   lint: { rules: Record<string, LintRule>; ignorePatterns?: readonly string[] }
-  fmt: Record<string, string | number | boolean>
+  fmt?: Record<string, string | number | boolean>
 }
 
 const toToml = (value: unknown): string => {
@@ -72,9 +72,11 @@ export const renderBunfig = (config: Bunfig): string => {
   for (const [name, rule] of Object.entries(config.lint.rules)) {
     lines.push(`${JSON.stringify(name)} = ${toToml(rule)}`)
   }
-  lines.push("", "[fmt]")
-  for (const [key, value] of Object.entries(config.fmt)) {
-    lines.push(`${key} = ${toToml(value)}`)
+  if (config.fmt !== undefined) {
+    lines.push("", "[fmt]")
+    for (const [key, value] of Object.entries(config.fmt)) {
+      lines.push(`${key} = ${toToml(value)}`)
+    }
   }
   return `${lines.join("\n")}\n`
 }

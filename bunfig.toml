@@ -188,8 +188,3 @@ perf = "off"
 "curly" = ["error", "all"]
 "@typescript-eslint/consistent-type-definitions" = ["error", "type"]
 "promise/prefer-await-to-then" = "error"
-
-[fmt]
-printWidth = 100
-semi = false
-sortTailwindcss = true

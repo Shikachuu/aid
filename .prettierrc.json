@@ -1,0 +1,23 @@
+{
+  "printWidth": 100,
+  "semi": false,
+  "plugins": [
+    "prettier-plugin-tailwindcss"
+  ],
+  "tailwindStylesheet": "./src/theme/main.css",
+  "tailwindFunctions": [
+    "clsx",
+    "cn",
+    "tw",
+    "twMerge",
+    "cva"
+  ],
+  "overrides": [
+    {
+      "files": "packages/proto-ui/**",
+      "options": {
+        "tailwindStylesheet": "./packages/proto-ui/src/tailwind-entry.css"
+      }
+    }
+  ]
+}

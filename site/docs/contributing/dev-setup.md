@@ -46,7 +46,7 @@ To add a dependency, run `bun add <pkg>` to update `package.json`, then `mise in
 | `bun run typecheck` | `tsc --noEmit`. |
 | `bun run lint` | `bun lint` over `src`, `scripts`, `tests`, and `packages`, then `aid lint . --filter css` over every CSS file. |
 | `bun run fmt` | `bun fmt` over the JS, TS, JSON, and CSS files in `src`, `scripts`, `tests`, `packages`, and `site`, and the root `*.json` files. |
-| `bun run gen-bunfig` | `scripts/gen-bunfig.ts`: regenerates `bunfig.toml` from the bundled lint rules plus the repo rules. Add `--check` to fail on drift instead of writing. |
+| `bun run gen-bunfig` | `scripts/gen-bunfig.ts`: regenerates `bunfig.toml` (lint rules) and `.prettierrc.json` (format options) from the bundled defaults plus the repo settings. Add `--check` to fail on drift instead of writing. |
 
 [Docs site](./docs-site.md) covers the `docs:*` and `gen-docs` scripts in detail.
 

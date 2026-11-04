@@ -8,7 +8,7 @@
 | --- | --- |
 | Runtime | Bun canary `1.4.4-canary.20261103.1` (mise `http:bun` pin), the first build with `bun lint` |
 | Language | TypeScript, strict mode, ESM only |
-| Lint and format | `bun lint` and `bun fmt`, configured in the generated `bunfig.toml` |
+| Lint and format | `bun lint` and `bun fmt`, configured in the generated `bunfig.toml` and `.prettierrc.json` |
 | Styling | Tailwind 4 |
 | JSX runtime | custom (`@aid/jsx`, mapped in `tsconfig.json`) |
 
@@ -21,7 +21,7 @@
 | `bun run typecheck` | `tsc --noEmit` |
 | `bun run lint` | `bun lint` over the code, then `aid lint --filter css` over every CSS file |
 | `bun run fmt` | `bun fmt` over the code, JSON, and CSS |
-| `bun run gen-bunfig` | Generate `bunfig.toml` from the bundled lint rules plus the repo extras (`--check` fails on drift) |
+| `bun run gen-bunfig` | Generate `bunfig.toml` and `.prettierrc.json` from the bundled defaults plus the repo extras (`--check` fails on drift) |
 | `bun run gen-css-data` | Generate `src/lint/css-data.json` from the webref packages (`--check` fails on drift) |
 | `bun test` | Bun test runner |
 | `bun run gen-docs` | Generate `site/docs/reference/**` from the Zod schemas, CLI definitions, and lint tables (`--check` fails on drift) |

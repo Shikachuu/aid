@@ -23,18 +23,18 @@ Claude Code loads a rule file without `paths:` frontmatter in every session. It 
 
 ## bun lint and bun fmt
 
-`bunfig.toml` configures `bun lint` and `bun fmt` for the repository. `scripts/gen-bunfig.ts` generates it from the rules `aid lint` bundles for user projects (`src/lint/configs/bun.default.ts`) plus the repository rules below. Run `bun run gen-bunfig` after changing either, and `bun run gen-bunfig --check` to find drift.
+`bunfig.toml` configures `bun lint` for the repository, and `.prettierrc.json` configures `bun fmt`. `scripts/gen-bunfig.ts` generates both from the rules and options `aid lint` and `aid fmt` bundle for user projects (`src/lint/configs/bun.default.ts`), plus the repository rules below. Run `bun run gen-bunfig` after changing either, and `bun run gen-bunfig --check` to find drift.
 
 - `bun run lint` runs `bun lint` over `src/`, `scripts/`, `tests/`, and `packages/`, then aid's own CSS checks over every `.css` file.
 - `bun run fmt` runs `bun fmt` over the JS, TS, JSON, and CSS files in `src/`, `scripts/`, `tests/`, `packages/`, and `site/`, and the root `*.json` files. Markdown stays with aid's own formatter and markdownlint.
-- `.prettierignore` keeps `bun fmt` away from the generated files and from the invalid JSON fixture in `tests/fixtures/lint-fixtures/openapi-bad-json`.
+- `.prettierignore` keeps `bun fmt` away from the generated files, `.prettierrc.json` among them, and from the invalid JSON fixture in `tests/fixtures/lint-fixtures/openapi-bad-json`.
 
 Formatter settings:
 
 - A line width of 100.
 - No semicolons, except where automatic semicolon insertion needs one.
 - Prettier's defaults for the rest: two-space indentation, double quotes, trailing commas everywhere, parentheses around every arrow function parameter, and LF line endings.
-- `sortTailwindcss = true` sorts Tailwind classes in `className` attributes and in calls such as `cn(...)` and `cva(...)`.
+- `prettier-plugin-tailwindcss`, which `bun fmt` has built in, sorts Tailwind classes in `className` attributes, `@apply` rules, and the `clsx`, `cn`, `tw`, `twMerge`, and `cva` calls. Its `tailwindStylesheet` option points at `src/theme/main.css`, and at `packages/proto-ui/src/tailwind-entry.css` for files under `packages/proto-ui/`. Without it, the plugin would not know aid's theme classes such as `bg-aid-bg` and would sort them first. The repo formats through a Prettier config because `bunfig.toml`'s `[fmt]` section has no stylesheet option.
 
 Rules on top of the bundled set:
 

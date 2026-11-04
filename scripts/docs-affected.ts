@@ -137,6 +137,7 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
       ".claude/hooks/**",
       "bunfig.toml",
       ".prettierignore",
+      ".prettierrc.json",
       "scripts/gen-bunfig.ts",
     ],
     pages: [`${DOCS}/contributing/conventions.md`],
