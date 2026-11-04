@@ -4,8 +4,7 @@ import { broadcast, type DevErrorPayload, type DevState, toErrorPayload } from "
 
 /** Outcome of one `rebuild`, with its wall-clock duration for the console log. */
 export type RebuildResult =
-  | { ok: true; durationMs: number }
-  | { ok: false; durationMs: number; error: DevErrorPayload }
+  { ok: true; durationMs: number } | { ok: false; durationMs: number; error: DevErrorPayload }
 
 /**
  * Run a full build into the inactive buffer. On success, flip `state.currentDir`

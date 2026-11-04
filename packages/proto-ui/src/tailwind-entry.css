@@ -289,7 +289,7 @@
   }
 
   .proto-view-source-toggle {
-    @apply cursor-pointer list-none w-fit rounded px-2 py-1 text-xs before:content-['View_source'] [&::-webkit-details-marker]:hidden;
+    @apply w-fit cursor-pointer list-none rounded px-2 py-1 text-xs before:content-['View_source'] [&::-webkit-details-marker]:hidden;
     color: var(--proto-color-muted);
   }
 

@@ -7,8 +7,5 @@ type DocBlockProps = {
 
 export const DocBlock = ({ raw }: DocBlockProps) =>
   raw ? (
-    <div
-      className="proto-doc"
-      dangerouslySetInnerHTML={{ __html: renderDocMarkdown(raw) }}
-    />
+    <div className="proto-doc" dangerouslySetInnerHTML={{ __html: renderDocMarkdown(raw) }} />
   ) : null

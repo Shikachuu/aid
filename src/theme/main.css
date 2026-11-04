@@ -158,7 +158,7 @@
   }
 
   :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) table {
-    @apply block w-full overflow-x-auto border-collapse text-sm;
+    @apply block w-full border-collapse overflow-x-auto text-sm;
   }
 
   :where(.aid-page-markdown, .aid-page-html, .aid-page-jsonschema) :is(th, td) {
@@ -367,7 +367,7 @@
   .aid-schema-constraints-summary {
     @apply cursor-pointer list-none [&::-webkit-details-marker]:hidden;
     @apply before:mr-1 before:inline-block before:text-xs before:transition-transform before:content-['▸'];
-    @apply [[open]>&]:before:rotate-90 hover:text-aid-text;
+    @apply hover:text-aid-text [[open]>&]:before:rotate-90;
   }
 
   .aid-schema-constraint-list {
