@@ -4,6 +4,23 @@ import path from "node:path"
 export const AID_ROOT = path.join(import.meta.dir, "../..")
 
 /**
+ * True when aid runs from its source tree. A compiled binary has none and uses
+ * the bytes `scripts/bundle-web.ts` embedded in `src/web/_bundled.ts`.
+ */
+export const hasSourceTree = (): Promise<boolean> =>
+  Bun.file(path.join(AID_ROOT, "src/web/index.ts")).exists()
+
+/** Return embedded `bytes`, or throw when the binary was compiled without them. */
+export function requireEmbedded(name: string, bytes: string): string {
+  if (bytes.length === 0) {
+    throw new Error(
+      `aid: ${name} has no embedded bytes and no source tree on disk. Run \`bun scripts/bundle-web.ts\` before \`bun run build\`.`,
+    )
+  }
+  return bytes
+}
+
+/**
  * Browser bundles. `exportName` is the matching export in `src/web/_bundled.ts`,
  * which `scripts/bundle-web.ts` generates for the compiled binary.
  */

@@ -8,7 +8,15 @@ import {
   aidWebJs,
 } from "../web/_bundled"
 import type { BuildContext } from "./types"
-import { AID_ROOT, bundleWebEntry, WEB_CSS, WEB_JS, type WebJsEntry } from "./web-entries"
+import {
+  AID_ROOT,
+  bundleWebEntry,
+  hasSourceTree,
+  requireEmbedded,
+  WEB_CSS,
+  WEB_JS,
+  type WebJsEntry,
+} from "./web-entries"
 
 /** Result of writing the compiled web bundle(s) to disk. */
 export type BuildWebBundleResult = {
@@ -40,10 +48,10 @@ export async function buildWebBundle(
   ctx: BuildContext,
   include: { mermaid: boolean; openapi: boolean; proto: boolean },
 ): Promise<BuildWebBundleResult> {
-  const hasSourceTree = await Bun.file(path.join(AID_ROOT, WEB_JS.base.source)).exists()
+  const fromSource = await hasSourceTree()
 
   const js = (entry: WebJsEntry, embedded: string) =>
-    hasSourceTree
+    fromSource
       ? buildAndWrite(ctx, entry)
       : writeHashed(ctx, entry.name, "js", requireEmbedded(entry.name, embedded))
   const css = async (entry: (typeof WEB_CSS)[keyof typeof WEB_CSS], embedded: string) =>
@@ -51,7 +59,7 @@ export async function buildWebBundle(
       ctx,
       entry.name,
       "css",
-      hasSourceTree
+      fromSource
         ? await Bun.file(Bun.resolveSync(entry.specifier, AID_ROOT)).text()
         : requireEmbedded(`${entry.name}.css`, embedded),
     )
@@ -81,15 +89,6 @@ export async function writeHashed(
   const filename = `${name}.${hash}.${ext}`
   await Bun.write(path.join(ctx.outputDir, filename), body)
   return path.posix.join(ctx.config.base_path, filename)
-}
-
-function requireEmbedded(name: string, bytes: string): string {
-  if (bytes.length === 0) {
-    throw new Error(
-      `buildWebBundle: ${name} has no embedded bytes and no source tree on disk. Run \`bun scripts/bundle-web.ts\` before \`bun run build\`.`,
-    )
-  }
-  return bytes
 }
 
 async function buildAndWrite(ctx: BuildContext, entry: WebJsEntry): Promise<string> {

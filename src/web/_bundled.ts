@@ -15,3 +15,5 @@ export const aidProtoJs = ""
 export const aidOpenapiCss = ""
 /** Stylesheet `@aid/proto-ui/styles.css`, embedded in the compiled binary. */
 export const aidProtoCss = ""
+/** Theme component sources, embedded so Tailwind finds their classes in the compiled binary. */
+export const aidThemeSources = ""

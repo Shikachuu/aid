@@ -87,8 +87,20 @@ export const nativeStubs = (target: Target): Bun.BunPlugin => {
   }
 }
 
+/** Point imports of `src/web/_bundled.ts` at a module that `bundle-web.ts --out` wrote elsewhere. */
+const redirectBundled = (file: string): Bun.BunPlugin => ({
+  name: "aid-redirect-bundled",
+  setup(build) {
+    build.onResolve({ filter: /\/web\/_bundled(\.ts)?$/ }, () => ({ path: file }))
+  },
+})
+
 /** Compile the CLI into a standalone binary for one target. */
-export const compileTarget = async (target: Target, outfile: string): Promise<void> => {
+export const compileTarget = async (
+  target: Target,
+  outfile: string,
+  opts: { bundled?: string } = {},
+): Promise<void> => {
   const started = performance.now()
   await Bun.build({
     entrypoints: [CLI_ENTRY],
@@ -101,7 +113,11 @@ export const compileTarget = async (target: Target, outfile: string): Promise<vo
       "process.platform": JSON.stringify(target.platform),
       "process.arch": JSON.stringify(target.arch),
     },
-    plugins: [jsoncEsm, nativeStubs(target)],
+    plugins: [
+      jsoncEsm,
+      nativeStubs(target),
+      ...(opts.bundled === undefined ? [] : [redirectBundled(opts.bundled)]),
+    ],
   })
   const elapsed = ((performance.now() - started) / 1000).toFixed(2)
   console.log(`[compile] compile ${target.triple} done in ${elapsed}s`)
