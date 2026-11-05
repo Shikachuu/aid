@@ -111,7 +111,6 @@ export const renderPretty = (results: ToolResult[]): string => {
   for (const r of results) {
     if (r.skipped) {
       lines.push(colorize(`${r.tool}: skipped${r.reason ? ` (${r.reason})` : ""}`, "dim"))
-      continue
     }
     for (const d of r.diagnostics) {
       const loc =

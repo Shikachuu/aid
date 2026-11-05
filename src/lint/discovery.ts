@@ -1,6 +1,14 @@
-import { resolve as resolvePath } from "node:path"
+import type { Dirent } from "node:fs"
+import { readdir } from "node:fs/promises"
+import { join, resolve as resolvePath } from "node:path"
 import { FORMAT_CONFIGS, LINT_CONFIGS } from "./bun"
-import { KNOWN_TOOLS, type Report, type Tool, type ToolResult } from "./diagnostics"
+import {
+  type Diagnostic,
+  KNOWN_TOOLS,
+  type Report,
+  type Tool,
+  type ToolResult,
+} from "./diagnostics"
 
 /** Directory names discovery never walks into, whatever the tool. */
 export const DEFAULT_IGNORES = new Set([
@@ -14,6 +22,7 @@ export const DEFAULT_IGNORES = new Set([
   ".next",
   ".cache",
   ".vercel",
+  ".aid",
 ])
 
 /**
@@ -45,26 +54,64 @@ export const USER_CONFIGS: Record<Tool, readonly string[]> = {
   proto: ["buf.yaml"],
 }
 
+const errorCode = (err: unknown): string =>
+  err instanceof Error && "code" in err ? String(err.code) : String(err)
+
 /**
- * Walk `dir` for files matching any of `patterns`. Returns sorted, deduped
- * absolute paths, skipping `node_modules`, `dist` and the other build folders.
+ * List every regular file under `root`, relative to it, without entering a
+ * `DEFAULT_IGNORES` directory. A subdirectory that cannot be read becomes a
+ * `read-error` warning instead of aborting the run; an unreadable `root` throws.
  */
-export const discover = async (dir: string, patterns: readonly string[]): Promise<string[]> => {
-  const root = resolvePath(dir)
-  const files = new Set<string>()
-  for (const pattern of patterns) {
-    for await (const rel of new Bun.Glob(pattern).scan({ cwd: root, onlyFiles: true })) {
-      if (!rel.split(/[\\/]/).some((seg) => DEFAULT_IGNORES.has(seg))) {
-        files.add(resolvePath(root, rel))
+export const listFiles = async (
+  root: string,
+): Promise<{ files: string[]; errors: Diagnostic[] }> => {
+  const files: string[] = []
+  const errors: Diagnostic[] = []
+  const walk = async (rel: string): Promise<void> => {
+    let entries: Dirent[]
+    try {
+      entries = await readdir(join(root, rel), { withFileTypes: true })
+    } catch (err) {
+      if (rel === "") {
+        throw new Error(`aid: cannot read directory ${root} (${errorCode(err)})`, { cause: err })
+      }
+      errors.push({
+        file: join(root, rel),
+        severity: "warn",
+        code: "read-error",
+        message: `directory skipped, it cannot be read (${errorCode(err)})`,
+      })
+      return
+    }
+    for (const entry of entries) {
+      const child = rel === "" ? entry.name : `${rel}/${entry.name}`
+      if (entry.isDirectory()) {
+        if (!DEFAULT_IGNORES.has(entry.name)) {
+          await walk(child)
+        }
+      } else if (entry.isFile()) {
+        files.push(child)
       }
     }
   }
-  return [...files].sort()
+  await walk("")
+  return { files: files.sort(), errors }
+}
+
+/** Keep the relative `files` that match any of `patterns`, as sorted absolute paths under `root`. */
+export const matchFiles = (
+  root: string,
+  files: readonly string[],
+  patterns: readonly string[],
+): string[] => {
+  const globs = patterns.map((pattern) => new Bun.Glob(pattern))
+  return files.filter((rel) => globs.some((g) => g.match(rel))).map((rel) => resolvePath(root, rel))
 }
 
 /**
  * Discover each tool's files under `dir` and run, in parallel, the tools that
- * `filter` allows and `run` has a runner for.
+ * `filter` allows and `run` has a runner for. Directories discovery could not
+ * read are reported on the first tool's result.
  */
 export const runTools = async (
   dir: string,
@@ -75,8 +122,14 @@ export const runTools = async (
     const runner = run[tool]
     return runner !== undefined && (filter === null || filter.has(tool)) ? [{ tool, runner }] : []
   })
+  const root = resolvePath(dir)
+  const { files, errors } = await listFiles(root)
   const results = await Promise.all(
-    selected.map(async ({ tool, runner }) => runner(await discover(dir, PATTERNS[tool]))),
+    selected.map(({ tool, runner }) => runner(matchFiles(root, files, PATTERNS[tool]))),
   )
+  const [first] = results
+  if (first !== undefined && errors.length > 0) {
+    results[0] = { ...first, diagnostics: [...errors, ...first.diagnostics] }
+  }
   return { ok: results.every((r) => r.ok), results }
 }
