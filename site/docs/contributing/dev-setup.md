@@ -86,4 +86,4 @@ From a source checkout, aid bundles the browser runtime with `Bun.build` on ever
 bun scripts/manual-test.ts
 ```
 
-It runs `bun run build`, then runs `dist/bin/aid-<os>-<arch>` for the host with `build` inside `tests/fixtures/sample-site`. It serves `tests/fixtures/sample-site/dist` on `http://localhost:3000/` with the dev server's `serveFile`. The build overwrites `src/web/_bundled.ts`, so restore it before you commit (see [single binary](./single-binary.md)).
+It runs `bun run build`, then runs `dist/bin/aid-<os>-<arch>` for the host with `build` inside `tests/fixtures/sample-site`. It serves `tests/fixtures/sample-site/dist` on `http://localhost:3000/` with the dev server's `serveFile`. The build writes its browser bundles to the gitignored `.aid-build/` (see [single binary](./single-binary.md)).

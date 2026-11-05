@@ -77,4 +77,4 @@ To check the compiled binary end to end, run:
 bun scripts/manual-test.ts
 ```
 
-The script runs `bun run build`, then runs `dist/bin/aid-<os>-<arch>` for the host machine with `build` inside `tests/fixtures/sample-site`. It serves `tests/fixtures/sample-site/dist` on `http://localhost:3000/` until you stop it. The build overwrites `src/web/_bundled.ts`. Restore it before you commit, as [single binary](./single-binary.md) explains.
+The script runs `bun run build`, then runs `dist/bin/aid-<os>-<arch>` for the host machine with `build` inside `tests/fixtures/sample-site`. It serves `tests/fixtures/sample-site/dist` on `http://localhost:3000/` until you stop it. The build writes its browser bundles to the gitignored `.aid-build/`, so it leaves tracked files alone, as [single binary](./single-binary.md) explains.

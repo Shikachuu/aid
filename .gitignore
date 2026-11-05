@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.aid-build/
 vendor/
 .bun/
 .cache/

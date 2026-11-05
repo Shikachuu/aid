@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import path from "node:path"
-import { nativeStubs } from "../../scripts/compile"
+import { compileTarget, nativeStubs } from "../../scripts/compile"
 import { TARGETS } from "../../scripts/natives"
 
 const SRC = path.join(import.meta.dir, "../../src")
@@ -30,4 +30,14 @@ describe("nativeStubs", () => {
       expect(buf.filter((name) => name.startsWith("buf"))).toHaveLength(1)
     },
   )
+})
+
+describe("compileTarget", () => {
+  test("refuses to compile without the generated browser bundle", async () => {
+    const target = TARGETS[0] as (typeof TARGETS)[number]
+    const missing = path.join(import.meta.dir, "no-such-bundle.ts")
+    await expect(compileTarget(target, "/dev/null", { bundled: missing })).rejects.toThrow(
+      `${missing} is missing. Run \`bun scripts/bundle-web.ts\` first.`,
+    )
+  })
 })
