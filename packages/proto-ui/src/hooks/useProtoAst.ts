@@ -21,9 +21,17 @@ export type UseProtoAstResult =
 
 const LOADING: UseProtoAstResult = { status: "loading", ast: null, error: null, source: null }
 
+const NO_SOURCE: UseProtoAstResult = {
+  status: "error",
+  ast: null,
+  error: new Error("useProtoAst needs protoText, protoUrl, or ast"),
+  source: null,
+}
+
 /**
  * Load and parse a proto source. `protoText` and `ast` resolve on the first render. `protoUrl`
- * starts in `loading`, and a new URL aborts the previous fetch.
+ * starts in `loading`, and a new URL aborts the previous fetch. An empty `protoUrl` with no other
+ * source is an error.
  */
 export const useProtoAst = (options: UseProtoAstOptions): UseProtoAstResult => {
   const { protoText, protoUrl, ast } = options
@@ -67,6 +75,9 @@ export const useProtoAst = (options: UseProtoAstOptions): UseProtoAstResult => {
     }
     if (protoText != null) {
       return parseSafe(protoText)
+    }
+    if (!protoUrl) {
+      return NO_SOURCE
     }
     if (fetchError?.url === protoUrl) {
       return { status: "error", ast: null, error: fetchError.error, source: null }

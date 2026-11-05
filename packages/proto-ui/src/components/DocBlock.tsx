@@ -1,11 +1,13 @@
-import { renderDocMarkdown } from "./doc-markdown"
+import { renderSafeDocMarkdown } from "./doc-markdown"
 
 type DocBlockProps = {
-  /** Comment text without its comment markers, which protobufjs strips. */
-  raw: string | null
+  markdown: string | null
 }
 
-export const DocBlock = ({ raw }: DocBlockProps) =>
-  raw ? (
-    <div className="proto-doc" dangerouslySetInnerHTML={{ __html: renderDocMarkdown(raw) }} />
+export const DocBlock = ({ markdown }: DocBlockProps) =>
+  markdown ? (
+    <div
+      className="proto-doc"
+      dangerouslySetInnerHTML={{ __html: renderSafeDocMarkdown(markdown) }}
+    />
   ) : null

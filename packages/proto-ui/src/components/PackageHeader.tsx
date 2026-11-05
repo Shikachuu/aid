@@ -27,6 +27,6 @@ export const PackageHeader = ({
         View source
       </a>
     ) : null}
-    <DocBlock raw={leadingComment} />
+    <DocBlock markdown={leadingComment} />
   </header>
 )

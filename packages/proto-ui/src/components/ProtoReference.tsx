@@ -1,4 +1,5 @@
 import { type UseProtoAstOptions, useProtoAst } from "../hooks/useProtoAst"
+import type { ProtoAst } from "../parser"
 import { EnumBlock } from "./EnumBlock"
 import { MessageBlock } from "./MessageBlock"
 import { PackageHeader } from "./PackageHeader"
@@ -18,11 +19,9 @@ export type ProtoReferenceProps = UseProtoAstOptions & {
   fileSourceUrl?: string
 }
 
-/**
- * Render the full documentation for one `.proto` file: sidebar, package header, services, messages
- * and enums. Shows a loading state until the source parses, and an error state when loading or
- * parsing fails.
- */
+const isEmpty = (ast: ProtoAst): boolean =>
+  ast.services.length === 0 && ast.messages.length === 0 && ast.enums.length === 0
+
 export const ProtoReference = (props: ProtoReferenceProps) => {
   const result = useProtoAst(props)
   const { baseHref, className, fileSourceUrl } = props
@@ -31,7 +30,7 @@ export const ProtoReference = (props: ProtoReferenceProps) => {
   return (
     <div className={rootClass}>
       {result.status === "loading" ? (
-        <p className="proto-loading">Loading proto documentation…</p>
+        <p className="proto-loading">Loading proto documentation...</p>
       ) : result.status === "error" ? (
         <pre className="proto-error">Failed to load proto: {result.error.message}</pre>
       ) : (
@@ -43,11 +42,19 @@ export const ProtoReference = (props: ProtoReferenceProps) => {
               leadingComment={result.ast.packageLeadingComment}
               fileSourceUrl={fileSourceUrl}
             />
+            {isEmpty(result.ast) ? (
+              <p className="proto-empty">This file declares no services, messages, or enums.</p>
+            ) : null}
             {result.ast.services.map((s) => (
               <ServiceBlock key={s.fqn} service={s} baseHref={baseHref} />
             ))}
             {result.ast.messages.map((m) => (
-              <MessageBlock key={m.fqn} message={m} baseHref={baseHref} />
+              <MessageBlock
+                key={m.fqn}
+                message={m}
+                syntax={result.ast.syntax}
+                baseHref={baseHref}
+              />
             ))}
             {result.ast.enums.map((e) => (
               <EnumBlock key={e.fqn} enumEntity={e} />

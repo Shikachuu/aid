@@ -1,8 +1,8 @@
-type ViewSourceProps = {
+type DeclarationSummaryProps = {
   declaration: string
 }
 
-export const ViewSource = ({ declaration }: ViewSourceProps) => (
+export const DeclarationSummary = ({ declaration }: DeclarationSummaryProps) => (
   <details className="proto-view-source">
     <summary className="proto-view-source-toggle" />
     <pre className="proto-view-source-pre">

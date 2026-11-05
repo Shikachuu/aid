@@ -14,7 +14,7 @@ const REACT_EXTERNALS = ["react", "react-dom", "react-dom/client", "react/jsx-ru
 
 const run = async (label: string, fn: () => Promise<unknown>): Promise<void> => {
   const start = performance.now()
-  process.stdout.write(`[build] ${label}…`)
+  process.stdout.write(`[build] ${label}...`)
   try {
     await fn()
     process.stdout.write(` ${Math.round(performance.now() - start)}ms\n`)

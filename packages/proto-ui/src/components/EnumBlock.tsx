@@ -1,9 +1,9 @@
 import type { ProtoEnum } from "../parser"
+import { DeclarationSummary } from "./DeclarationSummary"
 import { DeprecatedBadge } from "./DeprecatedBadge"
 import { DocBlock } from "./DocBlock"
 import { EntityHeader } from "./EntityHeader"
-import { printEnum } from "./print-proto"
-import { ViewSource } from "./ViewSource"
+import { summarizeEnum } from "./summarize-proto"
 
 type EnumBlockProps = {
   enumEntity: ProtoEnum
@@ -17,7 +17,7 @@ export const EnumBlock = ({ enumEntity }: EnumBlockProps) => (
       fqn={enumEntity.fqn}
       deprecated={enumEntity.deprecated}
     />
-    <DocBlock raw={enumEntity.comment} />
+    <DocBlock markdown={enumEntity.comment} />
     <table className="proto-enum-table">
       <thead>
         <tr>
@@ -40,12 +40,12 @@ export const EnumBlock = ({ enumEntity }: EnumBlockProps) => (
               ) : null}
             </td>
             <td className="proto-enum-doc">
-              <DocBlock raw={v.comment} />
+              <DocBlock markdown={v.comment} />
             </td>
           </tr>
         ))}
       </tbody>
     </table>
-    <ViewSource declaration={printEnum(enumEntity)} />
+    <DeclarationSummary declaration={summarizeEnum(enumEntity)} />
   </section>
 )
