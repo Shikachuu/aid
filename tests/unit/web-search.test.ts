@@ -66,9 +66,9 @@ describe("attachSearch", () => {
   test("lists matching pages and moves the selection with the arrow keys", async () => {
     await typeQuery("alp")
     expect(results.hidden).toBe(false)
-    expect([...results.querySelectorAll(".aid-search-result-title")].map((e) => e.textContent)).toEqual(
-      ["alpha", "alpine"],
-    )
+    expect(
+      [...results.querySelectorAll(".aid-search-result-title")].map((e) => e.textContent),
+    ).toEqual(["alpha", "alpine"])
     expect(selected()).toBe(0)
     expect(key({ key: "ArrowDown" }).defaultPrevented).toBe(true)
     expect(selected()).toBe(1)

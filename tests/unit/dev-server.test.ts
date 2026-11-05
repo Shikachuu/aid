@@ -53,7 +53,12 @@ describe("startDevServer", () => {
   }
 
   beforeEach(() => {
-    state = { currentDir: dist, buffers: { a: dist, b: dist }, errorState: null, sseClients: new Set() }
+    state = {
+      currentDir: dist,
+      buffers: { a: dist, b: dist },
+      errorState: null,
+      sseClients: new Set(),
+    }
   })
 
   afterEach(() => {
@@ -146,6 +151,8 @@ describe("startDevServer", () => {
         host: "127.0.0.1",
         port: taken,
       }),
-    ).toThrow(`aid dev: port ${taken} on 127.0.0.1 is already in use. Pass --port to choose a different one.`)
+    ).toThrow(
+      `aid dev: port ${taken} on 127.0.0.1 is already in use. Pass --port to choose a different one.`,
+    )
   })
 })

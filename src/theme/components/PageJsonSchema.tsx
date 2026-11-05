@@ -14,12 +14,7 @@ const VARIANT_LABEL = { oneOf: "One of", anyOf: "Any of", allOf: "All of" } as c
  * Render a JSON Schema reference: one collapsible block per field, the
  * schema example, and an anchored section per definition.
  */
-export function PageJsonSchema({
-  title,
-  doc,
-  descriptionHtml,
-  exampleHtml,
-}: PageJsonSchemaProps) {
+export function PageJsonSchema({ title, doc, descriptionHtml, exampleHtml }: PageJsonSchemaProps) {
   const root = doc.root
   return (
     <article class="aid-page aid-page-jsonschema">
