@@ -21,13 +21,14 @@ components:
           description: Project version string (semver recommended).
           type: string
         base_url:
-          description: Absolute origin of the published site (e.g. https://docs.example.com). Makes llms.txt links absolute; base_path is appended to it.
+          description: "Origin of the published site (e.g. https://docs.example.com), with no path. Makes llms.txt links absolute; put a sub-path in base_path."
           type: string
           format: uri
         base_path:
+          description: "URL path prefix for all routes. Must start with '/'; a trailing slash is dropped. Default '/'. Use '/docs' to host at example.com/docs/."
           default: /
-          description: "URL path prefix for all routes. Default '/'. Use '/docs' to host at example.com/docs/."
           type: string
+          pattern: "^\\/(?:[^/\\s\\\\?#][^\\s\\\\?#]*)?$"
         stylesheet:
           default: main.css
           description: "Path to the Tailwind CSS entrypoint. Applied uniformly to every page type (markdown, HTML, OpenAPI, proto)."
@@ -53,6 +54,7 @@ components:
               default: static
               description: "Directory copied verbatim into the build output. Use for images, fonts, favicon, robots.txt. Default 'static'."
               type: string
+          additionalProperties: false
         theme:
           description: Theme configuration.
           default: {}
@@ -66,6 +68,7 @@ components:
                 - auto
                 - manual
                 - "off"
+          additionalProperties: false
         ai_targets:
           default:
             - chatgpt
@@ -123,10 +126,12 @@ components:
                   description: Search ranking boost for JSON Schema fields and definitions.
                   type: number
                   minimum: 0
+              additionalProperties: false
               description: "Per-format search ranking weights, applied via MiniSearch boostDocument."
+          additionalProperties: false
         on_broken_links:
           default: error
-          description: "What to do when a relative link, link fragment or colocated image does not resolve. 'error' fails the build; 'warn' prints the report and continues."
+          description: "What to do when a relative link, link fragment, colocated image or _meta.yaml nav entry does not resolve. 'error' fails the build; 'warn' prints the report and continues."
           type: string
           enum:
             - error
@@ -146,8 +151,10 @@ components:
               default: localhost
               description: Dev server host.
               type: string
+          additionalProperties: false
       required:
         - name
+      additionalProperties: false
       description: aid project configuration. Generated JSON Schema is published at https://aid.tools/schemas/v0/aid.schema.json.
     Frontmatter:
       type: object
