@@ -13,7 +13,7 @@ export const BUNDLED_OUT = resolve(ROOT, ".aid-build", "_bundled.ts")
 const BUF_SUBPKGS = TARGETS.map((t) => t.bufSubpkg)
 const LCSS_SUBPKGS = TARGETS.map((t) => t.lcssSubpkg)
 
-/** Human-readable size for the build logs, such as `9.6 MB`. */
+/** Shared with `bundle-web.ts`, so both scripts log sizes in the same units. */
 export const fmtBytes = (n: number): string => {
   const units = ["B", "KB", "MB", "GB"]
   let i = 0

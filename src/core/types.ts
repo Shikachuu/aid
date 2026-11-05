@@ -31,8 +31,7 @@ export type RenderedPage = {
   hasOpenApi: boolean
   hasProto: boolean
   description?: string
-  // Undefined when the ids only exist in the browser, so the anchor check skips the page.
-  anchors?: string[]
+  knownAnchorIds?: string[]
   anchorRefs?: AnchorRef[]
   diagnostics?: Diagnostic[]
 }

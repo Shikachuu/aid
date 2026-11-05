@@ -223,6 +223,6 @@ describe("renderHtml", () => {
         `<h2 ID="Upper">U</h2><a name="old"></a><p>set id=fake here</p><code>name="code"</code>`,
       ),
     )
-    expect(page.anchors).toEqual(["Upper", "old"])
+    expect(page.knownAnchorIds).toEqual(["Upper", "old"])
   })
 })

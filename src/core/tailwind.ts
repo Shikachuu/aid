@@ -199,9 +199,10 @@ function applyDarkModeFlag(css: string, mode: "auto" | "manual" | "off"): string
   if (result.darkBlock === "") {
     return css
   }
-  // Inside the theme layer, any dark rule the user writes outside it wins over the derived one.
-  return `${css}\n@layer theme {\n${result.darkBlock}\n}`
+  return `${css}\n@layer ${DERIVED_DARK_LAYER} {\n${result.darkBlock}\n}`
 }
+
+const DERIVED_DARK_LAYER = "theme"
 
 const PREFERS_DARK_RE = /@media\s*\(\s*prefers-color-scheme\s*:\s*dark\s*\)\s*\{/g
 

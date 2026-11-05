@@ -52,7 +52,6 @@ const typeQuery = (q: string) => {
   input.dispatchEvent(new Event("input"))
 }
 
-/** Polls `check` until it holds, so a test waits for the effect rather than a fixed delay. */
 const until = async (check: () => boolean) => {
   for (let i = 0; i < 400 && !check(); i++) {
     await Bun.sleep(5)

@@ -32,7 +32,6 @@ import { codeBlocks, HAS_MERMAID_FLAG } from "./mermaid"
 export type RenderMarkdownArgs = {
   route: Route
   sourcePath: string
-  /** Copies each relative markdown image (`![](...)`) next to the page. Raw `<img>` tags are not copied. */
   copyAsset?: CopyAsset
   resolveLink?: ResolveLink
 }
@@ -108,7 +107,7 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
     hasOpenApi: false,
     hasProto: false,
     description: frontmatter?.description,
-    anchors: collectAnchors(htmlTree as HastRoot),
+    knownAnchorIds: collectAnchors(htmlTree as HastRoot),
     anchorRefs: anchorRefs.map((ref) => ({
       ...ref,
       line: ref.line === undefined ? undefined : ref.line + bodyLine - 1,
@@ -126,7 +125,7 @@ async function buildMdast(
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkCalloutMarkers)
-    .use(warnRawRelativeUrls)
+    .use(warnRawHtmlRelativeUrls)
   if (args.copyAsset) {
     processor = processor.use(colocatedAssetsMdastPlugin, {
       sourceDir: path.dirname(args.sourcePath),
@@ -150,8 +149,7 @@ function parseFrontmatter(source: string, sourcePath: string) {
   }
 }
 
-/** Raw HTML skips the image copy and link rewrite, so a relative URL in it breaks once deployed. */
-function warnRawRelativeUrls() {
+function warnRawHtmlRelativeUrls() {
   return (tree: MdastRoot, file: VFile): void => {
     visit(tree, "html", (node: Html) => {
       visit(parseHtmlFragment(node.value), "element", (el: HastElement) => {

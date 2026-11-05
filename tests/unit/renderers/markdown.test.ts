@@ -286,10 +286,10 @@ describe("renderMarkdown", () => {
       "page.md",
       '# Title\n\nSet id=prose here.\n\n```html\n<div id="code"></div>\n```\n\n<div ID="Raw"></div>\n',
     )
-    expect(page.anchors).toContain("title")
-    expect(page.anchors).toContain("Raw")
-    expect(page.anchors).not.toContain("prose")
-    expect(page.anchors).not.toContain("code")
+    expect(page.knownAnchorIds).toContain("title")
+    expect(page.knownAnchorIds).toContain("Raw")
+    expect(page.knownAnchorIds).not.toContain("prose")
+    expect(page.knownAnchorIds).not.toContain("code")
   })
 
   test("a leading raw <h1> counts as the page H1", async () => {

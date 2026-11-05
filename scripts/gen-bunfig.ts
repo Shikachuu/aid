@@ -16,10 +16,7 @@ export const repoRules: Record<string, LintRule> = {
   "promise/prefer-await-to-then": "error",
 }
 
-// Error messages and UI strings end up in terminals and pages that may not render
-// unicode punctuation, so `src/` keeps string literals ASCII. Write `…` when
-// the character is wanted.
-const SRC_OVERRIDE = `
+const ASCII_ONLY_SRC_OVERRIDE = `
 [[lint.overrides]]
 files = ["src/**"]
 
@@ -49,7 +46,8 @@ const prettierConfig = {
 export const generated = (): GeneratedFile[] => [
   {
     path: "bunfig.toml",
-    content: renderBunfig({ lint: { rules: { ...lintRules, ...repoRules } } }) + SRC_OVERRIDE,
+    content:
+      renderBunfig({ lint: { rules: { ...lintRules, ...repoRules } } }) + ASCII_ONLY_SRC_OVERRIDE,
   },
   { path: ".prettierrc.json", content: `${JSON.stringify(prettierConfig, null, 2)}\n` },
 ]

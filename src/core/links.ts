@@ -123,12 +123,14 @@ function isFile(p: string): Promise<boolean> {
 
 /**
  * Fragment links whose target page publishes its anchors but not this one.
- * Pages without `anchors` (OpenAPI, proto) render their ids in the browser, so
+ * Pages without `knownAnchorIds` (OpenAPI, proto) render their ids in the browser, so
  * links into them are not checked.
  */
 export function checkAnchors(pages: RenderedPage[]): Diagnostic[] {
   const anchorsByRoute = new Map(
-    pages.flatMap((p) => (p.anchors ? [[p.route.path, new Set(p.anchors)] as const] : [])),
+    pages.flatMap((p) =>
+      p.knownAnchorIds ? [[p.route.path, new Set(p.knownAnchorIds)] as const] : [],
+    ),
   )
   return pages.flatMap((page) =>
     (page.anchorRefs ?? []).flatMap((ref) => {

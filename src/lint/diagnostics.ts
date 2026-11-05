@@ -14,7 +14,7 @@ export type Diagnostic = {
 /** Every tool `aid lint` knows, in the order the report lists them. */
 export const KNOWN_TOOLS = ["md", "openapi", "bun", "css", "proto"] as const
 
-/** A tool name as `--filter` accepts it. */
+/** Any name outside {@link KNOWN_TOOLS} makes `--filter` a usage error. */
 export type Tool = (typeof KNOWN_TOOLS)[number]
 
 /** Outcome of one tool's run. A single `ok: false` fails the whole report. */
@@ -97,7 +97,7 @@ const colorize = (s: string, code: keyof typeof ANSI): string =>
 const severityColor = (s: Severity): keyof typeof ANSI =>
   s === "error" ? "red" : s === "warn" ? "yellow" : "blue"
 
-/** Render the default `--format=pretty` output: one line per finding, then a summary with counts per tool. */
+/** The default report. A `--check` would-change file counts as a warning in the summary. */
 export const renderPretty = (results: ToolResult[]): string => {
   const lines: string[] = []
   let errors = 0
@@ -144,7 +144,7 @@ export const renderPretty = (results: ToolResult[]): string => {
   return lines.join("\n")
 }
 
-/** Render `--format=json` output for scripts that parse the report. */
+/** For scripts: every `ToolResult` as is, skipped tools and would-change lists included. */
 export const renderJson = (results: ToolResult[]): string => JSON.stringify({ results }, null, 2)
 
 /** Write `report` to stdout as `pretty` or `json`, then exit 0 when it passed and 1 otherwise. */

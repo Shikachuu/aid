@@ -67,7 +67,7 @@ export async function renderJsonSchema(args: RenderJsonSchemaArgs): Promise<Rend
     hasOpenApi: false,
     hasProto: false,
     description: firstParagraph(doc.root.description),
-    anchors: collectAnchors(parseHtmlFragment(html)),
+    knownAnchorIds: collectAnchors(parseHtmlFragment(html)),
     anchorRefs: [
       ...rendered.flatMap((r, i) =>
         r.anchorRefs.map((ref) => ({ ...ref, line: lines[i], col: undefined })),
@@ -116,7 +116,7 @@ function descriptionLine(source: string, description: string, json: boolean): nu
 
 function pageLinkRefs(doc: SchemaDocument, index: RouteIndex | undefined): AnchorRef[] {
   const refs = new Map<string, AnchorRef>()
-  for (const link of doc.pageLinks) {
+  for (const link of doc.crossPageAnchorRefs) {
     const target = index?.bySource.get(link.file)
     if (target) {
       refs.set(`${target.path}#${link.fragment}`, {

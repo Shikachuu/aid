@@ -62,7 +62,7 @@ const toToml = (value: unknown): string => {
   return JSON.stringify(value)
 }
 
-/** Render `config` as the TOML file that `bun lint -c` and `bun fmt -c` read. */
+/** Shared by the bundled default bunfig and `gen-bunfig`, so the repo file and the default render the same way. */
 export const renderBunfig = (config: Bunfig): string => {
   const lines = ["[lint]"]
   if (config.lint.ignorePatterns !== undefined) {
@@ -82,11 +82,10 @@ export const renderBunfig = (config: Bunfig): string => {
   return `${lines.join("\n")}\n`
 }
 
-const hasSection = async (bunfig: string, section: "lint" | "fmt"): Promise<boolean> => {
+const mayHaveSection = async (bunfig: string, section: "lint" | "fmt"): Promise<boolean> => {
   try {
     return section in (Bun.TOML.parse(await Bun.file(bunfig).text()) as Record<string, unknown>)
   } catch {
-    // Bun reports the syntax error when it reads this bunfig.
     return true
   }
 }
@@ -101,7 +100,7 @@ const nearestBunfigWithSection = async (
     if (path === null) {
       return null
     }
-    if (await hasSection(path, section)) {
+    if (await mayHaveSection(path, section)) {
       return path
     }
     const parent = dirname(dirname(path))

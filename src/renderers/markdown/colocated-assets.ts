@@ -14,7 +14,6 @@ export type CopyAsset = (absoluteSource: string) => Promise<string | null>
 
 /** Where relative srcs resolve and what copies them; shared by the HTML and markdown plugins. */
 export type ColocatedAssetsOptions = {
-  /** Absolute directory of the source file. */
   sourceDir: string
   copyAsset: CopyAsset
 }

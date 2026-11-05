@@ -21,7 +21,6 @@ import { collectAnchors, hastText, headingTexts, vfileDiagnostics } from "./shar
 export type RenderHtmlArgs = {
   route: Route
   sourcePath: string
-  /** Copies each relative `<img src>` in the body next to the page. */
   copyAsset?: CopyAsset
   resolveLink?: ResolveLink
 }
@@ -95,7 +94,7 @@ export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
     hasOpenApi: false,
     hasProto: false,
     description: frontmatter.description,
-    anchors: collectAnchors(bodyTree),
+    knownAnchorIds: collectAnchors(bodyTree),
     anchorRefs,
     diagnostics: vfileDiagnostics(file, args.sourcePath),
   }

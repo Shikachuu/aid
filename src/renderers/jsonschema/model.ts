@@ -53,8 +53,7 @@ export type SchemaDocument = {
   /** Root `examples`, or one synthesized example. Empty when nothing can be built. */
   examples: unknown[]
   warnings: string[]
-  /** Definition anchors on other schema pages that `$ref`s link to, for the build's anchor check. */
-  pageLinks: { file: string; fragment: string; href: string }[]
+  crossPageAnchorRefs: { file: string; fragment: string; href: string }[]
 }
 
 /** Where the schema lives, so relative `$ref`s resolve, and how to link ones that hit other schema pages. */
@@ -189,7 +188,7 @@ class Builder {
   private readonly usedIds = new Set<string>()
   private readonly stack = new Set<unknown>()
   private readonly warnings = new Set<string>()
-  private readonly pageLinks: SchemaDocument["pageLinks"] = []
+  private readonly crossPageAnchorRefs: SchemaDocument["crossPageAnchorRefs"] = []
   private readonly fileBase: string
   private readonly legacyIds: boolean
   private depth = 0
@@ -242,7 +241,7 @@ class Builder {
       definitions,
       examples: this.documentExamples(root),
       warnings: [...this.warnings],
-      pageLinks: this.pageLinks,
+      crossPageAnchorRefs: this.crossPageAnchorRefs,
     }
   }
 
@@ -423,7 +422,7 @@ class Builder {
         return page
       }
       const fragment = `def-${slug(pointerSegment(def))}`
-      this.pageLinks.push({ file: res.file, fragment, href: ref })
+      this.crossPageAnchorRefs.push({ file: res.file, fragment, href: ref })
       return `${page}#${fragment}`
     }
     this.warnings.add(`unresolved $ref "${ref}"`)

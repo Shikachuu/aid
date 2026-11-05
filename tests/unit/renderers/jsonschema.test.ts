@@ -746,7 +746,9 @@ describe("renderJsonSchema", () => {
       definitions: ["Address"],
     })
     expect(page.searchTokens.headings).toEqual(["Address"])
-    expect(page.anchors).toEqual(expect.arrayContaining(["prop-id", "prop-name", "def-Address"]))
+    expect(page.knownAnchorIds).toEqual(
+      expect.arrayContaining(["prop-id", "prop-name", "def-Address"]),
+    )
   })
 
   test("a $ref to another schema page links to its definition section", async () => {
@@ -797,7 +799,7 @@ describe("renderJsonSchema", () => {
     )
     const route: Route = { source: sourcePath, path: "/shared", kind: "jsonschema" }
     const page = await renderJsonSchema({ route, sourcePath })
-    expect(page.anchors).toEqual(expect.arrayContaining(["def-A", "def-B"]))
+    expect(page.knownAnchorIds).toEqual(expect.arrayContaining(["def-A", "def-B"]))
   })
 
   test("names the file when a YAML alias refers to its own ancestor", async () => {
