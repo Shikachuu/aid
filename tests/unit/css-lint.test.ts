@@ -101,6 +101,18 @@ describe("lintCss", () => {
     expect(await findings('.a { content: "abc\n}\n')).toEqual(["1:string-no-newline"])
   })
 
+  test("checks declarations that follow a nested rule or sit in nested @media", async () => {
+    expect(await findings(".a {\n  &:hover { color: red; }\n  colr: red;\n}\n")).toEqual([
+      "3:property-no-unknown",
+    ])
+    expect(await findings(".a {\n  @media (width > 1px) {\n    colr: red;\n  }\n}\n")).toEqual([
+      "3:property-no-unknown",
+    ])
+    expect(
+      await findings(".c {\n  .d { margin: 0; }\n  margin: 1px;\n  margin: 1px;\n}\n"),
+    ).toEqual(["4:declaration-block-no-duplicate-properties"])
+  })
+
   test("counts an !important declaration as a duplicate of a normal one", async () => {
     const out = await findings(".a {\n  color: red;\n  width: 1px;\n  color: blue !important;\n}\n")
     expect(out).toEqual(["4:declaration-block-no-duplicate-properties"])

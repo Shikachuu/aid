@@ -691,6 +691,16 @@ function walkRules(ctx: FileContext, rules: Rule[]): void {
       case "nesting":
         checkStyleRule(ctx, rule.value.style, selectorsInScope)
         break
+      case "nested-declarations": {
+        const { declarations, loc } = rule.value
+        checkDeclarations(
+          ctx,
+          [...(declarations.declarations ?? []), ...(declarations.importantDeclarations ?? [])],
+          ctx.lineStarts[loc.line] ?? 0,
+          rulePosition(loc),
+        )
+        break
+      }
       case "media":
         checkMediaQueries(ctx, rule.value.query.mediaQueries, rule.value.loc)
         walkRules(ctx, rule.value.rules)
