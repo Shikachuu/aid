@@ -125,7 +125,7 @@ describe("startDevServer", () => {
 
   test("accepts every loopback Host form while bound to loopback", async () => {
     start()
-    for (const host of ["localhost", "127.0.0.1", "[::1]"]) {
+    for (const host of ["localhost", "localhost.", "127.0.0.1", "[::1]"]) {
       const res = await fetch(url("/"), { headers: { Host: `${host}:${server.port}` } })
       expect(res.status).toBe(200)
     }

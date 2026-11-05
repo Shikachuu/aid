@@ -200,7 +200,7 @@ function isAllowedHost(req: Request, host: string): boolean {
     return false
   }
   try {
-    return LOOPBACK_HOSTS.has(new URL(`http://${header}`).hostname)
+    return LOOPBACK_HOSTS.has(new URL(`http://${header}`).hostname.replace(/\.$/, ""))
   } catch {
     return false
   }

@@ -37,8 +37,9 @@ const THEMES: { light: BundledTheme; dark: BundledTheme } = {
 }
 
 /**
- * Code blocks longer than this many lines render as plain text. Shiki takes
- * about 0.25 ms per line, so one 50,000-line fence would add 12 s to a build.
+ * Code blocks longer than this many lines render as plain text. Shiki's time
+ * grows with the line count, so a generated file pasted into a fence would
+ * otherwise slow down every build.
  */
 export const MAX_HIGHLIGHT_LINES = 2000
 

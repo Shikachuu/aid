@@ -92,6 +92,7 @@ export function watchContent(
       previous.close()
       watchers.delete(previous)
     }
+    roots.set(dir, null)
     roots.set(
       dir,
       tryWatch(dir, true, (name) => void queue.enqueue(path.join(dir, name))),
@@ -109,8 +110,8 @@ export function watchContent(
     if (waiting === undefined) {
       return
     }
-    missingDirs.delete(target)
     watchFiles(waiting)
+    missingDirs.delete(target)
     for (const file of waiting) {
       noticeCreated(file)
       if (existsSync(file)) {

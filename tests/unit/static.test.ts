@@ -42,7 +42,7 @@ describe("copyStaticAssets", () => {
     await copyStaticAssets(ctx, registry)
     await rm(logo)
     await expect(registry.flush()).rejects.toThrow(
-      /^aid: cannot write .*logo\.svg from .*logo\.svg/,
+      `aid: cannot write ${path.join(ctx.outputDir, "logo.svg")} from ${logo}:`,
     )
   })
 

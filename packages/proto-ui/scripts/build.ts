@@ -76,21 +76,29 @@ const emitTypes = async (): Promise<void> => {
   await Bun.$`bun x tsc --emitDeclarationOnly --outDir ${DIST} --project .`.cwd(PACKAGE_ROOT)
 }
 
-// A process that imports the package mid-build sees the old dist or the new one, never a half-written one.
 const swapIntoPlace = async (): Promise<void> => {
   const old = `${OUT}.old-${process.pid}`
-  await rename(OUT, old).catch((err: NodeJS.ErrnoException) => {
-    if (err.code !== "ENOENT") {
+  let hadOld = true
+  try {
+    await rename(OUT, old)
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
       throw err
     }
-  })
-  await rename(DIST, OUT)
+    hadOld = false
+  }
+  try {
+    await rename(DIST, OUT)
+  } catch (err) {
+    if (hadOld) {
+      await rename(old, OUT)
+    }
+    throw err
+  }
   await rm(old, { recursive: true, force: true })
 }
 
-const main = async (): Promise<void> => {
-  await rm(DIST, { recursive: true, force: true })
-
+const build = async (): Promise<void> => {
   await run("bundle index.js", () =>
     bundleEntry(path.join(SRC, "index.ts"), path.join(DIST, "index.js"), REACT_EXTERNALS),
   )
@@ -102,7 +110,15 @@ const main = async (): Promise<void> => {
   )
   await run("compile styles.css", compileStyles)
   await run("emit .d.ts", emitTypes)
-  await swapIntoPlace()
+}
+
+const main = async (): Promise<void> => {
+  try {
+    await build()
+    await swapIntoPlace()
+  } finally {
+    await rm(DIST, { recursive: true, force: true })
+  }
 }
 
 await main()

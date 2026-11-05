@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
-import { chmodSync, mkdirSync, mkdtempSync, renameSync, rmSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, renameSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createChangeQueue, ignoredIn, type Schedule, watchContent } from "../../src/dev/watcher"
@@ -297,14 +297,19 @@ describe("watchContent", () => {
       try {
         handle.watchFiles([join(later, "a.css")])
         mkdirSync(later, { mode: 0o000 })
-        for (let i = 0; i < 50 && error.mock.calls.length === 0; i++) {
+        for (let i = 0; i < 250 && error.mock.calls.length === 0; i++) {
           await Bun.sleep(20)
+        }
+        if (error.mock.calls.length === 0) {
+          throw new Error(`no "cannot watch" report within 5 s of creating ${later}`)
         }
         expect(String(error.mock.calls[0]?.[0])).toContain(`cannot watch ${later}:`)
         await r.until((i) => Bun.write(css, `a{--i:${i}}`))
       } finally {
         error.mockRestore()
-        chmodSync(later, 0o700)
+        if (existsSync(later)) {
+          chmodSync(later, 0o700)
+        }
         handle.close()
       }
     },
