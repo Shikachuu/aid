@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { formatProto } from "../../src/fmt/proto"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -218,5 +219,31 @@ describe("formatAll orchestrator", () => {
     await Bun.write(join(dir, "x.ts"), "const   x = 1\n")
     const report = await formatAll({ dir, check: false, filter: null })
     expect(report.results.length).toBeGreaterThan(0)
+  })
+})
+
+describe("formatProto", () => {
+  test.each([true, false])(
+    "reports a proto that does not parse as an error, not a would-change (check: %p)",
+    async (check) => {
+      const file = join(dir, "bad.proto")
+      const original = "syntax = \"proto3\";\nmessage M{string x=\n"
+      await Bun.write(file, original)
+      const result = await formatProto([file], dir, { check })
+      expect(result.ok).toBe(false)
+      expect(result.wouldChange ?? []).toEqual([])
+      expect(result.diagnostics).toEqual([
+        expect.objectContaining({ file, severity: "error", code: "proto/parse" }),
+      ])
+      expect(await Bun.file(file).text()).toBe(original)
+    },
+  )
+
+  test("--check lists an unformatted proto as would-change", async () => {
+    const file = join(dir, "ok.proto")
+    await Bun.write(file, 'syntax = "proto3";\npackage ok.v1;\nmessage   M {}\n')
+    const result = await formatProto([file], dir, { check: true })
+    expect(result.wouldChange).toEqual([file])
+    expect(result.diagnostics).toEqual([])
   })
 })

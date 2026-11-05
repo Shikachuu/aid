@@ -29,6 +29,26 @@ export type ToolResult = {
   wouldChange?: string[]
 }
 
+/**
+ * One error for a subprocess that failed without output aid could parse. It
+ * keeps the last lines of stderr, or stdout when stderr is empty, so the user
+ * sees why the tool failed.
+ */
+export const processFailure = (
+  tool: string,
+  run: { stdout: string; stderr: string; exitCode: number },
+  file: string,
+  code: string,
+): Diagnostic => {
+  const detail = (run.stderr.trim() || run.stdout.trim()).split("\n").slice(-5).join(" ")
+  return {
+    file,
+    severity: "error",
+    code,
+    message: `${tool} exited with code ${run.exitCode}${detail === "" ? "" : `: ${detail}`}`,
+  }
+}
+
 /** Aggregate result of a lint or fmt run; `ok` is false when any tool failed. */
 export type Report = { ok: boolean; results: ToolResult[] }
 

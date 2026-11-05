@@ -51,7 +51,7 @@ In JSON output, each tool result has a `wouldChange` array with the files that w
 | `md` | Runs markdownlint with your `.markdownlint.*` config or the bundled default, then applies its fixes until the file is stable. It skips the fixes that change meaning, the same ones `aid lint --fix` skips (see [linting](../linting/index.md)). |
 | `openapi` | Reformats `.yaml` and `.yml` specs with a 2-space indent. Comments, anchors, block scalars, quoting and number spellings such as `1.0` stay as written. `.json` specs are formatted by the `bun` tool like any other JSON file. |
 | `bun` | Runs `bun fmt` on JS, TS, JSON, and CSS files, with your `bun fmt` config or the bundled default: a line width of 100 and no semicolons. With `--check`, it lists the files `bun fmt --check` reports. It applies no lint fixes. |
-| `proto` | Runs `buf format -w` on each file. With `--check`, it runs `buf format -d --exit-code` and lists the files with a non-empty diff. |
+| `proto` | Runs `buf format -w` on each file. With `--check`, it runs `buf format -d --exit-code` and lists the files with a non-empty diff. A file that does not parse is left untouched and reported as `proto/parse`, because `buf format` would rewrite it and drop the broken tokens. A buf failure, such as an invalid `buf.yaml`, is reported with buf's message. |
 
 aid finds buf the same way for `aid fmt` as for `aid lint`. When no buf binary is available, the proto tool is skipped and passes. See [how aid finds buf](../linting/index.md#how-aid-finds-buf).
 

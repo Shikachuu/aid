@@ -6,7 +6,7 @@ import bufLinuxX64 from "@bufbuild/buf-linux-x64/bin/buf" with { type: "file" }
 import { extractEmbedded } from "../core/internal/extract-embedded"
 import { findUserConfig } from "./config-resolve"
 import { bufDefault } from "./configs/buf.default"
-import type { Diagnostic, ToolResult } from "./diagnostics"
+import { type Diagnostic, processFailure, type ToolResult } from "./diagnostics"
 import { USER_CONFIGS } from "./discovery"
 
 let cachedBin: string | null | undefined
@@ -53,7 +53,16 @@ type BufJsonError = {
   message?: string
 }
 
-const parseBufOutput = (stdout: string): Diagnostic[] => {
+/** Result for a run with no `buf` binary available. The proto tool passes. */
+export const BUF_SKIPPED: ToolResult = {
+  tool: "proto",
+  ok: true,
+  diagnostics: [],
+  skipped: true,
+  reason: "buf binary not available. Install `@bufbuild/buf` or put `buf` on PATH.",
+}
+
+const parseBufOutput = (stdout: string, root: string): Diagnostic[] => {
   const out: Diagnostic[] = []
   for (const line of stdout.split("\n")) {
     const trimmed = line.trim()
@@ -63,7 +72,7 @@ const parseBufOutput = (stdout: string): Diagnostic[] => {
     const j = tryParseJson(trimmed)
     if (j !== null) {
       out.push({
-        file: j.path ?? "",
+        file: j.path === undefined ? root : resolvePath(root, j.path),
         line: j.start_line,
         col: j.start_column,
         severity: "error",
@@ -90,21 +99,23 @@ export const lintProto = async (paths: string[], dir: string): Promise<ToolResul
   }
   const bin = await resolveBufBinary()
   if (bin === null) {
-    return {
-      tool: "proto",
-      ok: true,
-      diagnostics: [],
-      skipped: true,
-      reason: "buf binary not available — install `@bufbuild/buf` or put `buf` on PATH",
-    }
+    return BUF_SKIPPED
   }
   const config =
     (await findUserConfig(dir, USER_CONFIGS.proto)) === null ? ["--config", bufDefault] : []
   const root = resolvePath(dir)
-  const { stdout, exitCode } = await Bun.$`${bin} lint --error-format=json ${config} ${root}`
+  const run = await Bun.$`${bin} lint --error-format=json ${config} ${root}`
     .cwd(root)
     .nothrow()
     .quiet()
-  const diagnostics = parseBufOutput(stdout.toString())
-  return { tool: "proto", ok: exitCode === 0 && diagnostics.length === 0, diagnostics }
+  const output = {
+    exitCode: run.exitCode,
+    stdout: run.stdout.toString(),
+    stderr: run.stderr.toString(),
+  }
+  const diagnostics = parseBufOutput(output.stdout, root)
+  if (output.exitCode !== 0 && diagnostics.length === 0) {
+    diagnostics.push(processFailure("buf", output, root, "proto/lint"))
+  }
+  return { tool: "proto", ok: output.exitCode === 0 && diagnostics.length === 0, diagnostics }
 }

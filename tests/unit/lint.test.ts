@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { lintProto } from "../../src/lint/proto"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, relative } from "node:path"
@@ -209,6 +210,19 @@ describe("lintProto", () => {
     const proto = report.results.find((r) => r.tool === "proto")
     expect(proto?.ok).toBe(false)
     expect(proto?.diagnostics.map((d) => d.code)).toContain("MESSAGE_PASCAL_CASE")
+  })
+  test("turns a buf failure with no findings into an error that carries buf's message", async () => {
+    await Bun.write(join(dir, "buf.yaml"), "version: bogus\n")
+    await Bun.write(join(dir, "x.proto"), 'syntax = "proto3";\npackage ok.v1;\n')
+    const result = await lintProto([join(dir, "x.proto")], dir)
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        severity: "error",
+        code: "proto/lint",
+        message: expect.stringContaining("bogus"),
+      }),
+    ])
   })
 })
 
