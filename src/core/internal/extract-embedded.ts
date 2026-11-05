@@ -31,7 +31,11 @@ export const stableTempFile = async (
   const dst = join(dir, name)
   await ensurePrivateDir(dir)
   const existing = Bun.file(dst)
-  if ((await existing.exists()) && Bun.hash(await existing.bytes()) === Bun.hash(data)) {
+  const reusable =
+    (await existing.exists()) &&
+    existing.size === data.byteLength &&
+    Bun.hash(await existing.bytes()) === Bun.hash(data)
+  if (reusable) {
     if (mode !== undefined) {
       await chmod(dst, mode)
     }

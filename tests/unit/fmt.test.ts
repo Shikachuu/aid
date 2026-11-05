@@ -131,6 +131,23 @@ paths:   {}
     expect(out).toContain("openapi: 3.1.0")
   })
 
+  test("keeps a trailing document that only holds a comment", async () => {
+    const file = join(dir, "openapi.yaml")
+    const original = "openapi:    3.1.0\n--- # note\n"
+    await Bun.write(file, original)
+    const result = await formatOpenApi([file], dir, { check: false })
+    expect(result.diagnostics.map((d) => d.code)).toEqual(["openapi/multi-document"])
+    expect(await Bun.file(file).text()).toBe(original)
+  })
+
+  test("reports an unresolved alias as a parse error instead of crashing", async () => {
+    const file = join(dir, "openapi.yaml")
+    await Bun.write(file, "openapi: 3.1.0\ninfo: *missing\n")
+    const result = await formatOpenApi([file], dir, { check: false })
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics.map((d) => d.code)).toEqual(["openapi/parse"])
+  })
+
   test("skips a multi-document file with a warning", async () => {
     const file = join(dir, "openapi.yaml")
     const original = "openapi: 3.1.0\n---\nopenapi:    3.1.0\n"

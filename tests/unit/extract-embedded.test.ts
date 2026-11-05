@@ -49,3 +49,12 @@ test("refuses a pre-existing directory that other users can open", async () => {
   await chmod(dir, 0o755)
   await expect(stableTempFile(prefix, "bin", "x")).rejects.toThrow(/not a private directory/)
 })
+
+test("rewrites a cached file whose content changed but kept its size, and restores its mode", async () => {
+  const target = await stableTempFile(prefix, "bin", "payload", 0o755)
+  await Bun.write(target, "PAYLOAD")
+  await chmod(target, 0o644)
+  await stableTempFile(prefix, "bin", "payload", 0o755)
+  expect(await Bun.file(target).text()).toBe("payload")
+  expect((await stat(target)).mode & 0o777).toBe(0o755)
+})

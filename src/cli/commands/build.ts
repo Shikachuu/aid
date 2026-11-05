@@ -34,7 +34,7 @@ export const command = defineCommand({
   async run({ args }) {
     const ctx = await loadBuildContext(args.dir, args.file)
     if (args.clean) {
-      await assertSafeToClean(ctx)
+      assertSafeToClean(ctx)
       await rm(ctx.outputDir, { recursive: true, force: true })
     }
     await build(ctx)

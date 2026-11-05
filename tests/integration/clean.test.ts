@@ -19,6 +19,8 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true })
+  await rm(`${cwd}-public`, { recursive: true, force: true })
+  await rm(`${cwd}-link`, { force: true })
 })
 
 const runBuild = (...args: string[]) =>
@@ -57,7 +59,6 @@ test("--clean refuses an output dir outside the project, but a plain build may w
   expect(refused.exitCode).not.toBe(0)
   expect(refused.stderr.toString()).toContain("must be a subdirectory of the project directory")
   expect(runBuild().exitCode).toBe(0)
-  await rm(`${cwd}-public`, { recursive: true, force: true })
 })
 
 test("--clean refuses an output dir that is a symlink to the content dir", async () => {
@@ -68,4 +69,26 @@ test("--clean refuses an output dir that is a symlink to the content dir", async
   expect(result.exitCode).not.toBe(0)
   expect(result.stderr.toString()).toContain("overlaps dir.content")
   expect(await Bun.file(path.join(cwd, "docs/index.md")).exists()).toBe(true)
+})
+
+test("a plain build refuses an output dir that is a symlink to the content dir", async () => {
+  await symlink(path.join(cwd, "docs"), path.join(cwd, "out"))
+  const config = await Bun.file(path.join(cwd, "aid.yaml")).text()
+  await Bun.write(path.join(cwd, "aid.yaml"), `${config}\ndir:\n  output: out\n`)
+  const result = runBuild()
+  expect(result.exitCode).not.toBe(0)
+  expect(result.stderr.toString()).toContain("overlaps dir.content")
+  expect(await Bun.file(path.join(cwd, "docs/index.html")).exists()).toBe(false)
+})
+
+test("--clean works through a symlinked project path before the output dir exists", async () => {
+  const link = `${cwd}-link`
+  await symlink(cwd, link)
+  const result = Bun.spawnSync([process.execPath, cliEntry, "build", link, "--clean"], {
+    cwd: repoRoot,
+    stderr: "pipe",
+  })
+  expect(result.stderr.toString()).toBe("")
+  expect(result.exitCode).toBe(0)
+  expect(await Bun.file(path.join(cwd, "dist/index.html")).exists()).toBe(true)
 })

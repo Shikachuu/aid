@@ -3,6 +3,7 @@ import type { Diagnostic, ToolResult } from "../lint/diagnostics"
 import { applyFormat } from "./apply"
 
 const YAML_OPTIONS = { intAsBigInt: true } as const
+const STRAY_END_MARKER = /\n---[ \t]*\s*$/
 
 /**
  * Reformat YAML OpenAPI specs in place, keeping comments, anchors, block
@@ -20,9 +21,8 @@ export const formatOpenApi = async (
     diagnostics.push({ file, severity, code, message })
   const yamlPaths = paths.filter((file) => !file.endsWith(".json"))
   const result = await applyFormat("openapi", yamlPaths, opts.check, (file, text) => {
-    const docs = parseAllDocuments(text, YAML_OPTIONS).filter(
-      (d, i) => i === 0 || d.toJS() !== null,
-    )
+    const all = parseAllDocuments(text, YAML_OPTIONS)
+    const docs = STRAY_END_MARKER.test(text) ? all.slice(0, -1) : all
     const [doc] = docs
     if (doc === undefined) {
       return text
@@ -41,8 +41,15 @@ export const formatOpenApi = async (
       report(file, "error", "openapi/parse", error.message)
       return text
     }
+    let data: unknown
+    try {
+      data = doc.toJS()
+    } catch (err) {
+      report(file, "error", "openapi/parse", err instanceof Error ? err.message : String(err))
+      return text
+    }
     const formatted = doc.toString({ indent: 2, lineWidth: 0 })
-    if (!sameData(doc.toJS(), formatted)) {
+    if (!sameData(data, formatted)) {
       report(file, "warn", "openapi/lossy", "reformatting would change the spec's data; left as is")
       return text
     }

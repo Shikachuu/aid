@@ -14,7 +14,7 @@ export const resolveMarkdownConfig = async (dir: string): Promise<Configuration>
 const MEANING_CHANGING_RULES = new Set(["MD037", "MD053"])
 
 const removesHardBreak = (error: LintError, lines: string[]): boolean =>
-  error.ruleNames[0] === "MD009" && /\S {2,}$/.test(lines[error.lineNumber - 1] ?? "")
+  error.ruleNames[0] === "MD009" && /[^ ] {2,}$/.test(lines[error.lineNumber - 1] ?? "")
 
 const isSafeFix = (error: LintError, lines: string[]): boolean => {
   if (error.fixInfo === undefined || error.fixInfo === null) {
