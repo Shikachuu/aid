@@ -63,7 +63,7 @@ describe("compileTailwind", () => {
   test("auto-derives dark tokens from light @theme", async () => {
     const ctx = makeCtx(cwd, { theme: { dark_mode: "auto" } })
     const css = await compileTailwind(ctx, [stubHtml("bg-aid-bg")])
-    expect(css).toContain("oklch(1% 0 0)")
+    expect(css).toContain("oklch(12.88% 0 0)")
   })
 
   test("a missing custom stylesheet fails instead of falling back to the bundled theme", async () => {

@@ -22,22 +22,28 @@ See [the `theme` keys](../reference/configuration.md#theme) in the configuration
 
 ## Auto
 
-Before Tailwind compiles the stylesheet, aid reads every `@theme` block in it, including the bundled theme that `@import "aid/theme";` pulls in. For each `--color-*` token whose value is `oklch(L C H)` or `oklch(L C H / A)`, aid inverts the lightness: L becomes 100 - L. Chroma, hue, and alpha stay the same. aid appends the results at the end of the stylesheet:
+Before Tailwind compiles the stylesheet, aid reads every `@theme` block in it, including the bundled theme that `@import "aid/theme";` pulls in. For each `--color-*` token whose value is `oklch(L C H)` or `oklch(L C H / A)`, aid computes a dark lightness. Chroma, hue, and alpha stay the same.
+
+- A neutral token, with chroma below 0.03, inverts into the 12% to 100% band: L becomes 12 + 0.88 * (100 - L). The 99% background becomes 12.88%, not black, and the 90% border becomes 20.8%, so borders stay visible.
+- A saturated token at 80% lightness or less is an accent or text color. aid mirrors it (L becomes 100 - L) and clamps the result to 70% to 85%, so links and callout titles stay readable on the dark background.
+- A saturated token above 80% is a light tint, and it inverts like a neutral token.
+
+aid appends the results at the end of the stylesheet:
 
 ```css
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-aid-bg: oklch(1% 0 0);
-    --color-aid-text: oklch(80% 0 0);
-    --color-aid-muted: oklch(50% 0 0);
-    --color-aid-border: oklch(10% 0 0);
-    --color-aid-accent: oklch(40% 0.15 250);
+    --color-aid-bg: oklch(12.88% 0 0);
+    --color-aid-text: oklch(82.4% 0 0);
+    --color-aid-muted: oklch(56% 0 0);
+    --color-aid-border: oklch(20.8% 0 0);
+    --color-aid-accent: oklch(70% 0.15 250);
     /* ... one line per oklch() color token */
   }
 }
 ```
 
-aid reads lightness as a percentage (`60%`) or a fraction (`0.6`), and always writes a percentage. A mid-range token such as `--color-aid-muted` at 50% keeps the same value in dark mode. Tokens that are not colors, such as `--font-aid-sans`, are skipped.
+aid reads lightness as a percentage (`60%`) or a fraction (`0.6`), and always writes a percentage. Tokens that are not colors, such as `--font-aid-sans`, are skipped.
 
 A `--color-*` token in any other format, such as `#ff0000` or `rgb()`, gets no dark value and keeps its light value in dark mode. aid prints a warning for each one during the build. Convert hex, `rgb()`, and `hsl()` tokens to `oklch()`, or use `manual`.
 
