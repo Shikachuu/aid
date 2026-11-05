@@ -238,7 +238,7 @@ describe("formatProto", () => {
     "reports a proto that does not parse as an error, not a would-change (check: %p)",
     async (check) => {
       const file = join(dir, "bad.proto")
-      const original = "syntax = \"proto3\";\nmessage M{string x=\n"
+      const original = 'syntax = "proto3";\nmessage M{string x=\n'
       await Bun.write(file, original)
       const result = await formatProto([file], dir, { check })
       expect(result.ok).toBe(false)
@@ -249,6 +249,22 @@ describe("formatProto", () => {
       expect(await Bun.file(file).text()).toBe(original)
     },
   )
+
+  test("reports a buf failure such as a broken buf.yaml with buf's message", async () => {
+    await Bun.write(join(dir, "buf.yaml"), "version: bogus\n")
+    const file = join(dir, "ok.proto")
+    await Bun.write(file, 'syntax = "proto3";\npackage ok.v1;\nmessage   M {}\n')
+    const result = await formatProto([file], dir, { check: true })
+    expect(result.ok).toBe(false)
+    expect(result.wouldChange).toEqual([])
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        file,
+        code: "proto/format",
+        message: expect.stringContaining("bogus"),
+      }),
+    ])
+  })
 
   test("--check lists an unformatted proto as would-change", async () => {
     const file = join(dir, "ok.proto")
