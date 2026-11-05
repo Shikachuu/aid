@@ -108,7 +108,8 @@ const isScalar = (raw: string): boolean => Object.hasOwn(protobuf.types.basic, r
 
 /**
  * Parse `.proto` source into a {@link ProtoAst}. Throws on syntax errors. A reference that does not
- * resolve, for example to a type from an import, gets `fqn: null` instead of throwing.
+ * resolve, for example to a type from an import, gets `fqn: null`; every other reference still
+ * resolves.
  */
 export const parseProto = (source: string): ProtoAst => {
   const result = protobuf.parse(source, {
@@ -116,11 +117,8 @@ export const parseProto = (source: string): ProtoAst => {
     alternateCommentMode: true,
   })
 
-  try {
-    result.root.resolveAll()
-  } catch {
-    // resolveAll throws on unresolved imports and unknown extensions.
-  }
+  resolveFeatures(result.root)
+  resolveEach(result.root)
 
   const syntax = detectSyntax(source)
   const messages: ProtoMessage[] = []
@@ -136,6 +134,50 @@ export const parseProto = (source: string): ProtoAst => {
     messages,
     enums,
     services,
+  }
+}
+
+/**
+ * Resolve each field and method reference on its own. `Root#resolveAll` stops at the first
+ * reference it cannot resolve and leaves every later one unresolved.
+ */
+const resolveEach = (ns: protobuf.NamespaceBase): void => {
+  for (const child of ns.nestedArray) {
+    if (child instanceof protobuf.Type) {
+      for (const field of child.fieldsArray) {
+        tryResolve(field)
+      }
+    } else if (child instanceof protobuf.Service) {
+      for (const method of child.methodsArray) {
+        tryResolve(method)
+      }
+    }
+    if (child instanceof protobuf.Namespace || child instanceof protobuf.Type) {
+      resolveEach(child)
+    }
+  }
+}
+
+type FeatureResolvable = {
+  _edition?: string | null
+  _resolveFeaturesRecursive?: (edition: string | null | undefined) => void
+}
+
+/**
+ * Editions presence and `LEGACY_REQUIRED` come from resolved features, which protobufjs only
+ * computes inside `resolveAll`. The per-reference resolution skips `resolveAll`, so run the
+ * feature step on its own.
+ */
+const resolveFeatures = (root: protobuf.Root): void => {
+  const target = root as unknown as FeatureResolvable
+  target._resolveFeaturesRecursive?.(target._edition)
+}
+
+const tryResolve = (obj: protobuf.ReflectionObject): void => {
+  try {
+    obj.resolve()
+  } catch {
+    return
   }
 }
 
@@ -270,6 +312,9 @@ const detectRule = (
     if (syntax === "proto2") {
       return "optional"
     }
+    if (syntax === "editions" && f.hasPresence) {
+      return "optional"
+    }
   }
   return "singular"
 }
@@ -287,17 +332,14 @@ const optionFlag = (options: Record<string, unknown> | undefined, name: string):
   options?.[name] === true || options?.[name] === "true"
 
 const detectSyntax = (source: string): ProtoSyntax => {
-  const syntaxMatch = source.match(/^\s*syntax\s*=\s*"([^"]+)"/m)
-  if (syntaxMatch?.[1] === "proto2") {
-    return "proto2"
-  }
-  if (syntaxMatch?.[1] === "proto3") {
-    return "proto3"
+  const declared = source.match(/^\s*syntax\s*=\s*["']([^"']+)["']/m)?.[1]
+  if (declared === "proto2" || declared === "proto3") {
+    return declared
   }
   if (/^\s*edition\s*=/m.test(source)) {
     return "editions"
   }
-  return "unknown"
+  return declared === undefined ? "proto2" : "unknown"
 }
 
 const findPackageLeadingComment = (source: string): string | null => {
