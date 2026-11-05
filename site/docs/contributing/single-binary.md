@@ -32,7 +32,7 @@ There is no Windows target.
 Each compile passes four kinds of options:
 
 - `compile.executablePath` points at `node_modules/@oven/bun-<platform>/bin/bun`, the pinned Bun runtime for the target. That runtime is the one that ships `bun lint` and `bun fmt`, which `aid lint` and `aid fmt` run with `BUN_BE_BUN=1`.
-- `external` lists `<pkg>/bin/buf` for the three other targets' buf packages and `<pkg>/*` for the three other lightningcss packages. Bun does not drop unused `with { type: "file" }` imports, so without this list every binary would embed all four buf binaries (about 200 MB) and all four lightningcss bindings (about 24 MB).
+- The `nativeStubs` plugin in `scripts/compile.ts` replaces the three other targets' buf binaries (`<pkg>/bin/buf`) and staged lightningcss bindings (`vendor/natives/<pkg>.bin`) with an empty string. Bun does not drop unused `with { type: "file" }` imports, so without it every binary would embed all four buf binaries (about 177 MB) and all four lightningcss bindings (about 36 MB). Do not use `external` for this: an external file import stays a runtime import, and the binary then fails at startup on any machine without aid's `node_modules`. `tests/unit/compile-natives.test.ts` checks that each target keeps exactly one of each, and `tests/integration/compiled-binary.test.ts` runs the binary from a directory with no `node_modules`.
 - `define` sets `process.platform` to `"<os>"` and `process.arch` to `"<arch>"`. The platform checks in `src/lint/proto.ts` and `src/core/internal/lightningcss-native.ts` then pick the target's files at compile time, not the build machine's.
 - `plugins` holds `jsonc-parser-esm`, which [the jsonc-parser section](#jsonc-parser) explains.
 

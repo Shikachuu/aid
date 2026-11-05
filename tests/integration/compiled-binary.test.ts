@@ -25,9 +25,9 @@ afterAll(async () => {
   await rm(outDir, { recursive: true, force: true })
 })
 
-const lintJson = async (cmd: string[]): Promise<unknown> => {
+const lintJson = async (cmd: string[], cwd: string): Promise<unknown> => {
   const proc = Bun.spawn([...cmd, "lint", badJsonDir, "--filter", "openapi", "--format", "json"], {
-    cwd: ROOT,
+    cwd,
     stdout: "pipe",
     stderr: "pipe",
   })
@@ -45,8 +45,8 @@ const lintJson = async (cmd: string[]): Promise<unknown> => {
 test.skipIf(host === undefined)(
   "the compiled binary reports OpenAPI JSON parse errors like the source CLI",
   async () => {
-    const compiled = await lintJson([binary])
-    const source = await lintJson([process.execPath, "src/cli/index.ts"])
+    const compiled = await lintJson([binary], outDir)
+    const source = await lintJson([process.execPath, "src/cli/index.ts"], ROOT)
     expect(compiled).toEqual(source)
     expect(JSON.stringify(compiled)).toContain("Unexpected end of string")
   },
@@ -68,9 +68,9 @@ test.skipIf(host === undefined)(
   async () => {
     const project = await mkdtemp(path.join(tmpdir(), "aid-compiled-bun-"))
     await Bun.write(path.join(project, "x.ts"), "let x = 1\nconsole.log( x );\n")
-    const lint = await runAid(["lint", project, "--filter", "bun"], ROOT)
+    const lint = await runAid(["lint", project, "--filter", "bun"], outDir)
     expect(JSON.stringify(lint)).toContain('"code":"prefer-const"')
-    const fmt = await runAid(["fmt", project, "--filter", "bun", "--check"], ROOT)
+    const fmt = await runAid(["fmt", project, "--filter", "bun", "--check"], outDir)
     expect(JSON.stringify(fmt)).toContain(`"wouldChange":["${path.join(project, "x.ts")}"]`)
     await rm(project, { recursive: true, force: true })
   },

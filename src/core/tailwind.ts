@@ -7,7 +7,6 @@ import type { BuildContext } from "./types"
 import { AID_ROOT } from "./web-entries"
 
 const bundledMainCssPath = path.join(AID_ROOT, "src/theme/main.css")
-const bundledTailwindcssEntry = Bun.resolveSync("tailwindcss/index.css", import.meta.dir)
 
 /**
  * Compile the site stylesheet. Uses `config.stylesheet` when it exists and the
@@ -59,7 +58,7 @@ function compileOptions(base: string, from: string) {
     onDependency: () => {},
     customCssResolver: async (id: string) => {
       if (id === "tailwindcss") {
-        return bundledTailwindcssEntry
+        return Bun.resolveSync("tailwindcss/index.css", import.meta.dir)
       }
       if (id.startsWith("tailwindcss/")) {
         return Bun.resolveSync(id, import.meta.dir)
