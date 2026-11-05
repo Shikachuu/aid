@@ -10,12 +10,17 @@ import remarkParse from "remark-parse"
 import remarkRehype from "remark-rehype"
 import remarkStringify from "remark-stringify"
 import { unified } from "unified"
-import { visit } from "unist-util-visit"
 import { VFile } from "vfile"
 import type { ResolveLink } from "../../core/links"
 import type { AnchorRef, RenderedPage, Route, SearchTokens } from "../../core/types"
 import { linkRefsFromMdast, rewriteLinks } from "../links"
-import { collectAnchors, hastText, vfileDiagnostics } from "../shared"
+import {
+  collectAnchors,
+  hastText,
+  headingTexts,
+  parseHtmlFragment,
+  vfileDiagnostics,
+} from "../shared"
 import { rehypeCallouts, remarkCalloutMarkers } from "./callouts"
 import type { CopyAsset } from "./colocated-assets"
 import { colocatedAssetsMdastPlugin } from "./colocated-assets-mdast"
@@ -29,9 +34,10 @@ export type RenderMarkdownArgs = {
   /** Absolute path of the source `.md` file on disk. */
   sourcePath: string
   /**
-   * Optional callback invoked once per relative `<img src>` encountered. The
-   * pipeline supplies one that copies assets into the route's output dir;
-   * omit during unit tests for a pure render with no side effects.
+   * Optional callback invoked once per relative markdown image (`![](...)`).
+   * Raw `<img>` tags are not copied. The pipeline supplies one that copies
+   * assets into the route's output dir; omit during unit tests for a pure
+   * render with no side effects.
    */
   copyAsset?: CopyAsset
   resolveLink?: ResolveLink
@@ -109,7 +115,7 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
     hasOpenApi: false,
     hasProto: false,
     description: frontmatter?.description,
-    anchors: collectAnchors(html),
+    anchors: collectAnchors(htmlTree as HastRoot),
     anchorRefs: anchorRefs.map((ref) => ({
       ...ref,
       line: ref.line === undefined ? undefined : ref.line + bodyLine - 1,
@@ -155,9 +161,9 @@ function resolveAndEnsureLeadingH1(opts: {
   sink: TitleSink
 }) {
   return (tree: HastRoot): void => {
-    const firstEl = tree.children.find((c): c is HastElement => c.type === "element")
-    if (firstEl?.tagName === "h1") {
-      opts.sink.value = opts.frontmatterTitle ?? hastText(firstEl)
+    const existing = leadingH1(tree)
+    if (existing) {
+      opts.sink.value = opts.frontmatterTitle ?? hastText(existing)
       return
     }
     const title = opts.frontmatterTitle ?? opts.filenameTitle
@@ -172,14 +178,28 @@ function resolveAndEnsureLeadingH1(opts: {
   }
 }
 
-function collectHeadings(opts: { sink: string[] }) {
-  return (tree: HastRoot): void => {
-    visit(tree, "element", (node) => {
-      if (HEADING_TAGS.has(node.tagName)) {
-        opts.sink.push(hastText(node))
-      }
-    })
+/**
+ * The H1 that opens the page: the first element when it is an `<h1>`, or a
+ * raw `<h1>` that comes before the first element.
+ */
+function leadingH1(tree: HastRoot): HastElement | undefined {
+  for (const child of tree.children) {
+    if (child.type === "element") {
+      return child.tagName === "h1" ? child : undefined
+    }
+    if (child.type === "raw" && RAW_H1_RE.test(child.value)) {
+      return parseHtmlFragment(child.value).children.find(
+        (c): c is HastElement => c.type === "element" && c.tagName === "h1",
+      )
+    }
   }
+  return undefined
 }
 
-const HEADING_TAGS = new Set(["h1", "h2", "h3", "h4", "h5", "h6"])
+const RAW_H1_RE = /^\s*<h1[\s>]/i
+
+function collectHeadings(opts: { sink: string[] }) {
+  return (tree: HastRoot): void => {
+    opts.sink.push(...headingTexts(tree))
+  }
+}

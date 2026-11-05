@@ -102,7 +102,8 @@ function broken(code: BrokenLinkCode, reason: string): ResolvedLink {
   return { kind: "broken", code, reason }
 }
 
-function splitHref(href: string): { pathPart: string; query: string; fragment: string } {
+/** Split an href into its path, its `?query` (with the `?`), and its fragment (without the `#`). */
+export function splitHref(href: string): { pathPart: string; query: string; fragment: string } {
   const hashAt = href.indexOf("#")
   const fragment = hashAt === -1 ? "" : href.slice(hashAt + 1)
   const beforeHash = hashAt === -1 ? href : href.slice(0, hashAt)
@@ -167,8 +168,9 @@ const location = (d: Diagnostic): string =>
 
 /**
  * Report every broken reference in one message, sorted by file and position.
- * Throws unless `on_broken_links` is `warn`, so one build run lists every
- * problem instead of stopping at the first.
+ * Throws when any problem has error severity, unless `on_broken_links` is
+ * `warn`, so one build run lists every problem instead of stopping at the
+ * first. Warning-severity problems, such as an unresolved `$ref`, only print.
  */
 export function reportBrokenLinks(problems: Diagnostic[], ctx: BuildContext): void {
   if (problems.length === 0) {
@@ -184,7 +186,7 @@ export function reportBrokenLinks(problems: Diagnostic[], ctx: BuildContext): vo
     )
     .map((d) => `  ${location(d)}  ${d.code}  ${d.message}`)
   const message = `aid: ${problems.length} broken reference${problems.length === 1 ? "" : "s"}\n${lines.join("\n")}`
-  if (ctx.config.on_broken_links === "warn") {
+  if (ctx.config.on_broken_links === "warn" || problems.every((d) => d.severity !== "error")) {
     console.warn(message)
     return
   }

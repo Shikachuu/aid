@@ -48,9 +48,7 @@ describe("parseOpenApi", () => {
   test("a broken $ref becomes a warning instead of an error", async () => {
     const yaml = `openapi: "3.1.0"\ninfo:\n  title: Refs\n  version: "1"\npaths: {}\ncomponents:\n  schemas:\n    A:\n      $ref: "#/components/schemas/Missing"\n`
     const { warnings } = await parseOpenApi(yaml, "refs.yaml")
-    expect(warnings).toEqual([
-      "refs.yaml: <root>: Can't resolve reference: #/components/schemas/Missing",
-    ])
+    expect(warnings).toEqual(["<root>: Can't resolve reference: #/components/schemas/Missing"])
   })
 
   test("non-mapping source throws with the source path in the message", async () => {
@@ -297,5 +295,20 @@ describe("renderOpenApi — search tokens", () => {
     expect(page.searchTokens.extras.operationIds).toEqual(["listPets"])
     expect(page.searchTokens.extras.summaries).toBeUndefined()
     expect(page.searchTokens.extras.parameters).toBeUndefined()
+  })
+
+  test("a broken $ref becomes an openapi/ref warning diagnostic", async () => {
+    const page = await renderFixture(
+      "refs.yaml",
+      `openapi: "3.1.0"\ninfo:\n  title: Refs\n  version: "1"\npaths: {}\ncomponents:\n  schemas:\n    A:\n      $ref: "#/components/schemas/Missing"\n`,
+    )
+    expect(page.diagnostics).toEqual([
+      {
+        file: path.join(dir, "refs.yaml"),
+        severity: "warn",
+        code: "openapi/ref",
+        message: "<root>: Can't resolve reference: #/components/schemas/Missing",
+      },
+    ])
   })
 })

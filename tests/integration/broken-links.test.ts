@@ -162,3 +162,21 @@ test("invalid frontmatter fails the build naming the file", async () => {
   await writeContent(ctx, { "guide.md": "---\ntitle: 3\n---\n# G\n" })
   expect(await buildError(ctx)).toMatch(/invalid frontmatter in .*docs\/guide\.md/)
 })
+
+test("an unresolved $ref warns without failing the build", async () => {
+  const ctx = await makeSite(cwd)
+  await writeContent(ctx, {
+    "index.md": "# Home\n",
+    "api.yaml": `${OPENAPI}components:\n  schemas:\n    A:\n      $ref: "#/components/schemas/Missing"\n`,
+  })
+  const warn = spyOn(console, "warn").mockImplementation(() => {})
+  try {
+    await build(ctx)
+    expect(
+      warn.mock.calls.some(([msg]) => String(msg).includes("docs/api.yaml  openapi/ref")),
+    ).toBe(true)
+  } finally {
+    warn.mockRestore()
+  }
+  expect(await Bun.file(path.join(ctx.outputDir, "index.html")).exists()).toBe(true)
+})

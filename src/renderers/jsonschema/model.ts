@@ -407,7 +407,7 @@ class Builder {
       const def = /^\/(?:\$defs|definitions)\/([^/]+)$/.exec(res.fragment)?.[1]
       return def ? `${page}#def-${slug(unescapePointer(def))}` : page
     }
-    this.warnings.add(`${this.opts.sourcePath}: unresolved $ref "${ref}"`)
+    this.warnings.add(`unresolved $ref "${ref}"`)
     return /^https?:\/\//i.test(ref) ? ref : undefined
   }
 

@@ -2,7 +2,7 @@ import path from "node:path"
 import type { RenderedPage, Route } from "../../core/types"
 import { render } from "../../jsx-runtime"
 import { PageOpenAPI } from "../../theme/components/PageOpenAPI"
-import { firstParagraph, nonEmpty } from "../shared"
+import { firstParagraph, nonEmpty, refWarning } from "../shared"
 import { parseOpenApi } from "./parser"
 
 /** Arguments for {@link renderOpenApi}. */
@@ -22,9 +22,6 @@ export type RenderOpenApiArgs = {
 export async function renderOpenApi(args: RenderOpenApiArgs): Promise<RenderedPage> {
   const source = await Bun.file(args.sourcePath).text()
   const { doc, warnings } = await parseOpenApi(source, args.sourcePath)
-  for (const w of warnings) {
-    console.warn(`aid: ${w}`)
-  }
 
   const info = (doc.info ?? {}) as { title?: unknown; description?: unknown }
   const fallbackTitle = path.basename(args.sourcePath, path.extname(args.sourcePath))
@@ -49,6 +46,7 @@ export async function renderOpenApi(args: RenderOpenApiArgs): Promise<RenderedPa
     hasOpenApi: true,
     hasProto: false,
     description,
+    diagnostics: warnings.map((w) => refWarning(args.sourcePath, "openapi/ref", w)),
   }
 }
 

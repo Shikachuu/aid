@@ -786,4 +786,18 @@ describe("renderJsonSchema", () => {
     const route: Route = { source: sourcePath, path: "/bad", kind: "jsonschema" }
     await expect(renderJsonSchema({ route, sourcePath })).rejects.toThrow(/bad\.json/)
   })
+
+  test("an unresolved $ref becomes a jsonschema/ref warning diagnostic", async () => {
+    const page = await renderFixture("refs.json", {
+      properties: { x: { $ref: "#/$defs/Missing" } },
+    })
+    expect(page.diagnostics).toEqual([
+      {
+        file: path.join(dir, "refs.json"),
+        severity: "warn",
+        code: "jsonschema/ref",
+        message: 'unresolved $ref "#/$defs/Missing"',
+      },
+    ])
+  })
 })

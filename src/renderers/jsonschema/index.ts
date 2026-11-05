@@ -4,7 +4,14 @@ import { routeUrl } from "../../core/router"
 import type { RenderedPage, Route, SearchTokens } from "../../core/types"
 import { render } from "../../jsx-runtime"
 import { PageJsonSchema } from "../../theme/components/PageJsonSchema"
-import { collectAnchors, firstParagraph, nonEmpty, vfileDiagnostics } from "../shared"
+import {
+  collectAnchors,
+  firstParagraph,
+  nonEmpty,
+  parseHtmlFragment,
+  refWarning,
+  vfileDiagnostics,
+} from "../shared"
 import { jsonFence, renderMarkdownFragment } from "./markdown"
 import { buildSchemaDocument, type SchemaDocument, type SchemaNode } from "./model"
 
@@ -36,9 +43,6 @@ export async function renderJsonSchema(args: RenderJsonSchemaArgs): Promise<Rend
       return target?.kind === "jsonschema" ? routeUrl(target.path, basePath) : undefined
     },
   })
-  for (const w of doc.warnings) {
-    console.warn(`aid: ${w}`)
-  }
 
   const nodes = allNodes(doc)
   const descriptions = [...new Set(nodes.flatMap((n) => (n.description ? [n.description] : [])))]
@@ -61,17 +65,20 @@ export async function renderJsonSchema(args: RenderJsonSchemaArgs): Promise<Rend
     hasOpenApi: false,
     hasProto: false,
     description: firstParagraph(doc.root.description),
-    anchors: collectAnchors(html),
+    anchors: collectAnchors(parseHtmlFragment(html)),
     anchorRefs: rendered.flatMap((r) =>
       r.anchorRefs.map((ref) => ({ ...ref, line: undefined, col: undefined })),
     ),
-    diagnostics: rendered.flatMap((r) =>
-      vfileDiagnostics(r.file, args.sourcePath).map((d) => ({
-        ...d,
-        line: undefined,
-        col: undefined,
-      })),
-    ),
+    diagnostics: [
+      ...doc.warnings.map((w) => refWarning(args.sourcePath, "jsonschema/ref", w)),
+      ...rendered.flatMap((r) =>
+        vfileDiagnostics(r.file, args.sourcePath).map((d) => ({
+          ...d,
+          line: undefined,
+          col: undefined,
+        })),
+      ),
+    ],
   }
 }
 
