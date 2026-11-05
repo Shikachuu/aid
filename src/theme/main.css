@@ -95,10 +95,6 @@
     @apply border-t border-aid-border p-4;
   }
 
-  .aid-page-toolbar {
-    @apply flex justify-end;
-  }
-
   .aid-main {
     @apply min-w-0 px-8 py-6;
   }

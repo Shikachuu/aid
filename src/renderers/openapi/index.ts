@@ -33,7 +33,7 @@ export async function renderOpenApi(args: RenderOpenApiArgs): Promise<RenderedPa
     typeof info.description === "string" ? firstParagraph(info.description) : undefined
 
   const specJson = JSON.stringify(doc)
-  const html = render(PageOpenAPI({ title, specJson, machineUrl: "" }))
+  const html = render(PageOpenAPI({ title, specJson }))
 
   return {
     route: args.route,

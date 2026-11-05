@@ -1,5 +1,4 @@
 import type { AidConfig } from "../../core/config"
-import { DarkToggle } from "./DarkToggle"
 import { SearchBox, type SearchBoxProps } from "./SearchBox"
 
 type HeaderProps = {
@@ -15,7 +14,6 @@ export function Header({ config, search }: HeaderProps) {
         {config.name}
       </a>
       {search ? <SearchBox {...search} /> : null}
-      <DarkToggle />
     </header>
   )
 }

@@ -688,7 +688,6 @@ describe("renderJsonSchema", () => {
       title: "Y",
       type: "object",
     })
-    expect(page.html).toContain('data-machine-url="/user.json"')
   })
 
   test("falls back to the file name for the title and uses the first paragraph as the description", async () => {

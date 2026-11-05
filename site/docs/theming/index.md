@@ -100,7 +100,6 @@ Every element aid renders carries a stable `.aid-*` class. Style these, not the 
 | `aid-search` | search box wrapper |
 | `aid-search-results` | search results dropdown |
 | `aid-search-result`, `aid-search-result-title`, `aid-search-result-url`, `aid-search-badge` | one search result and its parts |
-| `aid-dark-toggle` | dark mode button in the header |
 | `aid-shell` | grid that holds the sidebar and the main column |
 | `aid-sidebar` | sidebar `<aside>` |
 | `aid-nav` | sidebar `<nav>` |
@@ -109,7 +108,6 @@ Every element aid renders carries a stable `.aid-*` class. Style these, not the 
 | `aid-main` | `<main>` |
 | `aid-page` | the `<article>` of every page |
 | `aid-page-markdown`, `aid-page-html`, `aid-page-openapi`, `aid-page-proto`, `aid-page-jsonschema` | the page kind, on the same `<article>` |
-| `aid-page-toolbar` | the toolbar above the page body |
 | `aid-callout`, `aid-callout-note`, `aid-callout-tip`, `aid-callout-important`, `aid-callout-warning`, `aid-callout-caution` | a callout and its type |
 | `aid-callout-title` | the callout title line |
 | `aid-heading-link`, `aid-heading-anchor` | the `#` link appended to each heading |

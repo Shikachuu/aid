@@ -128,4 +128,4 @@ aid builds the URL from `base_path` and the export path. With `base_url` set, it
 ## Limitations
 
 > [!WARNING]
-> Not implemented yet: the "Open in AI" button on every page renders, but clicking it does nothing. The `ai_targets` key in `aid.yaml` is not read.
+> Not implemented yet: the "Open in AI" button. Pages do not render it, and the `ai_targets` key in `aid.yaml` is not read.

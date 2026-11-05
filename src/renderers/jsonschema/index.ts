@@ -1,6 +1,6 @@
 import path from "node:path"
 import type { ResolveLink, RouteIndex } from "../../core/links"
-import { exportPath, routeUrl } from "../../core/router"
+import { routeUrl } from "../../core/router"
 import type { RenderedPage, Route, SearchTokens } from "../../core/types"
 import { render } from "../../jsx-runtime"
 import { PageJsonSchema } from "../../theme/components/PageJsonSchema"
@@ -50,8 +50,7 @@ export async function renderJsonSchema(args: RenderJsonSchemaArgs): Promise<Rend
   const exampleHtml = examples.map((e) => e.html)
 
   const title = doc.title ?? path.basename(args.sourcePath, path.extname(args.sourcePath))
-  const machineUrl = path.posix.join(basePath, exportPath(args.route, ".json"))
-  const html = render(PageJsonSchema({ title, doc, descriptionHtml, exampleHtml, machineUrl }))
+  const html = render(PageJsonSchema({ title, doc, descriptionHtml, exampleHtml }))
 
   return {
     route: args.route,

@@ -100,4 +100,4 @@ aid renders Mermaid diagrams in the browser. It picks Mermaid's `dark` theme whe
 ## Limitations
 
 > [!WARNING]
-> Not implemented yet: the dark mode toggle. The header renders a button with the `aid-dark-toggle` class, but clicking it does nothing. The only switch between light and dark is the OS or browser color scheme.
+> Not implemented yet: a dark mode toggle. The header has no toggle button, and the only switch between light and dark is the OS or browser color scheme.

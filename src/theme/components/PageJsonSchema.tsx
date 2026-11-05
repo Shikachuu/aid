@@ -1,13 +1,11 @@
 import { type Child, RawHtml } from "../../jsx-runtime"
 import { type SchemaDocument, type SchemaNode, typeLabel } from "../../renderers/jsonschema/model"
-import { AIButton } from "./AIButton"
 
 type PageJsonSchemaProps = {
   title: string
   doc: SchemaDocument
   descriptionHtml: Map<string, string>
   exampleHtml: string[]
-  machineUrl: string
 }
 
 const VARIANT_LABEL = { oneOf: "One of", anyOf: "Any of", allOf: "All of" } as const
@@ -21,14 +19,10 @@ export function PageJsonSchema({
   doc,
   descriptionHtml,
   exampleHtml,
-  machineUrl,
 }: PageJsonSchemaProps) {
   const root = doc.root
   return (
     <article class="aid-page aid-page-jsonschema">
-      <div class="aid-page-toolbar">
-        <AIButton machineUrl={machineUrl} />
-      </div>
       <h1>{title}</h1>
       <p class="aid-schema-meta">
         <Chip kind="type">{typeLabel(root)}</Chip>

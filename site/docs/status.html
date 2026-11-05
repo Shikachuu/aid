@@ -25,11 +25,11 @@
       </tr>
       <tr>
         <td>"Open in AI" button</td>
-        <td>Markdown, HTML, OpenAPI, Protobuf and JSON Schema pages render the button. Its click handler in <code>src/web/ai-button.ts</code> is empty, so a click does nothing.</td>
+        <td>Pages do not render the button yet. The <code>ai_targets</code> key is reserved for it.</td>
       </tr>
       <tr>
         <td>Dark-mode toggle button</td>
-        <td>The header renders the button. Its click handler in <code>src/web/dark-mode.ts</code> is empty. The <code>theme.dark_mode</code> key still controls the dark palette; see <a href="./theming/dark-mode.md">dark mode</a>.</td>
+        <td>The header has no toggle. The OS or browser color scheme picks light or dark, and the <code>theme.dark_mode</code> key controls the dark palette; see <a href="./theming/dark-mode.md">dark mode</a>.</td>
       </tr>
       <tr>
         <td>Template and partial overrides</td>

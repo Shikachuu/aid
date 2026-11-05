@@ -226,9 +226,9 @@ function renderPageBody(page: RenderedPage): string {
     case "jsonschema":
       return page.html
     case "html":
-      return render(PageHtml({ bodyHtml: page.html, machineUrl: "" }))
+      return render(PageHtml({ bodyHtml: page.html }))
     case "markdown":
-      return render(PageMarkdown({ bodyHtml: page.html, machineUrl: "" }))
+      return render(PageMarkdown({ bodyHtml: page.html }))
   }
 }
 

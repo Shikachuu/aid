@@ -83,4 +83,4 @@ This site serves the schema at `schemas/aid.schema.json` under its base path, so
 | `ai_targets` | Nothing yet. | This page |
 
 > [!WARNING]
-> Not implemented yet: aid validates `ai_targets` against `chatgpt`, `claude`, and `gemini`, then never reads it. It is reserved for the "Open in AI" button, which does nothing when clicked. See the [status page](../status.html).
+> Not implemented yet: aid validates `ai_targets` against `chatgpt`, `claude`, and `gemini`, then never reads it. It is reserved for the "Open in AI" button, which pages do not render yet. See the [status page](../status.html).
