@@ -123,7 +123,7 @@ paths:   {}
   test("keeps long strings on one line and formats a spec that ends in a stray ---", async () => {
     const file = join(dir, "openapi.yaml")
     const long = "x".repeat(120)
-    await Bun.write(file, `openapi:   3.1.0\ninfo:\n  title: ${long}\n---\n`)
+    await Bun.write(file, `openapi:   3.1.0\ninfo:\n  title: ${long}\n---\n\n\n`)
     const result = await formatOpenApi([file], dir, { check: false })
     expect(result.diagnostics).toEqual([])
     const out = await Bun.file(file).text()

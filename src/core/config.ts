@@ -172,11 +172,7 @@ export function buildContext(config: AidConfig, cwd: string): BuildContext {
   return ctx
 }
 
-/**
- * Real path of `p`, resolving symlinks through its deepest existing ancestor,
- * so a directory that does not exist yet still compares against real paths.
- */
-const resolveReal = (p: string): string => {
+const realPathOfNearestAncestor = (p: string): string => {
   let existing = p
   while (!existsSync(existing)) {
     const parent = path.dirname(existing)
@@ -185,11 +181,15 @@ const resolveReal = (p: string): string => {
     }
     existing = parent
   }
-  return path.join(realpathSync(existing), path.relative(existing, p))
+  try {
+    return path.join(realpathSync(existing), path.relative(existing, p))
+  } catch {
+    return p
+  }
 }
 
 function assertNoInputOverlap(ctx: BuildContext): void {
-  const outputDir = resolveReal(ctx.outputDir)
+  const outputDir = realPathOfNearestAncestor(ctx.outputDir)
   const inputs = [
     ["dir.content", ctx.contentDir],
     ["dir.static", ctx.staticDir],
@@ -199,14 +199,14 @@ function assertNoInputOverlap(ctx: BuildContext): void {
     if (raw === null) {
       continue
     }
-    const dir = resolveReal(raw)
+    const dir = realPathOfNearestAncestor(raw)
     if (
       outputDir === dir ||
       isLexicallyInside(outputDir, dir) ||
       isLexicallyInside(dir, outputDir)
     ) {
       throw new Error(
-        `aid: dir.output (${ctx.outputDir}, resolved ${outputDir}) overlaps ${key} (${dir}). Point dir.output at a directory of its own.`,
+        `aid: dir.output (${ctx.outputDir}, resolved ${outputDir}) overlaps ${key} (${raw}, resolved ${dir}). Point dir.output at a directory of its own.`,
       )
     }
   }
@@ -218,8 +218,8 @@ function assertNoInputOverlap(ctx: BuildContext): void {
  * resolved through `realpath`, so they cannot point the delete elsewhere.
  */
 export function assertSafeToClean(ctx: BuildContext): void {
-  const outputDir = resolveReal(ctx.outputDir)
-  const cwd = resolveReal(ctx.cwd)
+  const outputDir = realPathOfNearestAncestor(ctx.outputDir)
+  const cwd = realPathOfNearestAncestor(ctx.cwd)
   if (!isLexicallyInside(outputDir, cwd)) {
     throw new Error(
       `aid: refusing --clean: dir.output "${ctx.config.dir.output}" resolves to ${outputDir}, which must be a subdirectory of the project directory ${cwd}.`,

@@ -3,7 +3,7 @@ import type { Diagnostic, ToolResult } from "../lint/diagnostics"
 import { applyFormat } from "./apply"
 
 const YAML_OPTIONS = { intAsBigInt: true } as const
-const STRAY_END_MARKER = /\n---[ \t]*\s*$/
+const STRAY_END_MARKER = /\n---\s*$/
 
 /**
  * Reformat YAML OpenAPI specs in place, keeping comments, anchors, block

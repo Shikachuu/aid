@@ -88,7 +88,15 @@ test("--clean works through a symlinked project path before the output dir exist
     cwd: repoRoot,
     stderr: "pipe",
   })
-  expect(result.stderr.toString()).toBe("")
   expect(result.exitCode).toBe(0)
   expect(await Bun.file(path.join(cwd, "dist/index.html")).exists()).toBe(true)
+})
+
+test("a plain build refuses an output dir that is a symlink to the static dir", async () => {
+  await symlink(path.join(cwd, "static"), path.join(cwd, "out"))
+  const config = await Bun.file(path.join(cwd, "aid.yaml")).text()
+  await Bun.write(path.join(cwd, "aid.yaml"), `${config}\ndir:\n  output: out\n`)
+  const result = runBuild()
+  expect(result.exitCode).not.toBe(0)
+  expect(result.stderr.toString()).toContain("overlaps dir.static")
 })

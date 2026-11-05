@@ -51,9 +51,9 @@ describe("lintMarkdown", () => {
 
   test("--fix keeps a hard line break but strips spaces on a blank line", async () => {
     const file = join(dir, "doc.md")
-    await Bun.write(file, "# Title\n\nline one   \nline two\n   \nend\n")
+    await Bun.write(file, "# Title\n\nline one   \nline\t  \nline two\n\t  \nend\n")
     await lintMarkdown([file], dir, { fix: true })
-    expect(await Bun.file(file).text()).toBe("# Title\n\nline one   \nline two\n\nend\n")
+    expect(await Bun.file(file).text()).toBe("# Title\n\nline one   \nline   \nline two\n\nend\n")
   })
 
   test("returns ok:true when no files passed", async () => {
