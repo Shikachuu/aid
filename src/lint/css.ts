@@ -4,6 +4,7 @@ import type {
   KeyframesRule,
   MediaCondition,
   MediaQuery,
+  PageRule,
   Rule,
   StyleRule,
   TokenOrValue,
@@ -14,6 +15,7 @@ import { installLightningcssShim } from "../core/internal/lightningcss-native"
 import { validateTailwindStylesheet } from "../core/tailwind"
 import data from "./css-data.json" with { type: "json" }
 import type { Diagnostic, Severity, ToolResult } from "./diagnostics"
+import { readSource } from "./source-file"
 
 /**
  * Every check the `css` tool runs. Codes reuse the name of the Stylelint rule
@@ -274,7 +276,7 @@ const PSEUDO_ELEMENTS = new Set(data.pseudoElements)
 const ELEMENTS = new Set(data.elements)
 
 const VENDOR_PREFIX = /^-[a-z]+-/
-const TAILWIND_ENTRY = /@import\s+(?:url\(\s*)?["'](?:tailwindcss|aid\/theme)["']/
+const TAILWIND_ENTRY = /@import\s+(?:url\(\s*)?["'](?:tailwindcss|aid\/theme)["']/g
 const IRREGULAR_CODE_POINTS = [
   0x0b, 0x0c, 0x85, 0xa0, 0x1680, 0x180e, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006,
   0x2007, 0x2008, 0x2009, 0x200a, 0x200b, 0x2028, 0x2029, 0x202f, 0x205f, 0x3000, 0xfeff,
@@ -287,12 +289,15 @@ const IRREGULAR_WHITESPACE = new RegExp(
 type Position = { line: number; col: number }
 type Location = { line: number; column: number }
 
+type Span = { from: number; to: number }
+
 type FileContext = {
   file: string
   text: string
   code: string
   lineStarts: number[]
   declaredCustomProperties: Set<string>
+  tailwindImports: Span[]
   out: Diagnostic[]
 }
 
@@ -307,19 +312,27 @@ const report = (ctx: FileContext, code: Code, message: string, pos?: Position): 
   })
 }
 
-const positionAt = (ctx: FileContext, offset: number): Position => {
+const lineStartsOf = (text: string): number[] => [
+  0,
+  ...[...text.matchAll(/\n/g)].map((match) => match.index + 1),
+]
+
+const positionIn = (lineStarts: number[], offset: number): Position => {
   let lo = 0
-  let hi = ctx.lineStarts.length - 1
+  let hi = lineStarts.length - 1
   while (lo < hi) {
     const mid = (lo + hi + 1) >> 1
-    if ((ctx.lineStarts[mid] ?? 0) <= offset) {
+    if ((lineStarts[mid] ?? 0) <= offset) {
       lo = mid
     } else {
       hi = mid - 1
     }
   }
-  return { line: lo + 1, col: offset - (ctx.lineStarts[lo] ?? 0) + 1 }
+  return { line: lo + 1, col: offset - (lineStarts[lo] ?? 0) + 1 }
 }
+
+const positionAt = (ctx: FileContext, offset: number): Position =>
+  positionIn(ctx.lineStarts, offset)
 
 // lightningcss rule locations have a 0-based line and a 1-based column.
 const ruleOffset = (ctx: FileContext, loc: Location): number =>
@@ -329,24 +342,52 @@ const rulePosition = (loc: Location): Position => ({ line: loc.line + 1, col: lo
 
 const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
-// lightningcss keeps no position for declarations, so search the source from the rule start.
-const findAfter = (
+// lightningcss keeps no position for declarations, so search the rule's own source.
+const findIn = (
   ctx: FileContext,
-  from: number,
+  span: Span,
   pattern: RegExp,
   occurrence = 1,
 ): Position | undefined => {
   const re = new RegExp(pattern.source, "gi")
-  re.lastIndex = from
+  re.lastIndex = span.from
   let match: RegExpExecArray | null = null
   for (let i = 0; i < occurrence; i++) {
     match = re.exec(ctx.code)
-    if (match === null) {
+    if (match === null || match.index >= span.to) {
       return undefined
     }
   }
   return match === null ? undefined : positionAt(ctx, match.index)
 }
+
+const indexOrEnd = (ctx: FileContext, index: number): number =>
+  index === -1 ? ctx.code.length : index
+
+// Declarations come before the first nested rule; later ones are a separate
+// `nested-declarations` rule, so the span ends at the next brace.
+const declarationSpan = (ctx: FileContext, from: number): Span => {
+  const brace = ctx.code.slice(from).search(/[{}]/)
+  return { from, to: brace === -1 ? ctx.code.length : from + brace }
+}
+
+const blockSpan = (ctx: FileContext, start: number): Span => {
+  const open = ctx.code.indexOf("{", start)
+  const close = open === -1 ? -1 : findMatchingBrace(ctx.code, open)
+  return { from: start, to: indexOrEnd(ctx, close) }
+}
+
+// A `nested-declarations` location points at the first value, past its property name.
+const statementStart = (ctx: FileContext, offset: number): number => {
+  let i = offset
+  while (i > 0 && !";{}".includes(ctx.code[i - 1] ?? "")) {
+    i--
+  }
+  return i
+}
+
+const bodyStart = (ctx: FileContext, start: number): number =>
+  indexOrEnd(ctx, ctx.code.indexOf("{", start)) + 1
 
 const declarationPattern = (name: string): RegExp =>
   new RegExp(`(?<![\\w-])${escapeRegExp(name)}\\s*:`)
@@ -364,8 +405,20 @@ const declarationName = (d: Declaration): string => {
   return prefix + d.property
 }
 
-const hasDynamicValue = (tokens: TokenOrValue[]): boolean =>
-  /"type":"(var|env|function)"/.test(JSON.stringify(tokens))
+const DYNAMIC_TOKENS = new Set(["var", "env", "function"])
+
+const hasDynamicValue = (node: unknown): boolean => {
+  if (Array.isArray(node)) {
+    return node.some(hasDynamicValue)
+  }
+  if (typeof node !== "object" || node === null) {
+    return false
+  }
+  return (
+    DYNAMIC_TOKENS.has(String((node as { type?: unknown }).type)) ||
+    Object.values(node).some(hasDynamicValue)
+  )
+}
 
 const isKnownValue = (tokens: TokenOrValue[], acceptsIdents: boolean): boolean =>
   tokens.every((t) => {
@@ -437,12 +490,27 @@ const fallbackShape = (d: Declaration): string =>
 
 const IMPORTANT = /!\s*important\s*$/i
 
+const valueEnd = (code: string, from: number, to: number): number => {
+  let depth = 0
+  for (let i = from; i < to; i++) {
+    const c = code[i]
+    if (c === "(") {
+      depth++
+    } else if (c === ")") {
+      depth = Math.max(0, depth - 1)
+    } else if (c === ";" && depth === 0) {
+      return i
+    }
+  }
+  return to
+}
+
 // lightningcss lists normal declarations before `!important` ones, so the k-th
 // normal (or important) declaration of a name is its k-th normal (or important)
 // occurrence in the source. Sorting by that offset restores source order.
 const inSourceOrder = (
   ctx: FileContext,
-  start: number,
+  span: Span,
   block: { declarations?: Declaration[]; importantDeclarations?: Declaration[] } | undefined,
 ): Declaration[] => {
   const tagged = [
@@ -464,11 +532,14 @@ const inSourceOrder = (
     }
     const found: number[] = []
     const re = new RegExp(declarationPattern(name).source, "gi")
-    re.lastIndex = start
+    re.lastIndex = span.from
     const limit = wanted.get(key) ?? 0
-    for (let m = re.exec(ctx.code); m !== null && found.length < limit; m = re.exec(ctx.code)) {
-      const end = ctx.code.slice(re.lastIndex).search(/[;}]/)
-      const value = ctx.code.slice(re.lastIndex, end === -1 ? undefined : re.lastIndex + end)
+    for (
+      let m = re.exec(ctx.code);
+      m !== null && m.index < span.to && found.length < limit;
+      m = re.exec(ctx.code)
+    ) {
+      const value = ctx.code.slice(re.lastIndex, valueEnd(ctx.code, re.lastIndex, span.to))
       if (IMPORTANT.test(value) === important) {
         found.push(m.index)
       }
@@ -487,11 +558,14 @@ const inSourceOrder = (
     .map(({ d }) => d)
 }
 
+const NO_DESCRIPTORS: ReadonlySet<string> = new Set()
+
 const checkDeclarations = (
   ctx: FileContext,
   declarations: Declaration[],
-  start: number,
+  span: Span,
   fallback: Position,
+  descriptors = NO_DESCRIPTORS,
 ): void => {
   const occurrences = new Map<string, number>()
   const seen = new Map<string, { index: number; shape: string }>()
@@ -501,7 +575,7 @@ const checkDeclarations = (
     const key = name.toLowerCase()
     const occurrence = (occurrences.get(key) ?? 0) + 1
     occurrences.set(key, occurrence)
-    const pos = findAfter(ctx, start, declarationPattern(name), occurrence) ?? fallback
+    const pos = findIn(ctx, span, declarationPattern(name), occurrence) ?? fallback
     const shape = fallbackShape(d)
 
     const previous = seen.get(key)
@@ -547,7 +621,12 @@ const checkDeclarations = (
     if (key.startsWith("--")) {
       return
     }
-    if (d.property === "custom" && !VENDOR_PREFIX.test(key) && !PROPERTIES.has(key)) {
+    if (
+      d.property === "custom" &&
+      !VENDOR_PREFIX.test(key) &&
+      !PROPERTIES.has(key) &&
+      !descriptors.has(key)
+    ) {
       report(ctx, "property-no-unknown", `Unknown property "${name}"`, pos)
       return
     }
@@ -640,7 +719,8 @@ const checkStyleRule = (
     report(ctx, "block-no-empty", `Selector "${selector}" has an empty block`, pos)
   }
 
-  checkDeclarations(ctx, inSourceOrder(ctx, start, rule.declarations), start, pos)
+  const own = declarationSpan(ctx, bodyStart(ctx, start))
+  checkDeclarations(ctx, inSourceOrder(ctx, own, rule.declarations), own, pos)
   walkRules(ctx, rule.rules ?? [])
 }
 
@@ -674,8 +754,9 @@ const checkMediaQueries = (ctx: FileContext, queries: MediaQuery[], loc: Locatio
     ) {
       continue
     }
-    const pos =
-      findAfter(ctx, ruleOffset(ctx, loc), new RegExp(escapeRegExp(name))) ?? rulePosition(loc)
+    const start = ruleOffset(ctx, loc)
+    const prelude = { from: start, to: bodyStart(ctx, start) }
+    const pos = findIn(ctx, prelude, new RegExp(escapeRegExp(name))) ?? rulePosition(loc)
     report(ctx, "media-feature-name-no-unknown", `Unknown media feature "${name}"`, pos)
   }
 }
@@ -687,7 +768,10 @@ const checkKeyframes = (ctx: FileContext, rule: KeyframesRule): void => {
     for (const selector of keyframe.selectors) {
       const key = JSON.stringify(selector)
       if (seen.has(key)) {
-        const label = selector.type === "percentage" ? `${selector.value * 100}%` : selector.type
+        const label =
+          selector.type === "percentage"
+            ? `${Number((selector.value * 100).toFixed(4))}%`
+            : selector.type
         report(
           ctx,
           "keyframe-block-no-duplicate-selectors",
@@ -698,7 +782,7 @@ const checkKeyframes = (ctx: FileContext, rule: KeyframesRule): void => {
       seen.add(key)
     }
     if ((keyframe.declarations.importantDeclarations ?? []).length > 0) {
-      const at = findAfter(ctx, ruleOffset(ctx, rule.loc), /!\s*important/) ?? pos
+      const at = findIn(ctx, blockSpan(ctx, ruleOffset(ctx, rule.loc)), /!\s*important/) ?? pos
       report(
         ctx,
         "keyframe-declaration-no-important",
@@ -717,10 +801,21 @@ const checkFontFace = (ctx: FileContext, rule: FontFaceRule): void => {
     const name = property.value.name
     if (!VENDOR_PREFIX.test(name) && !FONT_FACE_DESCRIPTORS.has(name.toLowerCase())) {
       const pos =
-        findAfter(ctx, ruleOffset(ctx, rule.loc), declarationPattern(name)) ??
+        findIn(ctx, blockSpan(ctx, ruleOffset(ctx, rule.loc)), declarationPattern(name)) ??
         rulePosition(rule.loc)
       report(ctx, "at-rule-descriptor-no-unknown", `Unknown @font-face descriptor "${name}"`, pos)
     }
+  }
+}
+
+const PAGE_DESCRIPTORS: ReadonlySet<string> = new Set(["marks", "bleed", "page-orientation"])
+
+const checkPage = (ctx: FileContext, rule: PageRule): void => {
+  const blocks = [rule, ...rule.rules]
+  for (const block of blocks) {
+    const span = declarationSpan(ctx, bodyStart(ctx, ruleOffset(ctx, block.loc)))
+    const declarations = inSourceOrder(ctx, span, block.declarations)
+    checkDeclarations(ctx, declarations, span, rulePosition(block.loc), PAGE_DESCRIPTORS)
   }
 }
 
@@ -737,10 +832,13 @@ function walkRules(ctx: FileContext, rules: Rule[]): void {
         break
       case "nested-declarations": {
         const { declarations, loc } = rule.value
-        const from = ctx.lineStarts[loc.line] ?? 0
-        checkDeclarations(ctx, inSourceOrder(ctx, from, declarations), from, rulePosition(loc))
+        const span = declarationSpan(ctx, statementStart(ctx, ruleOffset(ctx, loc)))
+        checkDeclarations(ctx, inSourceOrder(ctx, span, declarations), span, rulePosition(loc))
         break
       }
+      case "page":
+        checkPage(ctx, rule.value)
+        break
       case "media":
         checkMediaQueries(ctx, rule.value.query.mediaQueries, rule.value.loc)
         walkRules(ctx, rule.value.rules)
@@ -803,13 +901,24 @@ const reportWarning = (ctx: FileContext, warning: Warning): void => {
     report(ctx, "string-no-newline", "A newline ends this string before its closing quote", pos)
   } else if (warning.type === "SelectorError") {
     report(ctx, "selector-no-invalid", message, pos)
-  } else if (!TAILWIND_ENTRY.test(lineAt(ctx, warning.loc.line))) {
+  } else if (!inTailwindImport(ctx, warning.loc)) {
     report(ctx, "css-syntax-error", message, pos)
   }
 }
 
-const lineAt = (ctx: FileContext, line: number): string =>
-  ctx.text.slice(ctx.lineStarts[line - 1] ?? 0, ctx.lineStarts[line] ?? ctx.text.length)
+// lightningcss does not know Tailwind's `@import "tailwindcss" source(none)` options.
+const inTailwindImport = (ctx: FileContext, loc: Location): boolean => {
+  const offset = (ctx.lineStarts[loc.line - 1] ?? 0) + loc.column - 1
+  return ctx.tailwindImports.some((span) => offset >= span.from && offset <= span.to)
+}
+
+const findTailwindImports = (text: string, code: string): Span[] =>
+  [...text.matchAll(TAILWIND_ENTRY)]
+    .filter((m) => code.startsWith("@import", m.index))
+    .map((m) => {
+      const end = code.indexOf(";", m.index)
+      return { from: m.index, to: end === -1 ? code.length : end }
+    })
 
 const TAILWIND_NEEDLES = [
   /unknown utility class `([^`]+)`/,
@@ -819,23 +928,66 @@ const TAILWIND_NEEDLES = [
   /`([^`]+)`/,
 ]
 
-const tailwindErrorOffset = (ctx: FileContext, needle: string): number => {
+const applyOffset = (code: string, needle: string): number => {
   const inApply = new RegExp(`@apply[^;{}]*?(?<![\\w-])${escapeRegExp(needle)}(?![\\w-])`).exec(
-    ctx.code,
+    code,
   )
-  if (inApply !== null) {
-    return inApply.index + inApply[0].length - needle.length
+  return inApply === null ? -1 : inApply.index + inApply[0].length - needle.length
+}
+
+const reportTailwindInPartial = async (
+  ctx: FileContext,
+  partials: string[],
+  needle: string,
+  message: string,
+): Promise<boolean> => {
+  for (const partial of partials) {
+    const text = await Bun.file(partial)
+      .text()
+      .catch(() => "")
+    const offset = applyOffset(blankStringsAndComments(text).code, needle)
+    if (offset !== -1) {
+      ctx.out.push({
+        file: partial,
+        ...positionIn(lineStartsOf(text), offset),
+        severity: CSS_RULES.tailwind.severity,
+        code: "tailwind",
+        message,
+      })
+      return true
+    }
   }
-  return ctx.code.indexOf(needle)
+  return false
 }
 
 const checkTailwind = async (ctx: FileContext): Promise<void> => {
+  const partials: string[] = []
   try {
-    await validateTailwindStylesheet(ctx.text, ctx.file)
+    await validateTailwindStylesheet(ctx.text, ctx.file, (dependency) => partials.push(dependency))
   } catch (error) {
     const message = (error instanceof Error ? error.message : String(error)).split("\n")[0] ?? ""
+    const located = /^(\/.+?):(\d+):(\d+): (.*)$/.exec(message)
+    if (located !== null) {
+      ctx.out.push({
+        file: located[1] ?? ctx.file,
+        line: Number(located[2]),
+        col: Number(located[3]),
+        severity: CSS_RULES.tailwind.severity,
+        code: "tailwind",
+        message: located[4] ?? message,
+      })
+      return
+    }
     const needle = TAILWIND_NEEDLES.map((re) => re.exec(message)?.[1]).find((n) => n !== undefined)
-    const offset = needle === undefined ? -1 : tailwindErrorOffset(ctx, needle)
+    if (needle === undefined) {
+      report(ctx, "tailwind", message)
+      return
+    }
+    const inEntry = applyOffset(ctx.code, needle)
+    if (inEntry === -1 && (await reportTailwindInPartial(ctx, partials, needle, message))) {
+      return
+    }
+    const offset = inEntry === -1 ? ctx.code.indexOf(needle) : inEntry
     report(ctx, "tailwind", message, offset === -1 ? undefined : positionAt(ctx, offset))
   }
 }
@@ -866,9 +1018,6 @@ const checkText = (ctx: FileContext, blanked: Blanked): void => {
   }
   for (const match of ctx.code.matchAll(IRREGULAR_WHITESPACE)) {
     const codePoint = match[0].codePointAt(0) ?? 0
-    if (match.index === 0 && codePoint === 0xfeff) {
-      continue
-    }
     report(
       ctx,
       "no-irregular-whitespace",
@@ -881,11 +1030,12 @@ const checkText = (ctx: FileContext, blanked: Blanked): void => {
 type Transform = typeof import("lightningcss").transform
 
 const lintFile = async (file: string, transform: Transform): Promise<Diagnostic[]> => {
-  const text = await Bun.file(file).text()
-  const lineStarts = [0]
-  for (const match of text.matchAll(/\n/g)) {
-    lineStarts.push(match.index + 1)
+  const source = await readSource(file)
+  if ("severity" in source) {
+    return [source]
   }
+  const { text } = source
+  const lineStarts = lineStartsOf(text)
   const blanked = blankStringsAndComments(text)
   const declaredCustomProperties = new Set(
     [...blanked.code.matchAll(/(--[\w-]+)\s*:|@property\s+(--[\w-]+)/g)].map(
@@ -898,6 +1048,7 @@ const lintFile = async (file: string, transform: Transform): Promise<Diagnostic[
     code: blanked.code,
     lineStarts,
     declaredCustomProperties,
+    tailwindImports: findTailwindImports(text, blanked.code),
     out: [],
   }
 
@@ -929,7 +1080,7 @@ const lintFile = async (file: string, transform: Transform): Promise<Diagnostic[
       loc === undefined ? undefined : { line: loc.line, col: loc.column },
     )
   }
-  if (TAILWIND_ENTRY.test(text)) {
+  if (ctx.tailwindImports.length > 0) {
     await checkTailwind(ctx)
   }
   return ctx.out.sort((a, b) => (a.line ?? 0) - (b.line ?? 0) || (a.col ?? 0) - (b.col ?? 0))

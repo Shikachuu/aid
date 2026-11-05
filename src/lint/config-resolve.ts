@@ -30,7 +30,7 @@ export const findUserConfig = async (
   }
 }
 
-/** Parse a config file by extension: `.json` and `.jsonc` as JSONC, `.yaml` and `.yml` as YAML. */
+/** Parse a config file by extension; throws on any other extension, which callers report as a config error. */
 export const parseConfigFile = async (path: string): Promise<unknown> => {
   const text = await Bun.file(path).text()
   if (path.endsWith(".json") || path.endsWith(".jsonc")) {

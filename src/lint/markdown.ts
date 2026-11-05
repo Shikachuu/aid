@@ -4,6 +4,7 @@ import { findUserConfig } from "./config-resolve"
 import { markdownlintDefault } from "./configs/markdownlint.default"
 import type { Diagnostic, ToolResult } from "./diagnostics"
 import { USER_CONFIGS } from "./discovery"
+import { readSource, writeSource } from "./source-file"
 
 const CONFIG_PARSERS = [Bun.JSONC.parse, Bun.YAML.parse] as ((text: string) => Configuration)[]
 
@@ -90,7 +91,10 @@ const toDiagnostic = (file: string, e: LintError): Diagnostic => ({
   message: e.errorDetail ? `${e.ruleDescription}: ${e.errorDetail}` : e.ruleDescription,
 })
 
-/** With `opts.fix`, write the safe fixes back to disk and report what remains after re-linting the fixed text. */
+/**
+ * With `opts.fix`, write the safe fixes back to disk and report what remains
+ * after re-linting the fixed text.
+ */
 export const lintMarkdown = async (
   paths: string[],
   dir: string,
@@ -104,19 +108,23 @@ export const lintMarkdown = async (
     return { tool: "md", ok: false, diagnostics: [resolved.error] }
   }
   const { config } = resolved
-  const results = await lint({ files: paths, config })
   const diagnostics: Diagnostic[] = []
-  for (const [file, errors] of Object.entries(results)) {
-    let remaining = errors
-    if (opts.fix && errors.some((e) => e.fixInfo)) {
-      const original = await Bun.file(file).text()
-      const fixed = await fixMarkdown(file, original, config)
-      if (fixed.text !== original) {
-        await Bun.write(file, fixed.text)
-      }
-      remaining = fixed.remaining
+  for (const file of paths) {
+    const source = await readSource(file)
+    if ("severity" in source) {
+      diagnostics.push(source)
+      continue
     }
-    diagnostics.push(...remaining.map((e) => toDiagnostic(file, e)))
+    const fixed = opts.fix
+      ? await fixMarkdown(file, source.text, config)
+      : {
+          text: source.text,
+          remaining: (await lint({ strings: { [file]: source.text }, config }))[file] ?? [],
+        }
+    if (fixed.text !== source.text) {
+      await writeSource(file, { ...source, text: fixed.text })
+    }
+    diagnostics.push(...fixed.remaining.map((e) => toDiagnostic(file, e)))
   }
   return { tool: "md", ok: diagnostics.every((d) => d.severity !== "error"), diagnostics }
 }

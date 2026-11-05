@@ -1,6 +1,6 @@
 import type { Dirent } from "node:fs"
-import { readdir } from "node:fs/promises"
-import { join, resolve as resolvePath } from "node:path"
+import { readdir, realpath, stat } from "node:fs/promises"
+import { isAbsolute, join, relative, resolve as resolvePath } from "node:path"
 import { FORMAT_CONFIGS, LINT_CONFIGS } from "./bun"
 import {
   type Diagnostic,
@@ -9,6 +9,7 @@ import {
   type Tool,
   type ToolResult,
 } from "./diagnostics"
+import { errorCode } from "./source-file"
 
 /** Directory names discovery never walks into, whatever the tool. */
 export const DEFAULT_IGNORES = new Set([
@@ -54,19 +55,30 @@ export const USER_CONFIGS: Record<Tool, readonly string[]> = {
   proto: ["buf.yaml"],
 }
 
-const errorCode = (err: unknown): string =>
-  err instanceof Error && "code" in err ? String(err.code) : String(err)
-
 /**
  * List every regular file under `root`, relative to it, without entering a
  * `DEFAULT_IGNORES` directory. A subdirectory that cannot be read becomes a
  * `read-error` warning instead of aborting the run; an unreadable `root` throws.
+ * A symlink to a file outside `root` is listed; one that points inside `root`
+ * is not, because the walk lists its target already or the target sits in an
+ * ignored directory. Symlinked directories are never entered, so a link cycle
+ * cannot loop.
  */
 export const listFiles = async (
   root: string,
 ): Promise<{ files: string[]; errors: Diagnostic[] }> => {
   const files: string[] = []
   const errors: Diagnostic[] = []
+  const realRoot = await realpath(root).catch(() => root)
+  const isOutsideFile = async (path: string): Promise<boolean> => {
+    try {
+      const inside = relative(realRoot, await realpath(path))
+      const outside = inside === ".." || inside.startsWith("../") || isAbsolute(inside)
+      return outside && (await stat(path)).isFile()
+    } catch {
+      return false
+    }
+  }
   const walk = async (rel: string): Promise<void> => {
     let entries: Dirent[]
     try {
@@ -89,7 +101,10 @@ export const listFiles = async (
         if (!DEFAULT_IGNORES.has(entry.name)) {
           await walk(child)
         }
-      } else if (entry.isFile()) {
+      } else if (
+        entry.isFile() ||
+        (entry.isSymbolicLink() && (await isOutsideFile(join(root, child))))
+      ) {
         files.push(child)
       }
     }
@@ -122,6 +137,9 @@ export const runTools = async (
     const runner = run[tool]
     return runner !== undefined && (filter === null || filter.has(tool)) ? [{ tool, runner }] : []
   })
+  if (selected.length === 0) {
+    return { ok: true, results: [] }
+  }
   const root = resolvePath(dir)
   const { files, errors } = await listFiles(root)
   const results = await Promise.all(

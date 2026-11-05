@@ -1,6 +1,7 @@
 import { parseProto } from "@aid/proto-ui/parser"
 import { type Diagnostic, processFailure, type ToolResult } from "../lint/diagnostics"
 import { BUF_SKIPPED, resolveBufBinary } from "../lint/proto"
+import { readSource } from "../lint/source-file"
 
 const BUF_DIFF_EXIT = 100
 
@@ -27,7 +28,12 @@ export const formatProto = async (
   const wouldChange: string[] = []
   const diagnostics: Diagnostic[] = []
   for (const file of paths) {
-    const parseError = syntaxError(await Bun.file(file).text())
+    const source = await readSource(file)
+    if ("severity" in source) {
+      diagnostics.push(source)
+      continue
+    }
+    const parseError = syntaxError(source.text)
     if (parseError !== null) {
       diagnostics.push({ file, severity: "error", code: "proto/parse", message: parseError })
       continue
@@ -46,7 +52,7 @@ export const formatProto = async (
   }
   return {
     tool: "proto",
-    ok: wouldChange.length === 0 && diagnostics.length === 0,
+    ok: wouldChange.length === 0 && !diagnostics.some((d) => d.severity === "error"),
     diagnostics,
     wouldChange: opts.check ? wouldChange : undefined,
   }

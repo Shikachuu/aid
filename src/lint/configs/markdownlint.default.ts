@@ -1,4 +1,7 @@
-/** Default markdownlint config. Loaded when the user has no `.markdownlint.*` file. */
+/**
+ * Used when the project has no `.markdownlint.*` file. Tabs stay legal in code
+ * blocks because Makefile and Go samples need them.
+ */
 export const markdownlintDefault = {
   default: true,
   MD010: { code_blocks: false },

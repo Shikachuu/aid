@@ -1,7 +1,7 @@
-/** Severity shared by every tool. Pretty output colors and counts by it. */
+/** Only `error` fails a tool; pretty output colors and counts each severity. */
 export type Severity = "error" | "warn" | "info"
 
-/** One finding from any lint or format tool, normalized so both reporters print every tool the same way. */
+/** One finding from any lint or format tool, with a 1-based `line` and `col`, so both reporters print every tool the same way. */
 export type Diagnostic = {
   file: string
   line?: number
@@ -11,10 +11,10 @@ export type Diagnostic = {
   message: string
 }
 
-/** Tools that `aid lint` and `aid fmt` dispatch to, in report order. */
+/** Every tool `aid lint` knows, in the order the report lists them. */
 export const KNOWN_TOOLS = ["md", "openapi", "bun", "css", "proto"] as const
 
-/** Tool name as accepted by `--filter` and printed in reports. */
+/** A tool name as `--filter` accepts it. */
 export type Tool = (typeof KNOWN_TOOLS)[number]
 
 /** Outcome of one tool's run. A single `ok: false` fails the whole report. */
@@ -97,10 +97,7 @@ const colorize = (s: string, code: keyof typeof ANSI): string =>
 const severityColor = (s: Severity): keyof typeof ANSI =>
   s === "error" ? "red" : s === "warn" ? "yellow" : "blue"
 
-/**
- * Render a list of tool results as human-friendly text.
- * Used by `aid lint` and `aid fmt` when `--format=pretty` (the default).
- */
+/** Render the default `--format=pretty` output: one line per finding, then a summary with counts per tool. */
 export const renderPretty = (results: ToolResult[]): string => {
   const lines: string[] = []
   let errors = 0
@@ -147,7 +144,7 @@ export const renderPretty = (results: ToolResult[]): string => {
   return lines.join("\n")
 }
 
-/** Render results as JSON for piping into other tools or CI parsers. */
+/** Render `--format=json` output for scripts that parse the report. */
 export const renderJson = (results: ToolResult[]): string => JSON.stringify({ results }, null, 2)
 
 /** Write `report` to stdout as `pretty` or `json`, then exit 0 when it passed and 1 otherwise. */

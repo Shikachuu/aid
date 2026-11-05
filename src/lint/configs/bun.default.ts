@@ -1,4 +1,4 @@
-/** A rule's severity, or its severity followed by the rule's options. */
+/** A rule entry in the shape `bunfig.toml` `[lint.rules]` accepts, so `renderBunfig` can write it as is. */
 export type LintRule = "error" | "warn" | "off" | readonly ["error" | "warn", ...unknown[]]
 
 /** Every `bun lint` rule category. aid turns each one off, so only `lintRules` run. */

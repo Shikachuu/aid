@@ -1,32 +1,39 @@
-import type { Tool, ToolResult } from "../lint/diagnostics"
+import type { Diagnostic, Tool, ToolResult } from "../lint/diagnostics"
+import { readSource, writeSource } from "../lint/source-file"
 
 /**
  * Run `transform` over each file. Changed output is written back, or, in
- * `check` mode, listed in `wouldChange` and the result fails.
+ * `check` mode, listed in `wouldChange` and the result fails. A file that
+ * cannot be read is skipped with a `read-error` warning.
  */
 export const applyFormat = async (
   tool: Tool,
   paths: string[],
   check: boolean,
-  transform: (file: string, text: string) => string,
+  transform: (file: string, text: string) => string | Promise<string>,
 ): Promise<ToolResult> => {
   const wouldChange: string[] = []
+  const diagnostics: Diagnostic[] = []
   for (const file of paths) {
-    const original = await Bun.file(file).text()
-    const formatted = transform(file, original)
-    if (formatted === original) {
+    const source = await readSource(file)
+    if ("severity" in source) {
+      diagnostics.push(source)
+      continue
+    }
+    const formatted = await transform(file, source.text)
+    if (formatted === source.text) {
       continue
     }
     if (check) {
       wouldChange.push(file)
     } else {
-      await Bun.write(file, formatted)
+      await writeSource(file, { ...source, text: formatted })
     }
   }
   return {
     tool,
     ok: wouldChange.length === 0,
-    diagnostics: [],
+    diagnostics,
     wouldChange: check ? wouldChange : undefined,
   }
 }

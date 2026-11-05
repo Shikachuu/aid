@@ -16,9 +16,10 @@ export const formatMarkdown = async (
     return { tool: "md", ok: false, diagnostics: [resolved.error] }
   }
   const { config } = resolved
-  const fixed = new Map<string, string>()
-  for (const file of paths) {
-    fixed.set(file, (await fixMarkdown(file, await Bun.file(file).text(), config)).text)
-  }
-  return applyFormat("md", paths, opts.check, (file, text) => fixed.get(file) ?? text)
+  return applyFormat(
+    "md",
+    paths,
+    opts.check,
+    async (file, text) => (await fixMarkdown(file, text, config)).text,
+  )
 }

@@ -133,6 +133,46 @@ describe("lintCss", () => {
     ).toEqual(["3:declaration-block-no-duplicate-properties", "4:property-no-unknown"])
   })
 
+  test("reads a ; inside url() as part of the value when ordering !important", async () => {
+    const css =
+      ".a {\n  background: url(data:image/png;base64,AA) !important;\n  background-color: red;\n}\n"
+    expect(await findings(css)).toEqual([])
+  })
+
+  test("places a declaration inside its own rule, never in a later one", async () => {
+    expect(await findings(".a { colr: red; }\n.b { colr: red; }\n")).toEqual([
+      "1:property-no-unknown",
+      "2:property-no-unknown",
+    ])
+    const minified = await lint(".a{colr:1;.b{margin:0}colr:2}\n")
+    expect(minified.diagnostics.map((d) => `${d.line}:${d.col}:${d.code}`)).toEqual([
+      "1:4:property-no-unknown",
+      "1:23:property-no-unknown",
+    ])
+  })
+
+  test("checks @page and margin box declarations, allowing page descriptors", async () => {
+    const css =
+      "@page {\n  size: A4;\n  marks: crop;\n  margn: 1cm;\n  @top-left {\n    colr: red;\n  }\n}\n"
+    expect(await findings(css)).toEqual(["4:property-no-unknown", "6:property-no-unknown"])
+  })
+
+  test("prints a duplicate keyframe percentage without float noise", async () => {
+    const [d] = (await lint("@keyframes k { 7% { opacity: 0 } 7% { opacity: 1 } }\n")).diagnostics
+    expect(d?.message).toBe('Keyframe "7%" is used twice')
+  })
+
+  test("reports a file it cannot read as a warning", async () => {
+    const missing = join(dir, "gone.css")
+    expect(await lintCss([missing])).toEqual({
+      tool: "css",
+      ok: true,
+      diagnostics: [
+        expect.objectContaining({ file: missing, severity: "warn", code: "read-error" }),
+      ],
+    })
+  })
+
   test("reports unknown selectors and at-rules, but not Tailwind directives", async () => {
     const out = await findings(
       "@tailwnd base;\n@theme { --x: 1; }\n.y:hovr { color: red; }\na::befor { color: red; }\ndvi { color: red; }\na > > b { color: red; }\n",
@@ -225,6 +265,38 @@ describe("lintCss", () => {
       "3:tailwind",
     )
     expect(await position(`${entry}.d {\n  color: --theme(--color-nope);\n}\n`)).toBe("3:tailwind")
+  })
+
+  test("ignores a Tailwind import inside a comment", async () => {
+    expect(await findings('/* @import "tailwindcss"; */\n.x { @apply nope-utility; }\n')).toEqual(
+      [],
+    )
+  })
+
+  test("still reports syntax errors on the line of a Tailwind import", async () => {
+    const out = await lint('@import "tailwindcss" source(none);.b{{{color: red}\n')
+    expect(out.diagnostics.map((d) => d.message)).toContain("Unexpected end of input")
+  })
+
+  test("names the file and line of a Tailwind parse error", async () => {
+    const result = await lint('@import "tailwindcss";\n.b { color: red;\n')
+    const tailwind = result.diagnostics.find((d) => d.code === "tailwind")
+    expect(tailwind).toMatchObject({ file: join(dir, "a.css"), line: 2 })
+    expect(tailwind?.message).not.toContain(dir)
+  })
+
+  test("places an @apply error from an imported partial in the partial", async () => {
+    await Bun.write(join(dir, "parts/btn.css"), ".btn {\n  @apply px-4 not-a-class;\n}\n")
+    const result = await lint('@import "tailwindcss";\n@import "./parts/btn.css";\n')
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        file: join(dir, "parts/btn.css"),
+        line: 2,
+        col: 15,
+        code: "tailwind",
+        message: "Cannot apply unknown utility class `not-a-class`",
+      }),
+    ])
   })
 
   test("compiles a stylesheet that imports aid/theme", async () => {

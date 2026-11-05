@@ -5,14 +5,47 @@ import { oas } from "@stoplight/spectral-rulesets"
 import { findUserConfig, parseConfigFile } from "./config-resolve"
 import type { Diagnostic, Severity, ToolResult } from "./diagnostics"
 import { USER_CONFIGS } from "./discovery"
+import { readSource } from "./source-file"
+
+const OAS = oas as unknown as RulesetDefinition
+
+// The Spectral CLI resolves `extends: spectral:oas` by name; Spectral's core
+// only takes ruleset objects.
+const EXTENDS_MODES = new Set(["all", "recommended", "off"])
+
+const isModeTuple = (entry: unknown[]): boolean =>
+  entry.length === 2 && EXTENDS_MODES.has(String(entry[1]))
+
+const withBundledOas = (entry: unknown): unknown =>
+  entry === "spectral:oas"
+    ? OAS
+    : Array.isArray(entry) && isModeTuple(entry) && entry[0] === "spectral:oas"
+      ? [OAS, ...entry.slice(1)]
+      : entry
 
 const resolveSpectralRuleset = async (dir: string): Promise<RulesetDefinition> => {
   const path = await findUserConfig(dir, USER_CONFIGS.openapi)
   if (path === null) {
-    return oas as unknown as RulesetDefinition
+    return OAS
   }
-  return (await parseConfigFile(path)) as RulesetDefinition
+  const ruleset = (await parseConfigFile(path)) as { extends?: unknown }
+  if (ruleset?.extends === undefined) {
+    return ruleset as RulesetDefinition
+  }
+  const extended =
+    Array.isArray(ruleset.extends) && !isModeTuple(ruleset.extends)
+      ? ruleset.extends.map(withBundledOas)
+      : withBundledOas(ruleset.extends)
+  return { ...ruleset, extends: extended } as RulesetDefinition
 }
+
+// Spectral throws an AggregateError with an empty message for an invalid rule.
+const errorMessage = (err: unknown): string =>
+  err instanceof AggregateError
+    ? err.errors.map(errorMessage).join("; ")
+    : err instanceof Error
+      ? err.message
+      : String(err)
 
 const mapSeverity = (s: number): Severity => (s === 0 ? "error" : s === 1 ? "warn" : "info")
 
@@ -21,12 +54,11 @@ export const lintOpenApi = async (paths: string[], dir: string): Promise<ToolRes
   if (paths.length === 0) {
     return { tool: "openapi", ok: true, diagnostics: [] }
   }
-  let ruleset: RulesetDefinition
+  const spectral = new Spectral()
   try {
-    ruleset = await resolveSpectralRuleset(dir)
+    spectral.setRuleset(await resolveSpectralRuleset(dir))
   } catch (err) {
     const file = (await findUserConfig(dir, USER_CONFIGS.openapi)) ?? dir
-    const detail = err instanceof Error ? err.message : String(err)
     return {
       tool: "openapi",
       ok: false,
@@ -35,21 +67,23 @@ export const lintOpenApi = async (paths: string[], dir: string): Promise<ToolRes
           file,
           severity: "error",
           code: "openapi/config",
-          message: `cannot read config: ${detail}`,
+          message: `cannot read config: ${errorMessage(err)}`,
         },
       ],
     }
   }
-  const spectral = new Spectral()
-  spectral.setRuleset(ruleset)
 
   const diagnostics: Diagnostic[] = []
   let ok = true
   for (const path of paths) {
-    const text = await Bun.file(path).text()
+    const source = await readSource(path)
+    if ("severity" in source) {
+      diagnostics.push(source)
+      continue
+    }
     const doc = path.endsWith(".json")
-      ? new Document(text, Json, path)
-      : new Document(text, Yaml, path)
+      ? new Document(source.text, Json, path)
+      : new Document(source.text, Yaml, path)
     const results = await spectral.run(doc)
     for (const r of results) {
       const sev = mapSeverity(r.severity)

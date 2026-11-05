@@ -100,10 +100,7 @@ aid passes each discovered `.proto` file to buf with `--path`, so buf never lint
 
 ## Spectral
 
-> [!WARNING]
-> Not implemented yet: custom Spectral rulesets. aid passes the parsed `.spectral.*` file to Spectral without resolving it. Any `extends` (such as `spectral:oas`), any built-in function name (such as `truthy`), or any override of a `spectral:oas` rule makes `aid lint` crash with a stack trace. Keep no `.spectral.yaml`, `.spectral.yml`, or `.spectral.json` between the target directory and the repository root, and aid lints with the bundled `spectral:oas` ruleset.
-
-This file works with the Spectral CLI but crashes `aid lint`:
+A `.spectral.*` file can extend the bundled ruleset and change its rules:
 
 ```yaml
 # .spectral.yaml
@@ -111,5 +108,12 @@ extends: spectral:oas
 rules:
   info-contact: off
 ```
+
+`extends` also takes the Spectral CLI's `[[spectral:oas, recommended]]` form.
+
+> [!WARNING]
+> Not implemented yet: the rest of the Spectral ruleset format. aid passes the parsed file to Spectral and resolves only `spectral:oas` in `extends`. Another ruleset name, a file path in `extends`, or a built-in function name such as `truthy` fails the openapi tool with an `openapi/config` error that carries Spectral's reason.
+
+Spectral follows every `$ref` in a spec, remote ones included, so `aid lint` fetches a `$ref` that points at a URL.
 
 In the bundled `spectral:oas` ruleset, 32 rules report at `warn` and 13 at `error`. The error rules cover structural problems such as `oas3-schema`, `path-params`, and `operation-operationId-unique`. Style findings such as a missing `info.contact` are warnings and do not fail the run.

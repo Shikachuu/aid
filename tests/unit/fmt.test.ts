@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { formatProto } from "../../src/fmt/proto"
-import { mkdtempSync, rmSync } from "node:fs"
+import {
+  chmodSync,
+  lstatSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { formatWithBun } from "../../src/fmt/bun"
@@ -61,6 +69,35 @@ describe("formatMarkdown", () => {
     await Bun.write(file, original)
     await formatMarkdown([file], dir, { check: false })
     expect(await Bun.file(file).text()).toBe(original)
+  })
+})
+
+describe("formatMarkdown writes", () => {
+  test("keep the byte order mark, the file mode, and a symlink", async () => {
+    const target = join(dir, "doc.md")
+    await Bun.write(target, "\uFEFF# Title\n\n\n\nbody\n")
+    chmodSync(target, 0o640)
+    const link = join(dir, "link.md")
+    symlinkSync(target, link)
+    const result = await formatMarkdown([link], dir, { check: false })
+    expect(result).toMatchObject({ ok: true, diagnostics: [] })
+    expect(lstatSync(link).isSymbolicLink()).toBe(true)
+    expect(statSync(target).mode & 0o777).toBe(0o640)
+    expect(await Bun.file(target).bytes()).toEqual(
+      new TextEncoder().encode("\uFEFF# Title\n\nbody\n"),
+    )
+    expect(readdirSync(dir).sort()).toEqual(["doc.md", "link.md"])
+  })
+
+  test("skip a file that is not UTF-8 with a warning and leave its bytes alone", async () => {
+    const file = join(dir, "latin1.md")
+    const bytes = new Uint8Array([0x23, 0x20, 0x43, 0x61, 0x66, 0xe9, 0x0a, 0x0a, 0x0a, 0x0a])
+    await Bun.write(file, bytes)
+    const result = await formatMarkdown([file], dir, { check: false })
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ file, severity: "warn", code: "read-error" }),
+    ])
+    expect(await Bun.file(file).bytes()).toEqual(bytes)
   })
 })
 

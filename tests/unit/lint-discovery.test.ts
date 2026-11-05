@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
-import { chmodSync, mkdtempSync, rmSync } from "node:fs"
+import { chmodSync, mkdtempSync, rmSync, symlinkSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { printReport, renderPretty, type ToolResult } from "../../src/lint/diagnostics"
-import { listFiles } from "../../src/lint/discovery"
+import { listFiles, runTools } from "../../src/lint/discovery"
 import { lintAll } from "../../src/lint/orchestrate"
 
 let dir: string
@@ -65,6 +65,25 @@ describe("discovery", () => {
       }
     },
   )
+
+  test("lists a symlink to a file outside the root but not one to a file inside it", async () => {
+    const outside = mkdtempSync(join(tmpdir(), "aid-discovery-outside-"))
+    try {
+      await Bun.write(join(outside, "shared.md"), "# Shared\n")
+      await Bun.write(join(dir, "docs", "index.md"), "# Index\n")
+      symlinkSync(join(outside, "shared.md"), join(dir, "docs", "shared.md"))
+      symlinkSync(join(dir, "docs", "index.md"), join(dir, "alias.md"))
+      symlinkSync(dir, join(dir, "docs", "loop"))
+      symlinkSync(join(dir, "missing.md"), join(dir, "dangling.md"))
+      expect((await listFiles(dir)).files).toEqual(["docs/index.md", "docs/shared.md"])
+    } finally {
+      rmSync(outside, { recursive: true, force: true })
+    }
+  })
+
+  test("walks nothing when no tool is selected", async () => {
+    expect(await runTools(join(dir, "missing"), null, {})).toEqual({ ok: true, results: [] })
+  })
 
   test("throws a one-line aid error for a directory that does not exist", async () => {
     const missing = join(dir, "missing")

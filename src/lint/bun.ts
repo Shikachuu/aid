@@ -4,8 +4,9 @@ import { stableTempFile } from "../core/internal/extract-embedded"
 import { findUserConfig } from "./config-resolve"
 import { formatOptions, LINT_CATEGORIES, type LintRule, lintRules } from "./configs/bun.default"
 import { type Diagnostic, processFailure, type ToolResult } from "./diagnostics"
+import { readSource } from "./source-file"
 
-/** Config files that make `aid lint` use the project's own `bun lint` rules. */
+/** With any of these in the project, `aid lint` uses the project's `bun lint` setup instead of aid's bundled rules. */
 export const LINT_CONFIGS = [
   "eslint.config.js",
   "eslint.config.mjs",
@@ -22,7 +23,7 @@ export const LINT_CONFIGS = [
   ".oxlintrc.json",
 ] as const
 
-/** Config files that make `aid fmt` use the project's own `bun fmt` options. */
+/** With any of these in the project, `aid fmt` uses the project's `bun fmt` setup instead of aid's bundled options. */
 export const FORMAT_CONFIGS = [
   ".prettierrc",
   ".prettierrc.json",
@@ -44,7 +45,7 @@ export const FORMAT_CONFIGS = [
   "oxfmt.config.mts",
 ] as const
 
-/** A `bunfig.toml` holding `[lint]` and, optionally, `[fmt]`. */
+/** The parts of a `bunfig.toml` that aid writes for its bundled defaults. */
 export type Bunfig = {
   lint: { rules: Record<string, LintRule>; ignorePatterns?: readonly string[] }
   fmt?: Record<string, string | number | boolean>
@@ -61,7 +62,7 @@ const toToml = (value: unknown): string => {
   return JSON.stringify(value)
 }
 
-/** Render `config` as TOML. Every lint category is off, so only the listed rules run. */
+/** Render `config` as the TOML file that `bun lint -c` and `bun fmt -c` read. */
 export const renderBunfig = (config: Bunfig): string => {
   const lines = ["[lint]"]
   if (config.lint.ignorePatterns !== undefined) {
@@ -81,20 +82,26 @@ export const renderBunfig = (config: Bunfig): string => {
   return `${lines.join("\n")}\n`
 }
 
-// The nearest bunfig.toml that has `section`. A bunfig that does not parse is
-// returned as is, so Bun reports its syntax error.
-const bunfigWith = async (dir: string, section: "lint" | "fmt"): Promise<string | null> => {
+const hasSection = async (bunfig: string, section: "lint" | "fmt"): Promise<boolean> => {
+  try {
+    return section in (Bun.TOML.parse(await Bun.file(bunfig).text()) as Record<string, unknown>)
+  } catch {
+    // Bun reports the syntax error when it reads this bunfig.
+    return true
+  }
+}
+
+const nearestBunfigWithSection = async (
+  dir: string,
+  section: "lint" | "fmt",
+): Promise<string | null> => {
   let from = dir
   for (;;) {
     const path = await findUserConfig(from, ["bunfig.toml"])
     if (path === null) {
       return null
     }
-    try {
-      if (section in (Bun.TOML.parse(await Bun.file(path).text()) as Record<string, unknown>)) {
-        return path
-      }
-    } catch {
+    if (await hasSection(path, section)) {
       return path
     }
     const parent = dirname(dirname(path))
@@ -121,7 +128,7 @@ const writeDefaultBunfig = (): Promise<string> =>
  * the flags point at aid's bundled defaults.
  */
 export const configArgs = async (dir: string, tool: "lint" | "fmt"): Promise<string[]> => {
-  const bunfig = await bunfigWith(dir, tool)
+  const bunfig = await nearestBunfigWithSection(dir, tool)
   if (bunfig !== null) {
     return [`-c=${bunfig}`]
   }
@@ -132,7 +139,7 @@ export const configArgs = async (dir: string, tool: "lint" | "fmt"): Promise<str
   return [`-c=${await defaultBunfig}`]
 }
 
-/** Result of one `bun` subprocess. */
+/** Both output streams of a `bun` subprocess, already stripped of ANSI colors, for the parsers below. */
 export type BunRun = { stdout: string; stderr: string; exitCode: number }
 
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g")
@@ -188,7 +195,7 @@ export const stderrDiagnostics = (stderr: string, dir: string, code: string): Di
   return out
 }
 
-/** `diagnostics` without repeats, which config errors produce once per batch. */
+/** Drop repeated diagnostics, because every batch of files reports the same config error again. */
 export const dedupe = (diagnostics: Diagnostic[]): Diagnostic[] => {
   const seen = new Set<string>()
   return diagnostics.filter((d) => {
@@ -255,17 +262,21 @@ const fromOxlint = (file: string, d: OxlintDiagnostic): Diagnostic => {
 }
 
 const JSONC_FILES =
-  /(^|\/)(tsconfig[^/]*|jsconfig[^/]*|\.oxlintrc|\.oxfmtrc|devcontainer|\.vscode\/[^/]+)\.json$/
+  /(^|\/)(tsconfig[^/]*|jsconfig[^/]*|\.oxlintrc|\.oxfmtrc|devcontainer|turbo|biome|deno|\.vscode\/[^/]+)\.json$/
 
 const lintJson = async (paths: string[]): Promise<Diagnostic[]> => {
   const out: Diagnostic[] = []
   for (const file of paths) {
-    const text = await Bun.file(file).text()
+    const source = await readSource(file)
+    if ("severity" in source) {
+      out.push(source)
+      continue
+    }
     try {
       if (file.endsWith(".jsonc") || JSONC_FILES.test(file)) {
-        Bun.JSONC.parse(text)
+        Bun.JSONC.parse(source.text)
       } else {
-        JSON.parse(text)
+        JSON.parse(source.text)
       }
     } catch (error) {
       out.push({

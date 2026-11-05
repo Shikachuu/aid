@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { lintProto } from "../../src/lint/proto"
-import { mkdtempSync, rmSync } from "node:fs"
+import { chmodSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, relative } from "node:path"
 import { lintWithBun } from "../../src/lint/bun"
@@ -84,6 +84,26 @@ describe("lintMarkdown", () => {
     ])
   })
 
+  test("reports a file that vanished since discovery and lints the rest", async () => {
+    const gone = join(dir, "gone.md")
+    const file = join(dir, "doc.md")
+    await Bun.write(file, "# Title\n\n\nbody\n")
+    const result = await lintMarkdown([gone, file], dir)
+    expect(result.diagnostics.map((d) => [d.file, d.code, d.severity])).toEqual([
+      [gone, "read-error", "warn"],
+      [file, "MD012", "error"],
+    ])
+  })
+
+  test("--fix keeps a byte order mark", async () => {
+    const file = join(dir, "doc.md")
+    await Bun.write(file, "\uFEFF# Title\n\n\nbody\n")
+    await lintMarkdown([file], dir, { fix: true })
+    const bytes = await Bun.file(file).bytes()
+    expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
+    expect(new TextDecoder().decode(bytes)).toBe("# Title\n\nbody\n")
+  })
+
   test("returns ok:true when no files passed", async () => {
     const result = await lintMarkdown([], dir)
     expect(result.ok).toBe(true)
@@ -129,6 +149,43 @@ describe("lintOpenApi with a $ref", () => {
     expect(result.diagnostics).toEqual([
       expect.objectContaining({ file: config, code: "openapi/config" }),
     ])
+  })
+})
+
+describe("lintOpenApi with a .spectral.yaml", () => {
+  const spec = 'openapi: 3.1.0\ninfo:\n  title: T\n  version: "1"\npaths: {}\n'
+
+  test("resolves extends: spectral:oas and its rule overrides", async () => {
+    await Bun.write(
+      join(dir, ".spectral.yaml"),
+      "extends: [[spectral:oas, recommended]]\nrules:\n  info-description: off\n",
+    )
+    const file = join(dir, "openapi.yaml")
+    await Bun.write(file, spec)
+    const codes = (await lintOpenApi([file], dir)).diagnostics.map((d) => d.code)
+    expect(codes).toContain("oas3-api-servers")
+    expect(codes).not.toContain("info-description")
+  })
+
+  test("reports a ruleset Spectral rejects with Spectral's reason", async () => {
+    const config = join(dir, ".spectral.yaml")
+    await Bun.write(
+      config,
+      "rules:\n  r:\n    given: $.info\n    then:\n      field: contact\n      function: truthy\n",
+    )
+    const file = join(dir, "openapi.yaml")
+    await Bun.write(file, spec)
+    expect(await lintOpenApi([file], dir)).toEqual({
+      tool: "openapi",
+      ok: false,
+      diagnostics: [
+        expect.objectContaining({
+          file: config,
+          code: "openapi/config",
+          message: "cannot read config: Function is not defined",
+        }),
+      ],
+    })
   })
 })
 
@@ -261,6 +318,15 @@ describe("lintWithBun with other configs and failures", () => {
     const result = await lintWithBun([strict, join(dir, "tsconfig.json")], dir, { fix: false })
     expect(result.diagnostics.map((d) => [d.file, d.code])).toEqual([[strict, "json-syntax-error"]])
   })
+
+  test.each(["turbo.json", "biome.json", "deno.json"])(
+    "allows comments in %s, which its tool reads as JSONC",
+    async (name) => {
+      const file = join(dir, name)
+      await Bun.write(file, '{\n  // comment\n  "a": 1,\n}\n')
+      expect((await lintWithBun([file], dir, { fix: false })).diagnostics).toEqual([])
+    },
+  )
 })
 
 describe("lintProto", () => {
@@ -316,6 +382,21 @@ describe("lintProto targets", () => {
     await Bun.write(file, 'syntax = "proto3";\n')
     const result = await lintProto([file], dir, async () => null)
     expect(result).toMatchObject({ tool: "proto", ok: true, skipped: true })
+  })
+
+  test("splits a long target list across buf runs to stay under the argument limit", async () => {
+    const log = join(dir, "calls.log")
+    const fakeBuf = join(dir, "fake-buf")
+    await Bun.write(fakeBuf, `#!/bin/sh\necho $# >> "${log}"\n`)
+    chmodSync(fakeBuf, 0o755)
+    const paths = Array.from({ length: 1001 }, (_, i) => join(dir, `p${i}.proto`))
+    const result = await lintProto(paths, dir, async () => fakeBuf)
+    expect(result).toEqual({ tool: "proto", ok: true, diagnostics: [] })
+    const pathArgs = (await Bun.file(log).text())
+      .trim()
+      .split("\n")
+      .map((argc) => Number(argc) - 5)
+    expect(pathArgs).toEqual([500, 500, 1])
   })
 })
 
