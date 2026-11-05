@@ -26,6 +26,29 @@ describe("deriveDarkPalette", () => {
     expect(result.darkBlock).toContain("--color-foo: oklch(70% 0.18 320 / 0.8);")
   })
 
+  test("accepts hue units and none", () => {
+    const result = deriveDarkPalette(
+      `@theme { --color-a: oklch(55% 0.15 250deg); --color-b: oklch(99% none none); }`,
+    )
+    expect(result.darkBlock).toContain("--color-a: oklch(70% 0.15 250deg);")
+    expect(result.darkBlock).toContain("--color-b: oklch(12.88% none none);")
+    expect(result.warnings).toEqual([])
+  })
+
+  test.each(["static", "default"])("reads @theme %s blocks", (option) => {
+    const result = deriveDarkPalette(`@theme ${option} { --color-bg: oklch(99% 0 0); }`)
+    expect(result.darkBlock).toContain("--color-bg: oklch(12.88% 0 0);")
+  })
+
+  test.each(["inline", "reference", "static inline"])(
+    "warns and skips @theme %s blocks, which a :root override cannot reach",
+    (option) => {
+      const result = deriveDarkPalette(`@theme ${option} { --color-bg: oklch(99% 0 0); }`)
+      expect(result.darkBlock).toBe("")
+      expect(result.warnings).toEqual([expect.stringContaining(`@theme ${option} block`)])
+    },
+  )
+
   test("warns and skips hex colours", () => {
     const result = deriveDarkPalette(`@theme { --color-foo: #ff0000; }`)
     expect(result.darkBlock).not.toContain("--color-foo")

@@ -59,11 +59,20 @@ export async function compileTailwind(
  * Compile `css` with aid's Tailwind copy and `aid/theme` import, with no class
  * candidates, and throw Tailwind's error when the stylesheet is invalid. It
  * skips the dark-mode pass and the theme `@source` prelude of `aid build`.
+ * `onDependency` gets every imported stylesheet, so lint can place an `@apply`
+ * error that Tailwind reports without a file.
  */
-export async function validateTailwindStylesheet(css: string, from: string): Promise<void> {
+export async function validateTailwindStylesheet(
+  css: string,
+  from: string,
+  onDependency?: (path: string) => void,
+): Promise<void> {
   await installLightningcssShim()
   const { compile } = await import("@tailwindcss/node")
-  const compiled = await compile(inlineAidImports(css), compileOptions(path.dirname(from), from))
+  const compiled = await compile(
+    inlineAidImports(css),
+    compileOptions(path.dirname(from), from, onDependency),
+  )
   compiled.build([])
 }
 
@@ -190,7 +199,8 @@ function applyDarkModeFlag(css: string, mode: "auto" | "manual" | "off"): string
   if (result.darkBlock === "") {
     return css
   }
-  return `${css}\n${result.darkBlock}`
+  // Inside the theme layer, any dark rule the user writes outside it wins over the derived one.
+  return `${css}\n@layer theme {\n${result.darkBlock}\n}`
 }
 
 const PREFERS_DARK_RE = /@media\s*\(\s*prefers-color-scheme\s*:\s*dark\s*\)\s*\{/g

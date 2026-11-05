@@ -22,23 +22,27 @@ See [the `theme` keys](../reference/configuration.md#theme) in the configuration
 
 ## Auto
 
-Before Tailwind compiles the stylesheet, aid reads every `@theme` block in it, including the bundled theme that `@import "aid/theme";` pulls in. For each `--color-*` token whose value is `oklch(L C H)` or `oklch(L C H / A)`, aid computes a dark lightness. Chroma, hue, and alpha stay the same.
+Before Tailwind compiles the stylesheet, aid reads every `@theme` block in it, including the bundled theme that `@import "aid/theme";` pulls in and blocks with options such as `@theme static`. For each `--color-*` token whose value is `oklch(L C H)` or `oklch(L C H / A)`, aid computes a dark lightness. Chroma, hue, and alpha stay the same. The hue may carry a `deg` unit, and chroma and hue may be `none`.
+
+aid does not read `@theme` blocks in your own `@import`ed files; put the color tokens in the stylesheet itself or use `manual`. It skips `@theme inline` and `@theme reference` blocks with a warning, because utilities do not read those tokens through CSS variables, so a dark `:root` value cannot change them.
 
 - A neutral token, with chroma below 0.03, inverts into the 12% to 100% band: L becomes 12 + 0.88 * (100 - L). The 99% background becomes 12.88%, not black, and the 90% border becomes 20.8%, so borders stay visible.
 - A saturated token at 80% lightness or less is an accent or text color. aid mirrors it (L becomes 100 - L) and clamps the result to 70% to 85%, so links and callout titles stay readable on the dark background.
 - A saturated token above 80% is a light tint, and it inverts like a neutral token.
 
-aid appends the results at the end of the stylesheet:
+aid appends the results at the end of the stylesheet, inside Tailwind's `theme` layer:
 
 ```css
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-aid-bg: oklch(12.88% 0 0);
-    --color-aid-text: oklch(82.4% 0 0);
-    --color-aid-muted: oklch(56% 0 0);
-    --color-aid-border: oklch(20.8% 0 0);
-    --color-aid-accent: oklch(70% 0.15 250);
-    /* ... one line per oklch() color token */
+@layer theme {
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-aid-bg: oklch(12.88% 0 0);
+      --color-aid-text: oklch(82.4% 0 0);
+      --color-aid-muted: oklch(56% 0 0);
+      --color-aid-border: oklch(20.8% 0 0);
+      --color-aid-accent: oklch(70% 0.15 250);
+      /* ... one line per oklch() color token */
+    }
   }
 }
 ```
@@ -52,7 +56,7 @@ dark-mode auto-derivation skipped --color-brand: only oklch() colours are suppor
 ```
 
 > [!NOTE]
-> In `auto` mode, aid appends the derived block after everything you wrote. If you also write your own dark value for a token, the derived value wins. Switch to `manual` to control the dark palette yourself.
+> In `auto` mode, a dark value you write yourself outside `@layer theme` wins over the derived one, because CSS ranks rules outside a layer above rules inside one. Write the rest of the dark palette yourself with `manual`.
 
 ## Manual
 

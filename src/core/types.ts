@@ -5,34 +5,33 @@ import type { AidConfig } from "./config"
 /** Source format of a route. It picks the renderer. */
 export type PageKind = "markdown" | "html" | "openapi" | "proto" | "jsonschema"
 
-/** One page discovered under `contentDir` by `buildRoutes`. */
+/**
+ * One page discovered under `contentDir` by `buildRoutes`. `source` is absolute,
+ * `path` is the route path before `base_path`, and only markdown pages carry
+ * `frontmatter`.
+ */
 export type Route = {
-  /** Absolute path of the source file. */
   source: string
-  /** Public route path (joined with config.base_path at render time). */
   path: string
   kind: PageKind
-  /** Optional frontmatter (markdown only). */
   frontmatter?: Frontmatter
 }
 
-/** Renderer output for one route, before the Layout wraps it. */
+/**
+ * Renderer output for one route, before the Layout wraps it. The `has*` flags
+ * decide which browser bundles the page loads, and `description` is its
+ * llms.txt summary.
+ */
 export type RenderedPage = {
   route: Route
-  /** Final rendered HTML body (without the surrounding <html>/Layout chrome). */
   html: string
   searchTokens: SearchTokens
-  /** Machine-readable variants written next to the page (`.md`, `.json`, `.proto`). */
   exports: SideChannelExport[]
-  /** True iff the rendered body contains at least one mermaid diagram. Drives lazy <script> injection. */
   hasMermaid: boolean
-  /** True iff the page is an OpenAPI reference. Drives lazy Scalar runtime injection. */
   hasOpenApi: boolean
-  /** True iff the page is a Proto reference. Drives lazy proto-ui runtime injection. */
   hasProto: boolean
-  /** One-line summary used in llms.txt bullets. */
   description?: string
-  /** Element ids a link fragment may target. Undefined when ids only exist in the browser. */
+  // Undefined when the ids only exist in the browser, so the anchor check skips the page.
   anchors?: string[]
   anchorRefs?: AnchorRef[]
   diagnostics?: Diagnostic[]
@@ -47,12 +46,14 @@ export type AnchorRef = {
   col?: number
 }
 
-/** Text a renderer extracts from a page for the search index. */
+/**
+ * Text a renderer extracts from a page for the search index. `extras` holds
+ * format-specific names, such as operationIds and proto message names.
+ */
 export type SearchTokens = {
   title: string
   body: string
   headings: string[]
-  /** Format-specific extras: operationIds, message names, etc. */
   extras: Record<string, string[]>
 }
 
@@ -69,17 +70,15 @@ export type NavNode = {
   children?: NavNode[]
 }
 
-/** Validated config plus resolved absolute directories for one build. */
+/**
+ * Validated config plus the `dir.*` folders resolved against the project
+ * folder `cwd`. `templatesDir` is null when `dir.templates` is empty.
+ */
 export type BuildContext = {
   config: AidConfig
-  /** Project directory. Every configured directory resolves against it. */
   cwd: string
-  /** Resolved content root (cwd + config.dir.content). */
   contentDir: string
-  /** Resolved output root (cwd + config.dir.output). */
   outputDir: string
-  /** Optional override templates directory (cwd + config.dir.templates). */
   templatesDir: string | null
-  /** Resolved static-asset root (cwd + config.dir.static). Copied verbatim to outputDir. */
   staticDir: string
 }

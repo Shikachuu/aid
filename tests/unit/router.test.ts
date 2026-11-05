@@ -33,6 +33,30 @@ describe("buildRoutes", () => {
     expect(routes.map((r) => r.path)).toEqual(["/alias/intro", "/intro", "/shared/intro"])
   })
 
+  test.each([
+    ["the content root", "."],
+    ["an ancestor folder", "guides"],
+  ])(
+    "rejects a folder symlink back to %s instead of listing its pages twice",
+    async (_, target) => {
+      const ctx = makeCtx(cwd)
+      await writeMd(ctx, "guides/deep/page.md")
+      await symlink(path.join(ctx.contentDir, target), path.join(ctx.contentDir, "guides/deep/up"))
+      await expect(buildRoutes(ctx)).rejects.toThrow(
+        /^aid: ".*guides\/deep\/up" is a symlink to .*, which contains it, so dir\.content would list its files twice/,
+      )
+    },
+  )
+
+  test.each(["c#.md", "faq?.md", "100%.md", "c#/index.md"])(
+    "rejects %p, whose route would need URL escaping",
+    async (file) => {
+      const ctx = makeCtx(cwd)
+      await writeMd(ctx, file)
+      await expect(buildRoutes(ctx)).rejects.toThrow(/cannot appear in a URL path unescaped/)
+    },
+  )
+
   test("rejects a symlink whose target is outside the content dir", async () => {
     const ctx = makeCtx(cwd)
     await Bun.write(path.join(cwd, "README.md"), "# Readme\n")

@@ -19,13 +19,15 @@ Set `name` and `description` in `aid.yaml` and build. aid writes `dist/llms.txt`
 This documentation is available in machine-readable form. Append `.md` to a markdown route, `.json` to an OpenAPI or JSON Schema route, or `.proto` to a Proto route to receive the parseable variant.
 
 {{toc}}
+```
 
+When at least one page is [optional](#optional-pages), the bundled template ends with an extra section:
+
+```md
 ## Optional
 
 {{toc:optional}}
 ```
-
-The bundled template always writes the `## Optional` heading, even when no page is optional. Override the template to remove it.
 
 ## Configure it
 
@@ -111,13 +113,13 @@ Each page is one bullet:
 - [Title](url): description
 ```
 
-aid drops the `: description` part when the page has no description.
+aid drops the `: description` part when the page has no description. It escapes `[` and `]` in the title with a backslash, percent-encodes spaces and parentheses in the URL, and joins a description that spans several lines into one line.
 
 - The title is the page title, the same one search shows. A sidebar label from `_meta.yaml` or `sidebar.label` does not change it, so this site's proto example appears as `aid.example.v1`.
 - The description comes from frontmatter `description` for markdown, `<meta name="description">` for HTML, `info.description` for OpenAPI, and the first paragraph of the comment above `package` for proto.
 - The URL points at the page's export, not its HTML: `.md` for markdown and HTML pages, `.json` for OpenAPI pages, and `.proto` for proto pages. The root page links to `index.<ext>`.
 
-aid builds the URL from `base_path` and the export path. With `base_url` set, it resolves that path against `base_url`, so the link is absolute. `base_url` is an origin. aid drops any path in it and uses `base_path` instead.
+aid builds the URL from `base_path` and the export path. With `base_url` set, it resolves that path against `base_url`, so the link is absolute. `base_url` is an origin. The config rejects a `base_url` with a path; put the path in `base_path`.
 
 | `base_url` | `base_path` | Page | URL |
 | --- | --- | --- | --- |

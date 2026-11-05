@@ -18,7 +18,9 @@ afterEach(async () => {
 })
 
 async function writeCss({ ctx, css }: { ctx: BuildContext; css: string }) {
-  const href = await writeHashed(ctx, new AssetRegistry(), "main", "css", css)
+  const registry = new AssetRegistry()
+  const href = writeHashed(ctx, registry, "main", "css", css)
+  await registry.flush()
   return { href, path: path.join(ctx.outputDir, path.posix.basename(href)) }
 }
 
@@ -64,10 +66,10 @@ describe("writeHashed (main.css)", () => {
   test("a file already registered at the same path is a collision", async () => {
     const ctx = makeCtx(cwd)
     const registry = new AssetRegistry()
-    const href = await writeHashed(ctx, registry, "main", "css", ".x{}")
+    const href = writeHashed(ctx, registry, "main", "css", ".x{}")
     const taken = new AssetRegistry()
     taken.register(path.join(ctx.outputDir, path.posix.basename(href)), "static/main.css")
-    await expect(writeHashed(ctx, taken, "main", "css", ".x{}")).rejects.toThrow(
+    expect(() => writeHashed(ctx, taken, "main", "css", ".x{}")).toThrow(
       /asset collision.*static\/main\.css/,
     )
   })

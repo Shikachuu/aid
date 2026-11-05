@@ -37,6 +37,13 @@ describe("AidConfigSchema", () => {
     expect(() => AidConfigSchema.parse({})).toThrow()
   })
 
+  test.each(["Two\nlines", "Carriage\rreturn"])(
+    "rejects a name with a line break, which would add headings to llms.txt",
+    (name) => {
+      expect(() => AidConfigSchema.parse({ name })).toThrow("name must be a single line")
+    },
+  )
+
   test("rejects unknown dark_mode", () => {
     expect(() => AidConfigSchema.parse({ name: "T", theme: { dark_mode: "neon" } })).toThrow()
   })
@@ -196,5 +203,14 @@ describe("buildContext output dir", () => {
   test("accepts a dir of its own and resolves absolute values", () => {
     expect(ctxFor({ output: "build/site" }).outputDir).toBe("/project/build/site")
     expect(ctxFor({ output: "/project/out" }).outputDir).toBe("/project/out")
+  })
+
+  test("drops a trailing slash, so root links in docs/ do not count as outside it", () => {
+    const ctx = ctxFor({ content: "docs/", static: "static/", output: "dist/" })
+    expect([ctx.contentDir, ctx.staticDir, ctx.outputDir]).toEqual([
+      "/project/docs",
+      "/project/static",
+      "/project/dist",
+    ])
   })
 })

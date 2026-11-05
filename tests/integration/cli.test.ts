@@ -63,6 +63,17 @@ describe("aid build", () => {
   })
 })
 
+describe("aid dev", () => {
+  test.each(["abc", "", " ", "70000", "1.5"])(
+    "--port %p exits 1 with one aid: line before starting",
+    (port) => {
+      const { exitCode, stderr } = aid("dev", cwd, "--port", port)
+      expect(exitCode).toBe(1)
+      expect(stderr.trim()).toBe(`aid: --port must be an integer from 0 to 65535, got "${port}".`)
+    },
+  )
+})
+
 describe("aid", () => {
   test("help exits 0 and lists the commands", () => {
     const { exitCode, stdout } = aid("help")

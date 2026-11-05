@@ -5,7 +5,8 @@
     "name": {
       "type": "string",
       "minLength": 1,
-      "description": "Project display name. Required."
+      "pattern": "^[^\\r\\n]*$",
+      "description": "Project display name, on one line. Required."
     },
     "description": {
       "description": "Short site description. Used as the llms.txt summary line.",
@@ -43,7 +44,7 @@
         },
         "output": {
           "default": "dist",
-          "description": "Build output directory. Default 'dist'.",
+          "description": "Build output directory. It must not overlap the content, static, or templates directory, and `aid build --clean` deletes it. Default 'dist'.",
           "type": "string"
         },
         "templates": {

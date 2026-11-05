@@ -24,3 +24,35 @@ export async function assertRealPathInside(
     )
   }
 }
+
+/**
+ * Throw when a folder on the path of `relative` (relative to `root`) is a symlink
+ * back to `root` or to one of its own ancestors. Bun.Glob follows such a loop
+ * once, so every file below it would come back under a second path.
+ * `realDirs` caches realpaths across calls, keyed by the relative folder.
+ */
+export async function assertNoSymlinkLoop(
+  relative: string,
+  root: string,
+  realRoot: string,
+  key: string,
+  realDirs: Map<string, string>,
+): Promise<void> {
+  const segments = relative.split(path.sep).slice(0, -1)
+  const seen = [realRoot]
+  for (let i = 1; i <= segments.length; i++) {
+    const dir = segments.slice(0, i).join(path.sep)
+    let real = realDirs.get(dir)
+    if (real === undefined) {
+      real = await realpath(path.join(root, dir))
+      realDirs.set(dir, real)
+    }
+    const target = real
+    if (seen.some((prev) => prev === target || isLexicallyInside(prev, target))) {
+      throw new Error(
+        `aid: "${path.join(root, dir)}" is a symlink to ${target}, which contains it, so ${key} would list its files twice. Remove the symlink.`,
+      )
+    }
+    seen.push(target)
+  }
+}

@@ -66,6 +66,19 @@ describe("compileTailwind", () => {
     expect(css).toContain("oklch(12.88% 0 0)")
   })
 
+  test("auto puts the derived block in the theme layer, so the user's own dark rule wins", async () => {
+    await Bun.write(
+      path.join(cwd, "main.css"),
+      `@import "tailwindcss";\n@theme {\n  --color-aid-bg: oklch(99% 0 0);\n}\n@media (prefers-color-scheme: dark) {\n  :root {\n    --color-aid-bg: oklch(42% 0 0);\n  }\n}\n`,
+    )
+    const ctx = makeCtx(cwd, { theme: { dark_mode: "auto" } })
+    const css = await compileTailwind(ctx, [stubHtml("bg-aid-bg")])
+    const derived = css.lastIndexOf("oklch(12.88% 0 0)")
+    expect(derived).toBeGreaterThan(-1)
+    expect(css.lastIndexOf("@layer theme", derived)).toBeGreaterThan(-1)
+    expect(css).toContain("oklch(42% 0 0)")
+  })
+
   test("a missing custom stylesheet fails instead of falling back to the bundled theme", async () => {
     const ctx = makeCtx(cwd, { stylesheet: "styles/site.css" })
     await expect(compileTailwind(ctx, [])).rejects.toThrow(
