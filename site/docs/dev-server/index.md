@@ -126,8 +126,9 @@ When the first build fails, there is no good build to serve. Every request then 
 
 - A URL that ends in `/` or has no file extension maps to `index.html` in that folder, so `/guides` serves `guides/index.html`.
 - A URL with a dot in its last segment serves the file of that name. When no such file exists, it serves `index.html` in the folder of that name, so the JSON Schema route `/user.schema` serves `user.schema/index.html`.
-- A path that resolves outside the build folder, such as an encoded `..`, returns 400 Bad Request.
+- A path that resolves outside the build folder, such as an encoded `..`, returns 400 Bad Request. So does a path with a malformed `%` escape or an encoded NUL byte.
 - A missing file returns 404 Not Found.
+- An unexpected server error returns a plain 500 Internal Server Error and logs the error to the terminal. The response has no stack trace or file paths.
 
 With a `base_path` such as `/docs`, the server strips the prefix before it looks up the file. Both `/docs` and `/docs/` serve the site root. Any path outside the prefix, including `/`, gets a 302 redirect to `/docs/`. The startup log prints the URL with the prefix. See [paths and URLs](../configuration/paths-and-urls.md) for how `base_path` shapes the built site.
 
