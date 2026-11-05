@@ -7,20 +7,45 @@ import { extractEmbedded } from "./extract-embedded"
 
 type EmbeddedBinding = { stagedPath: string; subpkg: string }
 
+const isGlibc = (): boolean => {
+  const report = process.report.getReport() as { header?: { glibcVersionRuntime?: string } }
+  return typeof report.header?.glibcVersionRuntime === "string"
+}
+
 const pickEmbedded = (): EmbeddedBinding | null => {
   if (process.platform === "darwin") {
     if (process.arch === "arm64") {
       return { stagedPath: lcssDarwinArm64, subpkg: "lightningcss-darwin-arm64" }
     }
-    return { stagedPath: lcssDarwinX64, subpkg: "lightningcss-darwin-x64" }
+    if (process.arch === "x64") {
+      return { stagedPath: lcssDarwinX64, subpkg: "lightningcss-darwin-x64" }
+    }
   }
-  if (process.platform === "linux") {
+  if (process.platform === "linux" && isGlibc()) {
     if (process.arch === "arm64") {
       return { stagedPath: lcssLinuxArm64, subpkg: "lightningcss-linux-arm64-gnu" }
     }
-    return { stagedPath: lcssLinuxX64, subpkg: "lightningcss-linux-x64-gnu" }
+    if (process.arch === "x64") {
+      return { stagedPath: lcssLinuxX64, subpkg: "lightningcss-linux-x64-gnu" }
+    }
   }
   return null
+}
+
+/**
+ * The lightningcss binding embedded for this host, or `null` when none fits.
+ * A compiled binary has no other binding to fall back to, so there an
+ * unsupported host (musl, or an arch other than x64 and arm64) throws.
+ */
+export const pickLightningcssBinding = (compiled: boolean): EmbeddedBinding | null => {
+  const picked = pickEmbedded()
+  if (picked === null && compiled) {
+    const libc = process.platform === "linux" && !isGlibc() ? " (musl)" : ""
+    throw new Error(
+      `aid: unsupported platform ${process.platform}-${process.arch}${libc}. Release binaries run on glibc Linux and macOS, on x64 and arm64.`,
+    )
+  }
+  return picked
 }
 
 let installPromise: Promise<void> | null = null
@@ -49,7 +74,7 @@ type ModuleNs = {
 }
 
 const doInstall = async (): Promise<void> => {
-  const picked = pickEmbedded()
+  const picked = pickLightningcssBinding(import.meta.path.startsWith("/$bunfs/"))
   if (!picked?.stagedPath.startsWith("/$bunfs/")) {
     return
   }
