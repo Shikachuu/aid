@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdir, mkdtemp, rm, symlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { buildRoutes, routePathFromStem, routeUrl } from "../../src/core/router"
@@ -21,6 +21,33 @@ async function writeMd(ctx: BuildContext, relative: string, body = "# T\n"): Pro
 }
 
 describe("buildRoutes", () => {
+  test("follows symlinked files and folders that stay inside the content dir", async () => {
+    const ctx = makeCtx(cwd)
+    await writeMd(ctx, "shared/intro.md")
+    await symlink(
+      path.join(ctx.contentDir, "shared/intro.md"),
+      path.join(ctx.contentDir, "intro.md"),
+    )
+    await symlink(path.join(ctx.contentDir, "shared"), path.join(ctx.contentDir, "alias"))
+    const routes = await buildRoutes(ctx)
+    expect(routes.map((r) => r.path)).toEqual(["/alias/intro", "/intro", "/shared/intro"])
+  })
+
+  test("rejects a symlink whose target is outside the content dir", async () => {
+    const ctx = makeCtx(cwd)
+    await Bun.write(path.join(cwd, "README.md"), "# Readme\n")
+    await mkdir(ctx.contentDir, { recursive: true })
+    await symlink(path.join(cwd, "README.md"), path.join(ctx.contentDir, "index.md"))
+    await expect(buildRoutes(ctx)).rejects.toThrow(
+      /^aid: ".*index\.md" resolves through a symlink to .*README\.md, outside dir\.content/,
+    )
+  })
+
+  test("names dir.content when it does not exist", async () => {
+    const ctx = makeCtx(cwd)
+    await expect(buildRoutes(ctx)).rejects.toThrow(/^aid: dir\.content .* does not exist\.$/)
+  })
+
   test("emits a route per .md file, sorted by path", async () => {
     const ctx = makeCtx(cwd)
     await writeMd(ctx, "index.md")
