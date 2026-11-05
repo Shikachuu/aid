@@ -145,17 +145,30 @@ async function dispatchRenderer(
 function makeCopyAsset(route: Route, ctx: BuildContext, registry: AssetRegistry): CopyAsset {
   const routeOutputDir = path.dirname(outputPathForRoute(route, ctx))
   const routeUrlDir = path.posix.join(ctx.config.base_path, route.path)
+  const sourceDir = path.dirname(route.source)
   return async (absoluteSource) => {
     const realSource = await assertInsideContent(absoluteSource, route, ctx)
     if (realSource === null) {
       return null
     }
-    const filename = path.basename(absoluteSource)
-    const destPath = path.join(routeOutputDir, filename)
+    const subpath = colocatedSubpath(sourceDir, absoluteSource)
+    const destPath = path.join(routeOutputDir, ...subpath)
     registry.register(destPath, absoluteSource)
     await Bun.write(destPath, Bun.file(realSource))
-    return path.posix.join(routeUrlDir, filename)
+    return path.posix.join(routeUrlDir, ...subpath)
   }
+}
+
+/**
+ * Path segments of a colocated asset under its page's output folder: the path
+ * relative to the source folder with any leading `..` dropped, so
+ * `./light/logo.png` and `./dark/logo.png` stay apart and `../logo.svg` lands
+ * next to the page.
+ */
+function colocatedSubpath(sourceDir: string, absoluteSource: string): string[] {
+  const segments = path.relative(sourceDir, absoluteSource).split(path.sep)
+  const firstKept = segments.findIndex((segment) => segment !== "..")
+  return segments.slice(firstKept)
 }
 
 async function assertInsideContent(

@@ -25,7 +25,7 @@ aid resolves the path against the folder of the source file, copies the file int
 - aid percent-decodes the path before it looks for the file, so `./a%20b.png` finds `a b.png`. A query string or `#fragment`, as in `./icons.svg#star`, stays on the rewritten URL.
 - aid does not rewrite raw `<img>` tags inside markdown. Use markdown image syntax.
 
-The copy keeps only the file name, so a page's images land in one folder. Two different files with the same name in one page, such as `./a/icon.png` and `./b/icon.png`, fail the build with an asset collision. An image used by two pages is copied once into each page's folder.
+The copy keeps the path relative to the source file's folder, minus any leading `../`. For a page at `guide/index.md`, `./light/logo.png` lands at `guide/light/logo.png` in the output, so it does not clash with `./dark/logo.png`. Two references that still map to one output path, such as `./icon.png` and `../icon.png`, fail the build with an asset collision. An image used by two pages is copied once into each page's folder.
 
 aid follows symlinks only when the real path also stays inside the content folder.
 
