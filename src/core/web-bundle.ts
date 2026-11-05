@@ -11,8 +11,8 @@ import {
 import type { BuildContext } from "./types"
 import {
   AID_ROOT,
-  bundleWebOutputs,
-  entryPointOf,
+  bundleWebFiles,
+  type EmbeddedBundle,
   hasSourceTree,
   requireEmbedded,
   WEB_CSS,
@@ -20,32 +20,22 @@ import {
   type WebJsEntry,
 } from "./web-entries"
 
-/** Result of writing the compiled web bundle(s) to disk. */
+/** Public hrefs of the web bundles. An optional bundle is `null` when no page needs it. */
 export type BuildWebBundleResult = {
-  /** Public href for the base bundle. Always present; safe to inject on every page. */
   baseHref: string
-  /** Public href for the mermaid bundle, or `null` when the site has no diagrams. */
   mermaidHref: string | null
-  /** Public href for the Scalar bundle, or `null` when the site has no OpenAPI pages. */
   openapiHref: string | null
-  /**
-   * Public href for Scalar's stylesheet, or `null` when the site has no OpenAPI pages.
-   * Scalar ships its UI unstyled without it, with every icon at intrinsic size.
-   */
+  // Scalar ships its UI unstyled without this, with every icon at intrinsic size.
   openapiCssHref: string | null
-  /** Public href for the proto-ui bundle, or `null` when the site has no Proto pages. */
   protoHref: string | null
-  /** Public href for the proto-ui stylesheet, or `null` when the site has no Proto pages. */
   protoCssHref: string | null
 }
 
 /**
- * Write the browser runtime into `outputDir` and return the public hrefs. The
- * base bundle is always written. Each optional bundle is written only when its
- * `include` flag is set. Output comes from `Bun.build` when the source tree is
- * on disk, and from the bytes embedded in `src/web/_bundled.ts` inside a
- * compiled binary. Every written file goes through `registry`, so a static
- * file with the same name is a collision instead of a silent overwrite.
+ * Queue the browser runtime on `registry` and return the public hrefs. The base
+ * bundle is always included, each optional bundle only when its `include` flag
+ * is set. Output comes from `Bun.build` when the source tree is on disk, and
+ * from the bytes embedded in `src/web/_bundled.ts` inside a compiled binary.
  */
 export async function buildWebBundle(
   ctx: BuildContext,
@@ -54,10 +44,14 @@ export async function buildWebBundle(
 ): Promise<BuildWebBundleResult> {
   const fromSource = await hasSourceTree()
 
-  const js = (entry: WebJsEntry, embedded: string) =>
-    fromSource
-      ? buildAndWrite(ctx, registry, entry)
-      : writeHashed(ctx, registry, entry.name, "js", requireEmbedded(entry.name, embedded))
+  const js = async (entry: WebJsEntry, embedded: EmbeddedBundle) => {
+    const bundle = fromSource ? await bundleWebFiles(entry) : embedded
+    requireEmbedded(entry.name, bundle.entry)
+    for (const [file, body] of Object.entries(bundle.files)) {
+      registry.write(path.join(ctx.outputDir, file), `<generated:${entry.source}>`, body)
+    }
+    return path.posix.join(ctx.config.base_path, bundle.entry)
+  }
   const css = async (entry: (typeof WEB_CSS)[keyof typeof WEB_CSS], embedded: string) =>
     writeHashed(
       ctx,
@@ -80,44 +74,20 @@ export async function buildWebBundle(
 }
 
 /**
- * Write `body` to `<outputDir>/<name>.<hash>.<ext>` and return its public href
- * joined against `config.base_path`. The xxh64 hash is a content fingerprint
- * for cache-busting, not a security boundary.
+ * Queue `body` on `registry` as `<outputDir>/<name>.<hash>.<ext>` and return its
+ * public href joined against `config.base_path`. The xxh64 hash is a content
+ * fingerprint for cache-busting, not a security boundary.
  */
-export async function writeHashed(
+export function writeHashed(
   ctx: BuildContext,
   registry: AssetRegistry,
   name: string,
   ext: string,
   body: string,
-): Promise<string> {
+): string {
   const hash = Bun.hash.xxHash64(body).toString(16).padStart(16, "0").slice(0, 8)
   const filename = `${name}.${hash}.${ext}`
   const outputPath = path.join(ctx.outputDir, filename)
-  registry.register(outputPath, `<generated:${name}.${ext}>`)
-  await Bun.write(outputPath, body)
+  registry.write(outputPath, `<generated:${name}.${ext}>`, body)
   return path.posix.join(ctx.config.base_path, filename)
-}
-
-async function buildAndWrite(
-  ctx: BuildContext,
-  registry: AssetRegistry,
-  entry: WebJsEntry,
-): Promise<string> {
-  const { name } = entry
-  const outputs = await bundleWebOutputs(entry, {
-    splitting: true,
-    naming: {
-      entry: `${name}.[hash].js`,
-      chunk: `${name}.[name].[hash].js`,
-      asset: `${name}.[name].[hash][ext]`,
-    },
-  })
-  const targets = outputs.map((output) => {
-    const outputPath = path.join(ctx.outputDir, output.path)
-    registry.register(outputPath, `<generated:${entry.source}>`)
-    return { outputPath, output }
-  })
-  await Promise.all(targets.map(({ outputPath, output }) => Bun.write(outputPath, output)))
-  return path.posix.join(ctx.config.base_path, path.basename(entryPointOf(entry, outputs).path))
 }

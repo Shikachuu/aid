@@ -9,6 +9,11 @@ const ROOT = path.join(import.meta.dir, "../..")
 const badJsonDir = path.join(import.meta.dir, "../fixtures/lint-fixtures/openapi-bad-json")
 
 const host = TARGETS.find((t) => t.platform === process.platform && t.arch === process.arch)
+if (host === undefined) {
+  console.log(
+    `[compiled-binary] skipped: aid ships no binary for ${process.platform}-${process.arch}`,
+  )
+}
 
 let outDir: string
 let binary: string
@@ -109,6 +114,10 @@ test.skipIf(host === undefined)(
     expect(await Bun.file(path.join(compiledSite, "dist/index.html")).text()).toContain("<main")
     expect(await stylesheet(path.join(compiledSite, "dist"))).toBe(
       await stylesheet(path.join(sourceSite, "dist")),
+    )
+    const files = async (dist: string) => (await readdir(dist)).sort()
+    expect(await files(path.join(compiledSite, "dist"))).toEqual(
+      await files(path.join(sourceSite, "dist")),
     )
     await rm(compiledSite, { recursive: true, force: true })
     await rm(sourceSite, { recursive: true, force: true })

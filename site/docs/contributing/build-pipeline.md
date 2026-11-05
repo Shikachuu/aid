@@ -114,7 +114,7 @@ The pipeline then hands `reportBrokenLinks` three lists: the renderer diagnostic
 
 `buildWebBundle` (`src/core/web-bundle.ts`) gets three flags: whether any page has mermaid, an OpenAPI page, or a proto page. It always writes `aid-web`, and writes `aid-mermaid`, `aid-openapi`, and `aid-proto` only when their flag is set. OpenAPI and proto pages also get a stylesheet, copied from `@scalar/api-reference/style.css` and `@aid/proto-ui/styles.css`.
 
-From a source checkout, `bundleWebEntry` runs `Bun.build` with code splitting into `outputDir`. Inside the compiled binary, there is no source tree, so the bundles come from the strings that `scripts/bundle-web.ts` generated and the compile step embedded in place of `src/web/_bundled.ts`. [Single binary](./single-binary.md) explains the embedding.
+From a source checkout, `bundleWebFiles` runs `Bun.build` with code splitting and aid writes every output file into `outputDir`. Inside the compiled binary, there is no source tree, so the same split files come from the module that `scripts/bundle-web.ts` generated and the compile step embedded in place of `src/web/_bundled.ts`. [Single binary](./single-binary.md) explains the embedding.
 
 `Layout` links each optional bundle only on the pages that need it.
 
@@ -147,9 +147,9 @@ From a source checkout, `bundleWebEntry` runs `Bun.build` with code splitting in
 
 ## Writes and the asset registry
 
-`AssetRegistry` (`src/core/assets.ts`) maps each output path to a source label. Registering the same pair twice does nothing. A different source on the same path throws `aid: asset collision` with both labels, for example a `static/` file that lands on a page export. Static copies, colocated copies, pages, exports, `llms.txt`, and the search index all register. The hashed CSS and JS files are written without registering.
+`AssetRegistry` (`src/core/assets.ts`) maps each output path to a source label. Registering the same pair twice does nothing. A different source on the same path throws `aid: asset collision` with both labels, for example a `static/` file that lands on a page export.
 
-The last phase writes every page, export, `llms.txt`, and the search index in one `Promise.all`.
+Nothing writes to `outputDir` directly. Static copies, colocated copies, the hashed CSS and JS files with their chunks, pages, exports, `llms.txt`, and the search index go through `AssetRegistry.write`, which registers the path and queues the bytes. The last step of `build` calls `flush`, which writes the queue in one `Promise.all`. A build that throws before then, for a broken link or a collision, leaves `outputDir` untouched.
 
 ## Error model
 
@@ -158,6 +158,8 @@ The build fails by throwing. Most messages start with `aid:`:
 | Error | Thrown by |
 | --- | --- |
 | `aid: route collision` | `buildRoutes`, when two sources map to one route path |
+| `aid: ... cannot appear in a URL path unescaped` | `buildRoutes`, when a route path holds `#`, `?`, or `%` |
+| `aid: ... is a symlink to ..., which contains it` | `assertNoSymlinkLoop`, for a folder symlink back to the content or static root or an ancestor |
 | `aid: asset collision` | `AssetRegistry.register` |
 | `aid: colocated asset ... escapes contentDir` | `assertInsideContent` |
 | `aid: HTML page ... must be a full HTML document` | `renderHtml` |
