@@ -24,10 +24,11 @@ Run `aid build` or `aid dev`. aid compiles the stylesheet, writes it as `main.<h
 
 ## The stylesheet entry
 
-The `stylesheet` key in `aid.yaml` names the entry file, relative to the project directory. It defaults to `main.css`. See [the configuration reference](../reference/configuration.md).
+The `stylesheet` key in `aid.yaml` names the entry file, relative to the project directory or as an absolute path. It defaults to `main.css`. See [the configuration reference](../reference/configuration.md).
 
 - When the file exists, aid compiles it.
-- When the file does not exist, aid compiles its bundled theme, `src/theme/main.css` in the aid repository.
+- When the default `main.css` does not exist, aid compiles its bundled theme, `src/theme/main.css` in the aid repository.
+- When a `stylesheet` you set does not exist, the build stops with an error that names the path.
 
 `@import "tailwindcss";` resolves to the copy of Tailwind inside aid. Your project needs no `package.json` and no `npm install`.
 

@@ -66,6 +66,35 @@ describe("compileTailwind", () => {
     expect(css).toContain("oklch(1% 0 0)")
   })
 
+  test("a missing custom stylesheet fails instead of falling back to the bundled theme", async () => {
+    const ctx = makeCtx(cwd, { stylesheet: "styles/site.css" })
+    await expect(compileTailwind(ctx, [])).rejects.toThrow(
+      /^aid: stylesheet "styles\/site\.css" not found at .*styles\/site\.css/,
+    )
+  })
+
+  test("reads an absolute stylesheet path as is", async () => {
+    const outside = await mkdtemp(path.join(tmpdir(), "aid-tailwind-abs-"))
+    try {
+      const stylesheet = path.join(outside, "site.css")
+      await Bun.write(
+        stylesheet,
+        `@import "tailwindcss";\n@theme {\n  --color-abs: oklch(50% 0 0);\n}\n`,
+      )
+      const ctx = makeCtx(cwd, { stylesheet })
+      expect(await compileTailwind(ctx, [stubHtml("bg-abs")])).toContain(".bg-abs")
+    } finally {
+      await rm(outside, { recursive: true, force: true })
+    }
+  })
+
+  test("scans the templates dir for class candidates", async () => {
+    await Bun.write(path.join(cwd, "tpl", "llms.html"), stubHtml("underline-offset-8"))
+    const ctx = makeCtx(cwd, { dir: { templates: "tpl" } })
+    expect(await compileTailwind(ctx, [])).toContain(".underline-offset-8")
+    expect(await compileTailwind(makeCtx(cwd), [])).not.toContain(".underline-offset-8")
+  })
+
   test("user main.css replaces bundled when present", async () => {
     await Bun.write(
       path.join(cwd, "main.css"),

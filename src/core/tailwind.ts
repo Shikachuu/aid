@@ -5,6 +5,7 @@ import tailwindThemeCss from "tailwindcss/theme.css" with { type: "file" }
 import tailwindUtilitiesCss from "tailwindcss/utilities.css" with { type: "file" }
 import bundledMainCss from "../theme/main.css" with { type: "text" }
 import { aidThemeSources } from "../web/_bundled"
+import { AidConfigSchema } from "./config"
 import { deriveDarkPalette } from "./dark-mode"
 import { blankStringsAndComments, findMatchingBrace } from "./internal/css-scan"
 import { installLightningcssShim } from "./internal/lightningcss-native"
@@ -13,9 +14,12 @@ import { AID_ROOT, hasSourceTree, requireEmbedded } from "./web-entries"
 
 const bundledMainCssPath = path.join(AID_ROOT, "src/theme/main.css")
 
+const DEFAULT_STYLESHEET = AidConfigSchema.shape.stylesheet.parse(undefined)
+
 /**
  * Compile the site stylesheet. Uses `config.stylesheet` when it exists and the
- * bundled `src/theme/main.css` otherwise. Tailwind scans the theme components,
+ * bundled `src/theme/main.css` when the default `main.css` is missing; a
+ * missing custom `stylesheet` throws. Tailwind scans the theme components,
  * the templates directory, and `htmlContents` for class candidates. `tailwindcss`
  * resolves to aid's own copy, so the user's project needs no install. An
  * `@import "aid/theme";` pulls in the bundled theme, and `theme.dark_mode` decides
@@ -96,7 +100,7 @@ type ResolvedEntry = {
 }
 
 async function resolveEntry(ctx: BuildContext): Promise<ResolvedEntry> {
-  const userPath = path.join(ctx.cwd, ctx.config.stylesheet)
+  const userPath = path.resolve(ctx.cwd, ctx.config.stylesheet)
   const userFile = Bun.file(userPath)
   if (await userFile.exists()) {
     return {
@@ -104,6 +108,11 @@ async function resolveEntry(ctx: BuildContext): Promise<ResolvedEntry> {
       base: path.dirname(userPath),
       from: userPath,
     }
+  }
+  if (ctx.config.stylesheet !== DEFAULT_STYLESHEET) {
+    throw new Error(
+      `aid: stylesheet "${ctx.config.stylesheet}" not found at ${userPath}. Create it, or remove the stylesheet key to use the bundled theme.`,
+    )
   }
   return {
     css: bundledMainCss,
