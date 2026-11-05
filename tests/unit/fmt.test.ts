@@ -38,6 +38,29 @@ describe("formatMarkdown", () => {
     expect(result.wouldChange).toContain(file)
     expect(await Bun.file(file).text()).toBe(original)
   })
+
+  test("never applies fixes that change what the page says", async () => {
+    const file = join(dir, "doc.md")
+    const original = [
+      "# Title",
+      "",
+      "line one   ",
+      "line two",
+      "",
+      "Compute a * b * c now.",
+      "",
+      "```make",
+      "all:",
+      "\techo hi",
+      "```",
+      "",
+      "[unused]: https://example.com",
+      "",
+    ].join("\n")
+    await Bun.write(file, original)
+    await formatMarkdown([file], dir, { check: false })
+    expect(await Bun.file(file).text()).toBe(original)
+  })
 })
 
 describe("formatOpenApi", () => {

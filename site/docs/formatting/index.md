@@ -48,7 +48,7 @@ In JSON output, each tool result has a `wouldChange` array with the files that w
 
 | Tool | Formatter |
 | --- | --- |
-| `md` | Runs markdownlint with your `.markdownlint.*` config or the bundled default, then applies every fix that markdownlint offers. Rules without a fix leave the file alone. |
+| `md` | Runs markdownlint with your `.markdownlint.*` config or the bundled default, then applies its fixes until the file is stable. It skips the fixes that change meaning, the same ones `aid lint --fix` skips (see [linting](../linting/index.md)). |
 | `openapi` | Reformats `.yaml` and `.yml` specs with a 2-space indent. Comments, anchors, block scalars, quoting and number spellings such as `1.0` stay as written. `.json` specs are formatted by the `bun` tool like any other JSON file. |
 | `bun` | Runs `bun fmt` on JS, TS, JSON, and CSS files, with your `bun fmt` config or the bundled default: a line width of 100 and no semicolons. With `--check`, it lists the files `bun fmt --check` reports. It applies no lint fixes. |
 | `proto` | Runs `buf format -w` on each file. With `--check`, it runs `buf format -d --exit-code` and lists the files with a non-empty diff. |

@@ -53,7 +53,7 @@ The line format is `file:line:col  severity  code  message`. The summary counts 
 
 The generated [CLI reference](../reference/cli.md#aid-lint) lists the same flags.
 
-With `--fix`, markdownlint writes every fixable violation back to the file and aid reports only the violations it could not fix. `bun lint --fix` writes its safe fixes and reports what is left.
+With `--fix`, aid writes markdownlint's fixes back to the file, lints the result again, and reports what is left. aid never applies the fixes that change what a page says: MD037 (it would turn `a * b * c` into emphasis), MD053 (it deletes unused link definitions), and MD009 on a line that ends in two or more spaces (a hard line break). Those stay reported. `bun lint --fix` writes its safe fixes and reports what is left.
 
 ## How it works
 

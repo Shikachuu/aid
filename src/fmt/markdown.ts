@@ -1,9 +1,8 @@
-import { applyFixes } from "markdownlint"
 import type { ToolResult } from "../lint/diagnostics"
-import { runMarkdownlint } from "../lint/markdown"
+import { fixMarkdown, resolveMarkdownConfig } from "../lint/markdown"
 import { applyFormat } from "./apply"
 
-/** Apply markdownlint's fixable rules, with the same config resolution as `aid lint`. */
+/** Apply markdownlint's safe fixes, with the same config resolution as `aid lint`. */
 export const formatMarkdown = async (
   paths: string[],
   dir: string,
@@ -12,6 +11,10 @@ export const formatMarkdown = async (
   if (paths.length === 0) {
     return { tool: "md", ok: true, diagnostics: [] }
   }
-  const results = await runMarkdownlint(paths, dir)
-  return applyFormat("md", paths, opts.check, (file, text) => applyFixes(text, results[file] ?? []))
+  const config = await resolveMarkdownConfig(dir)
+  const fixed = new Map<string, string>()
+  for (const file of paths) {
+    fixed.set(file, (await fixMarkdown(file, await Bun.file(file).text(), config)).text)
+  }
+  return applyFormat("md", paths, opts.check, (file, text) => fixed.get(file) ?? text)
 }

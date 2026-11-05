@@ -39,6 +39,15 @@ describe("lintMarkdown", () => {
     expect(result.diagnostics.find((d) => d.code === "MD012")).toBeUndefined()
   })
 
+  test("--fix writes safe fixes and reports the meaning-changing ones it skipped", async () => {
+    const file = join(dir, "doc.md")
+    await Bun.write(file, "# Title\n\n\n\nCompute a * b * c now.\n")
+    const result = await lintMarkdown([file], dir, { fix: true })
+    expect(await Bun.file(file).text()).toBe("# Title\n\nCompute a * b * c now.\n")
+    expect(new Set(result.diagnostics.map((d) => d.code))).toEqual(new Set(["MD037"]))
+    expect(result.ok).toBe(false)
+  })
+
   test("returns ok:true when no files passed", async () => {
     const result = await lintMarkdown([], dir)
     expect(result.ok).toBe(true)
