@@ -86,7 +86,7 @@ flowchart TD
 ```
 
 1. aid parses `--filter` into a set of tools. No filter selects all five. An unknown name stops the run with exit code 1.
-2. For each selected tool, aid globs the target directory with that tool's patterns. It skips `node_modules`, `dist`, `.git`, and the other folders listed in [the lint defaults reference](../reference/lint-defaults.md).
+2. aid walks the target directory once, dot folders such as `.github` and `.vscode` included, and matches each file against the patterns of each selected tool. It does not enter `node_modules`, `dist`, `.git`, `.aid`, and the other folders listed in [the lint defaults reference](../reference/lint-defaults.md). It does not read `.gitignore`. A folder aid cannot read prints a `read-error` warning, and aid lints the rest. A target directory that does not exist stops the run with exit code 1.
 3. aid runs the selected tools in parallel. A tool with no matching files passes with no findings.
 4. Each tool finds its config file (see [configuring the linters](./configuring.md)) or falls back to the bundled default.
 5. aid maps every finding to one shape: file, line, column, severity, code, message.
@@ -94,6 +94,8 @@ flowchart TD
 
 > [!WARNING]
 > OpenAPI discovery goes by file name: `openapi.yaml`, `*.openapi.json`, or any YAML or JSON file under an `openapi/` folder. `aid build` detects OpenAPI by content instead, from a top-level `openapi:` or `swagger:` key. A spec named `api.yaml` renders as an API page but `aid lint` never checks it. Rename it to `api.openapi.yaml` or move it into an `openapi/` folder.
+
+Spectral follows a `$ref` into another file. A finding inside the referenced file names that file and its line, not the spec that holds the `$ref`.
 
 ### Severity
 
@@ -176,5 +178,3 @@ The exit code follows the same rule as pretty output.
 
 > [!WARNING]
 > lightningcss records no position for a declaration. aid searches the rule's source for the property name, so a finding can point at the wrong line when a nested rule declares the same property first.
->
-> buf errors that are not lint findings, such as a broken `buf.yaml`, do not print. The proto tool fails with no findings. Run `buf lint` by hand to see the message.
