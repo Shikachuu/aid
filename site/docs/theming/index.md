@@ -102,6 +102,7 @@ Every element aid renders carries a stable `.aid-*` class. Style these, not the 
 | `aid-search-result`, `aid-search-result-title`, `aid-search-result-url`, `aid-search-badge` | one search result and its parts |
 | `aid-shell` | grid that holds the sidebar and the main column |
 | `aid-sidebar` | sidebar `<aside>` |
+| `aid-sidebar-disclosure`, `aid-sidebar-toggle` | the `<details>` around the nav and its "Menu" `<summary>`; below the `md` breakpoint (48rem) the nav collapses behind the summary, and from `md` up the summary is hidden and the nav always shows |
 | `aid-nav` | sidebar `<nav>` |
 | `aid-nav-list`, `aid-nav-item`, `aid-nav-group` | nav lists and items; `aid-nav-group` marks an item with children |
 | `aid-nav-link`, `aid-nav-label` | a nav link, or a folder label without a page; the current page's link has `aria-current="page"` |

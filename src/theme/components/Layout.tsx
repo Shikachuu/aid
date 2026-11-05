@@ -26,6 +26,7 @@ type LayoutProps = {
 /**
  * Render the full HTML document for one page. Each optional bundle and stylesheet href is linked
  * only when set, so a page loads only the runtimes it uses. Omit `search` to turn search off.
+ * Below the `md` breakpoint the sidebar nav collapses into a `<details>` menu, so it needs no JS.
  */
 export function Layout(props: LayoutProps) {
   const {
@@ -45,7 +46,7 @@ export function Layout(props: LayoutProps) {
     bodyHtml,
   } = props
   return (
-    <html lang="en">
+    <html lang="en" data-aid-dark-mode={config.theme.dark_mode}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -61,7 +62,10 @@ export function Layout(props: LayoutProps) {
         <Header config={config} search={search} />
         <div class="aid-shell">
           <aside class="aid-sidebar">
-            <Nav tree={nav} currentPath={currentPath} basePath={config.base_path} />
+            <details class="aid-sidebar-disclosure">
+              <summary class="aid-sidebar-toggle">Menu</summary>
+              <Nav tree={nav} currentPath={currentPath} basePath={config.base_path} />
+            </details>
           </aside>
           <main class="aid-main">
             <RawHtml html={bodyHtml} />

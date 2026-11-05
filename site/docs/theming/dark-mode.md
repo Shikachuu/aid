@@ -1,6 +1,6 @@
 ---
 title: Dark mode
-description: How theme.dark_mode derives, keeps, or strips the dark palette, and which parts of a page follow the OS color scheme regardless.
+description: How theme.dark_mode derives, keeps, or strips the dark palette, and how off pins the page, Mermaid, and OpenAPI pages to light.
 sidebar:
   order: 1
 ---
@@ -16,7 +16,7 @@ theme:
 | --- | --- |
 | `auto` (default) | aid derives a dark value for every `oklch()` color token and appends it to your stylesheet. |
 | `manual` | aid leaves your stylesheet as written. You write the dark values. |
-| `off` | aid removes every `prefers-color-scheme: dark` block from your stylesheet. |
+| `off` | aid removes every `prefers-color-scheme: dark` block from your stylesheet and keeps the whole page light. |
 
 See [the `theme` keys](../reference/configuration.md#theme) in the configuration reference.
 
@@ -75,27 +75,19 @@ Use `:root`, not `@theme`, inside the media query. Tailwind 4 moves `@theme` con
 
 ## Off
 
-With `off`, aid deletes every `@media (prefers-color-scheme: dark) { ... }` block from the stylesheet text before Tailwind compiles it. The page keeps the light palette. Some parts still follow the OS color scheme:
+With `off`, aid deletes every `@media (prefers-color-scheme: dark) { ... }` block from the stylesheet text before Tailwind compiles it. Every page carries `data-aid-dark-mode="off"` on its `<html>` element, and the rest of the page follows that attribute:
 
-- Shiki writes each code token color as `light-dark(<light>, <dark>)`, and the bundled theme sets `color-scheme: light dark` on `:root`. On a dark OS, code blocks use the dark colors on your light background.
-- Tailwind `dark:` utilities in your HTML or templates still work. Tailwind generates their `prefers-color-scheme: dark` queries after aid has stripped the stylesheet, so aid does not remove them.
-- Mermaid diagrams use Mermaid's dark theme on a dark OS (see [Mermaid diagrams](#mermaid-diagrams)).
+- The bundled theme sets `color-scheme: light` instead of `light dark`, so the Shiki code colors, which Shiki writes as `light-dark(<light>, <dark>)`, resolve to their light values.
+- Mermaid diagrams use Mermaid's `default` theme on any OS (see [Mermaid diagrams](#mermaid-diagrams)).
+- OpenAPI pages tell Scalar to stay in light mode.
 
-To pin the browser's color scheme to light as well, set it in your stylesheet:
+Tailwind `dark:` utilities in your HTML or templates still work. Tailwind generates their `prefers-color-scheme: dark` queries after aid has stripped the stylesheet, so aid does not remove them.
 
-```css
-@layer base {
-  :root {
-    @apply scheme-light;
-  }
-}
-```
-
-This rule comes after the bundled one in the same layer, so it wins, and the Shiki colors resolve to their light values.
+The attribute holds `auto` or `manual` for the other two values. Target it from your own CSS, for example `:root[data-aid-dark-mode="off"]`.
 
 ## Mermaid diagrams
 
-aid renders Mermaid diagrams in the browser. It picks Mermaid's `dark` theme when the OS prefers dark and the `default` theme otherwise. When the OS color scheme changes, aid renders every diagram on the page again with the matching theme. The `theme.dark_mode` setting does not change this.
+aid renders Mermaid diagrams in the browser. It picks Mermaid's `dark` theme when the OS prefers dark and the `default` theme otherwise. When the OS color scheme changes, aid renders every diagram on the page again with the matching theme. With `theme.dark_mode: off`, aid always picks the `default` theme.
 
 ## Limitations
 
