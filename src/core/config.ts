@@ -11,8 +11,17 @@ const AiTarget = z
 /** Valid TCP port for the dev server. Shared by the config schema and the `--port` flag. */
 export const PortSchema = z.number().int().min(0).max(65535)
 
+const BASE_PATH_RE = /^\/(?:[^/\s\\?#][^\s\\?#]*)?$/
+
+const trimTrailingSlashes = (basePath: string): string => basePath.replace(/\/+$/, "") || "/"
+
+const isOrigin = (value: string): boolean => {
+  const url = URL.parse(value)
+  return url === null || url.pathname === "/" && url.search === "" && url.hash === "" && url.username === ""
+}
+
 const SearchWeights = z
-  .object({
+  .strictObject({
     markdown: z
       .number()
       .nonnegative()
@@ -39,7 +48,7 @@ const SearchWeights = z
 
 /** Zod schema for `aid.yaml`. `scripts/emit-schema.ts` derives the published JSON Schema from it. */
 export const AidConfigSchema = z
-  .object({
+  .strictObject({
     name: z.string().min(1).describe("Project display name. Required."),
     description: z
       .string()
@@ -47,17 +56,24 @@ export const AidConfigSchema = z
       .describe("Short site description. Used as the llms.txt summary line."),
     version: z.string().optional().describe("Project version string (semver recommended)."),
     base_url: z
-      .string()
-      .url()
+      .url({ protocol: /^https?$/, error: "base_url must be an http or https URL" })
+      .refine(isOrigin, {
+        message:
+          "base_url must be an origin with no path, query or fragment; put the path in base_path",
+      })
       .optional()
       .describe(
-        "Absolute origin of the published site (e.g. https://docs.example.com). Makes llms.txt links absolute; base_path is appended to it.",
+        "Origin of the published site (e.g. https://docs.example.com), with no path. Makes llms.txt links absolute; put a sub-path in base_path.",
       ),
     base_path: z
       .string()
+      .regex(BASE_PATH_RE, {
+        message: "base_path must start with a single '/' and hold no whitespace, '\\', '?' or '#'",
+      })
       .default("/")
+      .transform(trimTrailingSlashes)
       .describe(
-        "URL path prefix for all routes. Default '/'. Use '/docs' to host at example.com/docs/.",
+        "URL path prefix for all routes. Must start with '/'; a trailing slash is dropped. Default '/'. Use '/docs' to host at example.com/docs/.",
       ),
 
     stylesheet: z
@@ -68,7 +84,7 @@ export const AidConfigSchema = z
       ),
 
     dir: z
-      .object({
+      .strictObject({
         content: z
           .string()
           .default("docs")
@@ -91,7 +107,7 @@ export const AidConfigSchema = z
       .describe("Project directory configuration."),
 
     theme: z
-      .object({
+      .strictObject({
         dark_mode: z
           .enum(["auto", "manual", "off"])
           .default("auto")
@@ -110,7 +126,7 @@ export const AidConfigSchema = z
       ),
 
     search: z
-      .object({
+      .strictObject({
         enabled: z
           .boolean()
           .default(true)
@@ -136,7 +152,7 @@ export const AidConfigSchema = z
       ),
 
     dev: z
-      .object({
+      .strictObject({
         port: PortSchema.default(3000).describe("Dev server port."),
         host: z.string().default("localhost").describe("Dev server host."),
       })
@@ -150,9 +166,52 @@ export const AidConfigSchema = z
 /** Parsed `aid.yaml` with every default applied. */
 export type AidConfig = z.infer<typeof AidConfigSchema>
 
-/** Read a YAML config file and validate it against {@link AidConfigSchema}. */
+/**
+ * Read a YAML config file and validate it against {@link AidConfigSchema}.
+ * Every failure (missing file, a directory, empty or invalid YAML, schema
+ * errors) becomes one `aid:` line that names the file.
+ */
 export async function loadConfig(file: string): Promise<AidConfig> {
-  return AidConfigSchema.parse(Bun.YAML.parse(await Bun.file(file).text()))
+  const text = await readConfigText(file)
+  let raw: unknown
+  try {
+    raw = Bun.YAML.parse(text)
+  } catch (err) {
+    throw new Error(`aid: ${file} is not valid YAML: ${(err as Error).message}`, { cause: err })
+  }
+  if (raw === null || raw === undefined) {
+    throw new Error(`aid: ${file} is empty. Set at least \`name\`.`)
+  }
+  const result = AidConfigSchema.safeParse(raw)
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
+      .join("; ")
+    throw new Error(`aid: invalid config ${file}: ${issues}`, { cause: result.error })
+  }
+  return result.data
+}
+
+async function readConfigText(file: string): Promise<string> {
+  try {
+    return await Bun.file(file).text()
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code
+    if (code === "ENOENT") {
+      const alternative = path.join(path.dirname(file), "aid.yml")
+      const hint =
+        path.basename(file) === "aid.yaml" && existsSync(alternative)
+          ? ` Found aid.yml next to it; pass -f aid.yml.`
+          : ""
+      throw new Error(`aid: config file ${file} not found.${hint}`, { cause: err })
+    }
+    if (code === "EISDIR") {
+      throw new Error(`aid: config path ${file} is a directory, not a YAML file.`, { cause: err })
+    }
+    throw new Error(`aid: cannot read config file ${file}: ${(err as Error).message}`, {
+      cause: err,
+    })
+  }
 }
 
 /**

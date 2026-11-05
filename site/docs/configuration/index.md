@@ -30,24 +30,15 @@ The [configuration reference](../reference/configuration.md) lists every key wit
 1. aid reads the file named by `--file` (`-f`), relative to the project folder. The default is `aid.yaml`. Use `--file aid.yml` for the other extension.
 2. `Bun.YAML` parses the file.
 3. aid validates the result against its Zod schema and fills in the default of every key you leave out.
-4. aid drops keys it does not know without a warning, at every level. A misspelled key such as `base_pth` has no effect.
+4. aid rejects keys it does not know, at every level. A misspelled key such as `base_pth` stops the command.
 
-A missing file, a YAML syntax error, or a value of the wrong type stops the command with exit code 1. A wrong type prints a `ZodError` that lists the key path and the expected type, for example:
+A missing file, a folder in place of the file, an empty file, a YAML syntax error, an unknown key, or a value of the wrong type stops the command with exit code 1. aid prints one line that names the file and, for schema errors, each key path with its problem:
 
 ```text
-ZodError: [
-  {
-    "origin": "string",
-    "code": "too_small",
-    "minimum": 1,
-    "inclusive": true,
-    "path": [
-      "name"
-    ],
-    "message": "Too small: expected string to have >=1 characters"
-  }
-]
+aid: invalid config /home/me/site/aid.yaml: name: Too small: expected string to have >=1 characters; (root): Unrecognized key: "base_pth"
 ```
+
+When `aid.yaml` is missing but `aid.yml` sits next to it, the message says to pass `-f aid.yml`.
 
 `aid dev` reads the config once at start. When `aid.yaml` changes, the dev server stops and asks you to start it again.
 

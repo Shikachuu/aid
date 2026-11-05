@@ -1,5 +1,8 @@
-import { describe, expect, test } from "bun:test"
-import { AidConfigSchema, buildContext } from "../../src/core/config"
+import { afterAll, beforeAll, describe, expect, test } from "bun:test"
+import { mkdir, mkdtemp, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import path from "node:path"
+import { AidConfigSchema, buildContext, loadConfig } from "../../src/core/config"
 
 describe("AidConfigSchema", () => {
   test("accepts a minimal config and applies defaults", () => {
@@ -54,6 +57,93 @@ describe("AidConfigSchema", () => {
     expect(parsed.ai_targets).toEqual(["claude"])
     expect(parsed.search.weights.openapi).toBe(5.0)
     expect(parsed.search.weights.markdown).toBe(1.0)
+  })
+})
+
+describe("base_path", () => {
+  test.each([
+    ["/", "/"],
+    ["/docs", "/docs"],
+    ["/docs/", "/docs"],
+    ["/a/b//", "/a/b"],
+  ])("normalizes %j to %j", (input, expected) => {
+    expect(AidConfigSchema.parse({ name: "T", base_path: input }).base_path).toBe(expected)
+  })
+
+  test.each(["docs", "", "//", "//evil.example", "javascript:alert(1)", "/a b", "/a?b", "/a#b"])(
+    "rejects %j",
+    (input) => {
+      expect(() => AidConfigSchema.parse({ name: "T", base_path: input })).toThrow(/base_path/)
+    },
+  )
+})
+
+describe("base_url", () => {
+  test.each(["https://docs.example.com", "https://docs.example.com/", "http://localhost:8080"])(
+    "accepts the origin %s",
+    (input) => {
+      expect(AidConfigSchema.parse({ name: "T", base_url: input }).base_url).toBe(input)
+    },
+  )
+
+  test.each([
+    "https://example.com/docs",
+    "https://example.com/?v=1",
+    "https://example.com/#top",
+    "ftp://example.com",
+    "example.com",
+  ])("rejects %s", (input) => {
+    expect(() => AidConfigSchema.parse({ name: "T", base_url: input })).toThrow(/base_url/)
+  })
+})
+
+describe("unknown keys", () => {
+  test.each([
+    ["a top-level typo", { base_pth: "/docs" }],
+    ["a nested typo", { dir: { outptu: "out" } }],
+    ["a search weights typo", { search: { weights: { markdwn: 2 } } }],
+  ])("rejects %s", (_label, raw) => {
+    expect(() => AidConfigSchema.parse({ name: "T", ...raw })).toThrow(/Unrecognized key/)
+  })
+})
+
+describe("loadConfig", () => {
+  let dir: string
+
+  beforeAll(async () => {
+    dir = await mkdtemp(path.join(tmpdir(), "aid-load-config-"))
+    await mkdir(path.join(dir, "folder.yaml"))
+    await Bun.write(path.join(dir, "empty.yaml"), "# only a comment\n")
+    await Bun.write(path.join(dir, "broken.yaml"), "name: [\n")
+    await Bun.write(path.join(dir, "typo.yaml"), "name: T\non_broken_link: warn\n")
+    await Bun.write(path.join(dir, "other", "aid.yml"), "name: T\n")
+  })
+
+  afterAll(async () => {
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  test.each([
+    ["a missing file", "missing.yaml", /^aid: config file .*missing\.yaml not found\.$/],
+    ["a directory", "folder.yaml", /^aid: config path .*folder\.yaml is a directory/],
+    ["an empty file", "empty.yaml", /^aid: .*empty\.yaml is empty/],
+    ["invalid YAML", "broken.yaml", /^aid: .*broken\.yaml is not valid YAML/],
+    [
+      "an unknown key",
+      "typo.yaml",
+      /^aid: invalid config .*typo\.yaml: \(root\): Unrecognized key: "on_broken_link"$/,
+    ],
+  ])("reports %s on one line naming the file", async (_label, name, message) => {
+    const err = (await loadConfig(path.join(dir, name)).catch((e: unknown) => e)) as Error
+    expect(err.message).toMatch(message)
+    expect(err.message).not.toContain("\n")
+  })
+
+  test("suggests aid.yml when aid.yaml is missing next to it", async () => {
+    const err = (await loadConfig(path.join(dir, "other", "aid.yaml")).catch(
+      (e: unknown) => e,
+    )) as Error
+    expect(err.message).toContain("Found aid.yml next to it; pass -f aid.yml.")
   })
 })
 
