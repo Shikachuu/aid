@@ -61,7 +61,7 @@ aid publishes a JSON Schema for `aid.yaml`. Editors that use the YAML language s
 name: My Docs
 ```
 
-This site serves the schema at `schemas/aid.schema.json` under its base path, so the URL above works once the site is deployed to GitHub Pages. Inside the aid repository, point at the file with a relative path: `schemas/aid.schema.json` at the repository root. `bun run emit-schema` regenerates that file from the Zod schema, and CI fails when the two differ.
+This site serves the schema at `schemas/aid.schema.json` under its base path, so the URL above works once the site is deployed to GitHub Pages. Inside the aid repository, point at the file with a relative path: `schemas/aid.schema.json` at the repository root. `bun run emit-schema` regenerates that file from the Zod schema, and `bun run check` fails when the two differ.
 
 > [!NOTE]
 > The files in `assets/scaffold/` and `tests/fixtures/sample-site/` point at `https://aid.tools/schemas/v0/aid.schema.json`. Nothing in the aid repository publishes a file at that address.

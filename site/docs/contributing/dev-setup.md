@@ -6,7 +6,7 @@ sidebar:
   order: 1
 ---
 
-aid pins its toolchain with mise. `mise.toml` pins Bun 1.4.4, and `package.json` requires Bun 1.3.6 or newer through `engines.bun`. `mise.lock` records the resolved tool versions and is committed, so every checkout and CI run installs the same Bun.
+aid pins its toolchain with mise. `mise.toml` pins the Bun canary `1.4.4-canary.20261103.1`, the first build with `bun lint` and `bun fmt`, and `package.json` requires it through `engines.bun`. `mise.lock` records the download URL and checksum for every platform and is committed, so every checkout installs the same verified Bun.
 
 ## Install
 
@@ -33,6 +33,7 @@ To add a dependency, run `bun add <pkg>` to update `package.json`, then `mise in
 
 | Command | What it runs |
 | --- | --- |
+| `bun run check` | The local merge gate. It runs `bun test`, `typecheck`, `lint`, every generator with `--check` (`gen-bunfig`, `gen-css-data`, `gen-docs`, `emit-schema`), `deps:binaries --offline`, and `docs:lint`, and stops at the first failure. Run it before you open a pull request. |
 | `bun run build` | `scripts/compile.ts`: emits the schema, bundles the browser runtime, and compiles the four release binaries into `dist/bin/`. |
 | `bun run emit-schema` | `scripts/emit-schema.ts`: writes `schemas/aid.schema.json` from the Zod schema in `src/core/config.ts`. |
 | `bun run gen-docs` | `scripts/gen-docs.ts`: regenerates `site/docs/reference/**` and `site/static/schemas/aid.schema.json`. Add `--check` to fail on drift instead of writing. |

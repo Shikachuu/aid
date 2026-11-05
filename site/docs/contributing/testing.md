@@ -16,7 +16,7 @@ bun test tests/integration/links.test.ts
 bun test -t "broken"
 ```
 
-The first command runs the whole suite. The second runs one file. The third runs the tests whose name matches the pattern.
+The first command runs the whole suite. The second runs one file. The third runs the tests whose name matches the pattern. `bun run check` runs the suite together with the typecheck, the linters, and the drift checks.
 
 ## Layout
 

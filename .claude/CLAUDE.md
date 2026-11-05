@@ -16,6 +16,7 @@
 
 | Command | Purpose |
 | --- | --- |
+| `bun run check` | Local merge gate: tests, typecheck, lint, every `--check`, `deps:binaries --offline`, and `docs:lint` |
 | `bun run build` | Run `scripts/compile.ts`: emit the schema, bundle the browser runtime, and cross-compile the release binaries |
 | `bun run emit-schema` | Emit `schemas/aid.schema.json` from Zod |
 | `bun run typecheck` | `tsc --noEmit` |

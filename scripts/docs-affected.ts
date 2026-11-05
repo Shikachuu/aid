@@ -7,8 +7,8 @@ export type DocsMapEntry = { sources: readonly string[]; pages: readonly string[
 const DOCS = "site/docs"
 
 /**
- * Which pages document which source files. The docs-sync skill and CI read it
- * to list the pages a change may have made stale. Generated pages under
+ * Which pages document which source files. The docs-sync skill reads it to
+ * list the pages a change may have made stale. Generated pages under
  * `reference/` are not listed: `gen-docs --check` covers them.
  */
 export const DOCS_MAP: readonly DocsMapEntry[] = [
@@ -162,7 +162,7 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
 /** Pages that are hubs and change only when the tree itself changes, not with any one source. */
 export const HUB_PAGES: readonly string[] = [`${DOCS}/index.md`, `${DOCS}/deployment/index.md`]
 
-const WATCHED_PREFIXES = ["src/", "scripts/", "packages/proto-ui/src/", ".github/"]
+const WATCHED_PREFIXES = ["src/", "scripts/", "packages/proto-ui/src/"]
 
 /** Result of {@link affectedPages}. */
 export type Affected = {
@@ -202,44 +202,48 @@ export function affectedPages(changed: readonly string[]): Affected {
   }
 }
 
+const REPO_ROOT = path.join(import.meta.dir, "..")
+
 async function changedFiles(base: string): Promise<string[]> {
   const run = async (...args: string[]) => {
-    const result = await Bun.$`git ${args}`.quiet().nothrow()
+    const result = await Bun.$`git ${args}`.cwd(REPO_ROOT).quiet().nothrow()
     if (result.exitCode !== 0) {
-      console.error(`git ${args.join(" ")} failed. Pass an existing ref with --base <ref>.`)
+      console.error(`git ${args.join(" ")} failed: ${result.stderr.toString().trim()}`)
+      console.error("Pass an existing ref with --base <ref>.")
       process.exit(1)
     }
     return result.text().split("\n").filter(Boolean)
   }
   const files = [
-    ...(await run("diff", "--name-only", `${base}...HEAD`)),
-    ...(await run("diff", "--name-only", "HEAD")),
-    ...(await run("ls-files", "--others", "--exclude-standard")),
+    ...(await run("diff", "--name-only", "--no-renames", `${base}...HEAD`)),
+    ...(await run("diff", "--name-only", "--no-renames", "HEAD")),
+    ...(await run("ls-files", "--others", "--exclude-standard", "--full-name")),
   ]
   return [...new Set(files)].sort()
 }
 
+function baseRef(argv: string[]): string {
+  const at = argv.indexOf("--base")
+  if (at === -1) {
+    return "origin/main"
+  }
+  const value = argv[at + 1]
+  if (value === undefined || value.startsWith("-")) {
+    console.error("--base needs a ref, for example --base origin/main.")
+    process.exit(1)
+  }
+  return value
+}
+
 if (import.meta.main) {
-  const argv = process.argv.slice(2)
-  const baseAt = argv.indexOf("--base")
-  const base = baseAt === -1 ? "origin/main" : (argv[baseAt + 1] ?? "origin/main")
-  const github = argv.includes("--github")
-  const { pages, unmapped } = affectedPages(await changedFiles(base))
+  const { pages, unmapped } = affectedPages(await changedFiles(baseRef(process.argv.slice(2))))
   for (const { page, touched } of pages) {
-    if (github && !touched) {
-      console.log(`::notice file=${page}::Source files documented here changed. Review this page.`)
-    } else if (!github) {
-      console.log(`${touched ? "changed " : "review  "} ${path.normalize(page)}`)
-    }
+    console.log(`${touched ? "changed " : "review  "} ${path.normalize(page)}`)
   }
   for (const file of unmapped) {
-    console.log(
-      github
-        ? `::notice file=${file}::No docs page maps to this file. Add it to DOCS_MAP in scripts/docs-affected.ts if users or contributors see the behavior.`
-        : `unmapped ${file}`,
-    )
+    console.log(`unmapped ${file}`)
   }
-  if (!github && pages.length === 0 && unmapped.length === 0) {
+  if (pages.length === 0 && unmapped.length === 0) {
     console.log("No documented sources changed.")
   }
 }

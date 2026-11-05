@@ -89,7 +89,7 @@ unmapped src/core/new-module.ts
 - `review` means a mapped source changed but the page did not.
 - `unmapped` means a changed file under `src/`, `scripts/`, `packages/proto-ui/src/`, or `.github/` matches no entry. The catch-all entry that maps all of `src/**` to this section's [index page](./index.md) does not count as a match.
 
-With `--github`, the script prints GitHub `::notice` annotations for the `review` and `unmapped` lines instead. The findings never change the exit code. The script exits 1 only when git cannot resolve `--base`. `HUB_PAGES` lists the pages that no source maps to on purpose, such as the site root.
+The findings never change the exit code. The script exits 1 only when `--base` has no value or git cannot resolve it, and then it prints git's error. `HUB_PAGES` lists the pages that no source maps to on purpose, such as the site root.
 
 ## The docs-sync skill
 
