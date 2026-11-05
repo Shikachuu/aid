@@ -50,7 +50,7 @@ export async function rebuild(state: DevState, ctx: BuildContext): Promise<Rebui
   }
 }
 
-const RELATIVE_IMPORT_RE = /@import\s+(?:url\(\s*)?["'](\.{1,2}\/[^"']+)["']/g
+const RELATIVE_IMPORT_RE = /@(?:import|reference)\s+(?:url\(\s*)?["'](\.{1,2}\/[^"']+)["']/g
 
 async function relativeImports(files: readonly string[]): Promise<string[]> {
   const found: string[] = []
@@ -59,7 +59,8 @@ async function relativeImports(files: readonly string[]): Promise<string[]> {
       .text()
       .catch(() => "")
     for (const [, specifier = ""] of css.matchAll(RELATIVE_IMPORT_RE)) {
-      found.push(path.resolve(path.dirname(file), specifier))
+      const target = path.resolve(path.dirname(file), specifier)
+      found.push(target, ...(path.extname(target) === "" ? [`${target}.css`] : []))
     }
   }
   return found

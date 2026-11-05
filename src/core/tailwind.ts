@@ -75,8 +75,24 @@ function compileOptions(
     base,
     from,
     onDependency,
-    customCssResolver: async (id: string) => TAILWIND_FILES[id],
+    customCssResolver: async (id: string, importerDir: string) =>
+      TAILWIND_FILES[id] ?? (await resolveRelativeCss(id, importerDir)),
   }
+}
+
+// Tailwind's own resolver caches a failed lookup for 4 s, so a partial created
+// right after a failed `aid dev` build would still fail the next rebuild.
+async function resolveRelativeCss(id: string, importerDir: string): Promise<string | undefined> {
+  if (!id.startsWith("./") && !id.startsWith("../")) {
+    return undefined
+  }
+  const target = path.resolve(importerDir, id)
+  for (const candidate of [target, `${target}.css`]) {
+    if (await Bun.file(candidate).exists()) {
+      return candidate
+    }
+  }
+  return undefined
 }
 
 /**

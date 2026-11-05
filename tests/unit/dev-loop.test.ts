@@ -111,9 +111,41 @@ describe("rebuild", () => {
       path.join(cwd, "main.css"),
       '@import "tailwindcss";\n@import "aid/theme";\n@import "./partials/new.css";\n',
     )
+    const state = newState()
+    const result = await rebuild(state, ctx)
+    expect(result.ok).toBe(false)
+    const partial = path.join(cwd, "partials", "new.css")
+    expect(result.stylesheetDependencies).toContain(partial)
+
+    await Bun.write(partial, "@theme { --color-brand: oklch(50% 0.1 200); }\n")
+    expect((await rebuild(state, ctx)).ok).toBe(true)
+  })
+
+  test("reports a missing partial that an imported partial imports", async () => {
+    const ctx = await makeSite(cwd)
+    await writePage(ctx, "# Home\n")
+    await Bun.write(path.join(cwd, "partials", "a.css"), '@import "./missing.css";\n')
+    await Bun.write(
+      path.join(cwd, "main.css"),
+      '@import "tailwindcss";\n@import "aid/theme";\n@import "./partials/a.css";\n',
+    )
     const result = await rebuild(newState(), ctx)
     expect(result.ok).toBe(false)
-    expect(result.stylesheetDependencies).toContain(path.join(cwd, "partials", "new.css"))
+    expect(result.stylesheetDependencies).toContain(path.join(cwd, "partials", "missing.css"))
+  })
+
+  test("reports extensionless and @reference partials that do not exist yet", async () => {
+    const ctx = await makeSite(cwd)
+    await writePage(ctx, "# Home\n")
+    await Bun.write(
+      path.join(cwd, "main.css"),
+      '@import "tailwindcss";\n@import "aid/theme";\n@reference "./ref.css";\n@import "./partials/bare";\n',
+    )
+    const result = await rebuild(newState(), ctx)
+    expect(result.ok).toBe(false)
+    expect(result.stylesheetDependencies).toEqual(
+      expect.arrayContaining([path.join(cwd, "ref.css"), path.join(cwd, "partials", "bare.css")]),
+    )
   })
 })
 

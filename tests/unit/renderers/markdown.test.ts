@@ -67,6 +67,11 @@ describe("renderMarkdown", () => {
     expect(page.searchTokens.title).toBe("hero")
   })
 
+  test("a leading raw <h1> spanning lines gives a single-line title", async () => {
+    const page = await renderFixture("page.md", `<h1>\n  My\n  Project\n</h1>\n\nProse.\n`)
+    expect(page.searchTokens.title).toBe("My Project")
+  })
+
   test("no frontmatter, body has H1: H1 text becomes the title", async () => {
     const page = await renderFixture("page.md", `# Body Wins\n\nProse here.\n`)
     const h1Count = (page.html.match(/<h1\b/g) ?? []).length

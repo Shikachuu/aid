@@ -15,6 +15,8 @@ const DEBOUNCE_MS = 100
 
 const EMBEDDED_PREFIX = "/$bunfs/"
 
+const PERMISSION_ERRORS = new Set(["EACCES", "EPERM"])
+
 const debounce: Schedule = (fn) => {
   const timer = setTimeout(fn, DEBOUNCE_MS)
   return () => clearTimeout(timer)
@@ -115,7 +117,9 @@ export function watchContent(
       try {
         watchFiles([file])
       } catch (err) {
-        unwatchableDirs.add(dir)
+        if (PERMISSION_ERRORS.has((err as NodeJS.ErrnoException).code ?? "")) {
+          unwatchableDirs.add(dir)
+        }
         console.error(`[aid] cannot watch ${file}: ${(err as Error).message}`)
       }
     }
