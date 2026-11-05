@@ -118,6 +118,21 @@ describe("lintCss", () => {
     expect(out).toEqual(["4:declaration-block-no-duplicate-properties"])
   })
 
+  test("checks !important declarations in source order", async () => {
+    expect(await findings(".a {\n  margin: 0 !important;\n  margin-top: 1px;\n}\n")).toEqual([])
+    expect(await findings(".a {\n  margin-top: 1px;\n  margin: 0 !important;\n}\n")).toEqual([
+      "3:declaration-block-no-shorthand-property-overrides",
+    ])
+    expect(
+      await findings(
+        ".a {\n  color: #fff;\n  width: 1px !important;\n  color: oklch(50% 0.1 200);\n}\n",
+      ),
+    ).toEqual(["4:declaration-block-no-duplicate-properties"])
+    expect(
+      await findings(".a {\n  color: red !important;\n  color: blue;\n  colr: red;\n}\n"),
+    ).toEqual(["3:declaration-block-no-duplicate-properties", "4:property-no-unknown"])
+  })
+
   test("reports unknown selectors and at-rules, but not Tailwind directives", async () => {
     const out = await findings(
       "@tailwnd base;\n@theme { --x: 1; }\n.y:hovr { color: red; }\na::befor { color: red; }\ndvi { color: red; }\na > > b { color: red; }\n",
