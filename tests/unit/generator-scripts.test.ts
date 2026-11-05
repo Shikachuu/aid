@@ -37,6 +37,7 @@ describe("orphanedFiles", () => {
     await Bun.write(path.join(root, "ref", "kept.md"), "a\n")
     await Bun.write(path.join(root, "ref", "old", "gone.md"), "b\n")
     await Bun.write(path.join(root, "other.md"), "c\n")
+    await Bun.write(path.join(root, "ref", ".DS_Store"), "d\n")
     expect(await orphanedFiles(root, "ref", [{ path: "ref/kept.md", content: "a\n" }])).toEqual([
       "ref/old/gone.md",
     ])

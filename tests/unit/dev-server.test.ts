@@ -50,11 +50,11 @@ describe("startDevServer", () => {
   let state: DevState
   let server: DevServerHandle
   const url = (p: string) => `http://127.0.0.1:${server.port}${p}`
-  const start = (raw: Record<string, unknown> = {}) => {
+  const start = (raw: Record<string, unknown> = {}, host = "127.0.0.1") => {
     server = startDevServer({
       state,
       config: AidConfigSchema.parse({ name: "T", ...raw }),
-      host: "127.0.0.1",
+      host,
       port: 0,
     })
   }
@@ -121,6 +121,20 @@ describe("startDevServer", () => {
     expect(rebound.status).toBe(403)
     const local = await fetch(url("/"), { headers: { Host: `localhost:${server.port}` } })
     expect(local.status).toBe(200)
+  })
+
+  test("accepts every loopback Host form while bound to loopback", async () => {
+    start()
+    for (const host of ["localhost", "127.0.0.1", "[::1]"]) {
+      const res = await fetch(url("/"), { headers: { Host: `${host}:${server.port}` } })
+      expect(res.status).toBe(200)
+    }
+  })
+
+  test("accepts any Host while bound to all interfaces", async () => {
+    start({}, "0.0.0.0")
+    const res = await fetch(url("/"), { headers: { Host: `docs.lan:${server.port}` } })
+    expect(res.status).toBe(200)
   })
 
   test("serves non-HTML files untouched", async () => {

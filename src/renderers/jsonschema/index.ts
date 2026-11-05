@@ -100,11 +100,6 @@ function parseSource(source: string, sourcePath: string): unknown {
   return parsed
 }
 
-/**
- * Source line where `description` starts, found by its first line, so a broken
- * link in it points at the description. A description written with escapes or
- * folding that hides its first line gets no line.
- */
 function descriptionLine(source: string, description: string, json: boolean): number | undefined {
   const first = description.split("\n", 1)[0]?.trim() ?? ""
   if (first === "") {

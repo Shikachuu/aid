@@ -1,4 +1,4 @@
-import { rm } from "node:fs/promises"
+import { rename, rm } from "node:fs/promises"
 import path from "node:path"
 import { parseArgs } from "node:util"
 import { compile } from "@tailwindcss/node"
@@ -7,7 +7,8 @@ import { Scanner } from "@tailwindcss/oxide"
 const PACKAGE_ROOT = path.resolve(import.meta.dir, "..")
 const SRC = path.join(PACKAGE_ROOT, "src")
 const { values: args } = parseArgs({ options: { outdir: { type: "string" } } })
-const DIST = path.resolve(args.outdir ?? path.join(PACKAGE_ROOT, "dist"))
+const OUT = path.resolve(args.outdir ?? path.join(PACKAGE_ROOT, "dist"))
+const DIST = `${OUT}.tmp-${process.pid}`
 const TAILWIND_ENTRY = path.join(SRC, "tailwind-entry.css")
 
 const REACT_EXTERNALS = ["react", "react-dom", "react-dom/client", "react/jsx-runtime"]
@@ -75,6 +76,18 @@ const emitTypes = async (): Promise<void> => {
   await Bun.$`bun x tsc --emitDeclarationOnly --outDir ${DIST} --project .`.cwd(PACKAGE_ROOT)
 }
 
+// A process that imports the package mid-build sees the old dist or the new one, never a half-written one.
+const swapIntoPlace = async (): Promise<void> => {
+  const old = `${OUT}.old-${process.pid}`
+  await rename(OUT, old).catch((err: NodeJS.ErrnoException) => {
+    if (err.code !== "ENOENT") {
+      throw err
+    }
+  })
+  await rename(DIST, OUT)
+  await rm(old, { recursive: true, force: true })
+}
+
 const main = async (): Promise<void> => {
   await rm(DIST, { recursive: true, force: true })
 
@@ -89,6 +102,7 @@ const main = async (): Promise<void> => {
   )
   await run("compile styles.css", compileStyles)
   await run("emit .d.ts", emitTypes)
+  await swapIntoPlace()
 }
 
 await main()

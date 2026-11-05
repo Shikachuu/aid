@@ -45,8 +45,9 @@ export async function buildWebBundle(
   const fromSource = await hasSourceTree()
 
   const js = async (entry: WebJsEntry, embedded: EmbeddedBundle) => {
-    const bundle = fromSource ? await bundleWebFiles(entry) : embedded
-    requireEmbedded(entry.name, bundle.entry)
+    const bundle = fromSource
+      ? await bundleWebFiles(entry)
+      : { ...embedded, entry: requireEmbedded(entry.name, embedded.entry) }
     for (const [file, body] of Object.entries(bundle.files)) {
       registry.write(path.join(ctx.outputDir, file), `<generated:${entry.source}>`, body)
     }

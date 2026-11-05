@@ -81,6 +81,12 @@ describe("attachSearch", () => {
     expect(selected()).toBe(1)
   })
 
+  test("searches only the first 100 characters of a query", async () => {
+    typeQuery(`alp${" ".repeat(97)}beta`)
+    await until(() => !results.hidden)
+    expect(titles()).toEqual(["alpha", "alpine"])
+  })
+
   test("leaves keys to the IME while it composes text", async () => {
     typeQuery("alp")
     await until(() => !results.hidden)

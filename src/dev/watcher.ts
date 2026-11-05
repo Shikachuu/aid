@@ -49,7 +49,7 @@ export function watchContent(
     onChange,
     schedule,
   })
-  const watchers: FSWatcher[] = []
+  const watchers = new Set<FSWatcher>()
   const roots = new Map<string, FSWatcher | null>()
   const fileDirs = new Map<string, Set<string>>()
   const missingDirs = new Map<string, Set<string>>()
@@ -76,7 +76,7 @@ export function watchContent(
           onName(name.toString())
         }
       })
-      watchers.push(watcher)
+      watchers.add(watcher)
       return watcher
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
@@ -87,7 +87,11 @@ export function watchContent(
   }
 
   const armRoot = (dir: string) => {
-    roots.get(dir)?.close()
+    const previous = roots.get(dir)
+    if (previous) {
+      previous.close()
+      watchers.delete(previous)
+    }
     roots.set(
       dir,
       tryWatch(dir, true, (name) => void queue.enqueue(path.join(dir, name))),
@@ -115,9 +119,23 @@ export function watchContent(
     }
   }
 
+  const reportUnwatchable = (file: string, dir: string, err: unknown) => {
+    if (PERMISSION_ERRORS.has((err as NodeJS.ErrnoException).code ?? "")) {
+      unwatchableDirs.add(dir)
+    }
+    if (!reportedDirs.has(dir)) {
+      reportedDirs.add(dir)
+      console.error(`[aid] cannot watch ${file}: ${(err as Error).message}`)
+    }
+  }
+
   const onDirEntry = (dir: string, name: string) => {
     const changed = path.join(dir, name)
-    noticeCreated(changed)
+    try {
+      noticeCreated(changed)
+    } catch (err) {
+      reportUnwatchable(changed, changed, err)
+    }
     void queue.enqueue(changed)
   }
 
@@ -176,13 +194,7 @@ export function watchContent(
       try {
         watchFiles([file])
       } catch (err) {
-        if (PERMISSION_ERRORS.has((err as NodeJS.ErrnoException).code ?? "")) {
-          unwatchableDirs.add(dir)
-        }
-        if (!reportedDirs.has(dir)) {
-          reportedDirs.add(dir)
-          console.error(`[aid] cannot watch ${file}: ${(err as Error).message}`)
-        }
+        reportUnwatchable(file, dir, err)
       }
     }
   }

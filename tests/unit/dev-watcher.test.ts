@@ -285,4 +285,28 @@ describe("watchContent", () => {
       }
     },
   )
+
+  test.skipIf(process.getuid?.() === 0)(
+    "logs instead of crashing when a missing partial's folder appears unreadable",
+    async () => {
+      const css = join(dir, "main.css")
+      const later = join(dir, "later")
+      const error = spyOn(console, "error").mockImplementation(() => {})
+      const r = reporter()
+      const handle = watchContent(ctx(), join(dir, "aid.yaml"), [css], r.onChange, immediate)
+      try {
+        handle.watchFiles([join(later, "a.css")])
+        mkdirSync(later, { mode: 0o000 })
+        for (let i = 0; i < 50 && error.mock.calls.length === 0; i++) {
+          await Bun.sleep(20)
+        }
+        expect(String(error.mock.calls[0]?.[0])).toContain(`cannot watch ${later}:`)
+        await r.until((i) => Bun.write(css, `a{--i:${i}}`))
+      } finally {
+        error.mockRestore()
+        chmodSync(later, 0o700)
+        handle.close()
+      }
+    },
+  )
 })

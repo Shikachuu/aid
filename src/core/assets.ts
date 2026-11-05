@@ -28,6 +28,15 @@ export class AssetRegistry {
   async flush(): Promise<void> {
     const pending = [...this.pending]
     this.pending.clear()
-    await Promise.all(pending.map(([outputPath, data]) => Bun.write(outputPath, data)))
+    await Promise.all(
+      pending.map(([outputPath, data]) =>
+        Bun.write(outputPath, data).catch((err: Error) => {
+          throw new Error(
+            `aid: cannot write ${outputPath} from ${this.sources.get(outputPath)}: ${err.message}`,
+            { cause: err },
+          )
+        }),
+      ),
+    )
   }
 }

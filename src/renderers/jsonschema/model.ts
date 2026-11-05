@@ -970,7 +970,6 @@ function pointer(doc: unknown, fragment: string): unknown {
 
 const unescapePointer = (s: string): string => s.replaceAll("~1", "/").replaceAll("~0", "~")
 
-/** Decode one segment of a URI-fragment JSON pointer, so `a%2Fb` stays one key. */
 const pointerSegment = (raw: string): string => unescapePointer(safeDecode(raw))
 
 function safeDecode(s: string): string {

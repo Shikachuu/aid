@@ -34,6 +34,18 @@ describe("copyStaticAssets", () => {
     expect(await Bun.file(path.join(ctx.outputDir, "logo.svg")).text()).toBe("<svg/>")
   })
 
+  test("names the source when a queued file vanishes before the flush", async () => {
+    const ctx = makeCtx(cwd)
+    const logo = path.join(ctx.staticDir, "logo.svg")
+    await Bun.write(logo, "<svg/>")
+    const registry = new AssetRegistry()
+    await copyStaticAssets(ctx, registry)
+    await rm(logo)
+    await expect(registry.flush()).rejects.toThrow(
+      /^aid: cannot write .*logo\.svg from .*logo\.svg/,
+    )
+  })
+
   test("no-ops when the static directory doesn't exist", async () => {
     const ctx = makeCtx(cwd)
     await expect(copyStaticAssets(ctx, new AssetRegistry())).resolves.toBeUndefined()
