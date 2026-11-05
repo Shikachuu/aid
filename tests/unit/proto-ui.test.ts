@@ -170,6 +170,28 @@ service PetSvc {
     ])
   })
 
+  test.each([
+    [
+      "line comments",
+      "// Pet store.\n// Second line.\npackage demo;\n",
+      "Pet store.\nSecond line.",
+    ],
+    [
+      "a starred block",
+      "/**\n * Pet store.\n * Second line.\n */\npackage demo;\n",
+      "Pet store.\nSecond line.",
+    ],
+    ["a one-line block", "/* Pet store. */\n\npackage demo;\n", "Pet store."],
+    [
+      "a block without stars",
+      "/*\n  Pet store.\n  * a bullet\n*/\npackage demo;\n",
+      "Pet store.\n* a bullet",
+    ],
+    ["an empty block", "/* */\npackage demo;\n", null],
+  ])("the package doc comes from %s", (_label, head, doc) => {
+    expect(parseProto(`syntax = "proto3";\n${head}`).packageLeadingComment).toBe(doc)
+  })
+
   test("a file without a package has no package doc", () => {
     const bare = parseProto('syntax = "proto3";\n// doc\nmessage M {}\n')
     expect([bare.package, bare.packageLeadingComment]).toEqual([null, null])
