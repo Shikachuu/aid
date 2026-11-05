@@ -30,12 +30,18 @@ import { type BuildWebBundleResult, buildWebBundle, writeHashed } from "./web-bu
 
 const STYLESHEET_PLACEHOLDER = "__AID_STYLESHEET_HREF__"
 
+/** Hooks for callers that need more than the written output, such as `aid dev`. */
+export type BuildOptions = {
+  /** Called with each file the stylesheet `@import`s. */
+  onStylesheetDependency?: (path: string) => void
+}
+
 /**
  * Build the whole site from `ctx` into `ctx.outputDir`. Throws when two outputs
  * target the same path, a colocated asset escapes `contentDir`, or a link or
  * image does not resolve (unless `on_broken_links` is `warn`).
  */
-export async function build(ctx: BuildContext): Promise<void> {
+export async function build(ctx: BuildContext, options: BuildOptions = {}): Promise<void> {
   const registry = new AssetRegistry()
 
   const [routes] = await Promise.all([buildRoutes(ctx), copyStaticAssets(ctx, registry)])
@@ -84,6 +90,7 @@ export async function build(ctx: BuildContext): Promise<void> {
   const css = await compileTailwind(
     ctx,
     docs.map((d) => d.html),
+    options.onStylesheetDependency,
   )
   const href = await writeHashed(ctx, registry, "main", "css", css)
 

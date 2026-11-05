@@ -15,7 +15,8 @@ export type StartDevServerArgs = {
 export type DevServerHandle = {
   /** Bound port, which differs from the requested one when the caller passes 0. */
   port: number
-  stop: () => void
+  /** Stop listening. Without `force`, resolves once open responses have finished sending. */
+  stop: (force?: boolean) => Promise<void>
 }
 
 /**
@@ -64,7 +65,7 @@ export function startDevServer(args: StartDevServerArgs): DevServerHandle {
 
   return {
     port: server.port ?? port,
-    stop: () => server.stop(true),
+    stop: (force = true) => server.stop(force),
   }
 }
 

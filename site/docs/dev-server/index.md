@@ -82,27 +82,27 @@ On start, aid writes `.aid/.gitignore` with `*`, so git ignores the whole folder
 | `dir.content` (default `docs`) | recursive | rebuild |
 | `dir.static` (default `static`) | recursive | rebuild |
 | `dir.templates`, when set | recursive | rebuild |
-| `stylesheet` (default `main.css`) | the file only | rebuild |
-| the config file (`aid.yaml` or the `-f` value) | the file only | session ends |
+| `stylesheet` (default `main.css`) | its folder, filtered to the file | rebuild |
+| files the stylesheet `@import`s | their folders, filtered to the files | rebuild |
+| the config file (`aid.yaml` or the `-f` value) | its folder, filtered to the file | session ends |
 
-The watcher ignores every event under `.aid/`, so the dev server's own writes do not trigger rebuilds. It also drops an event when the file's modification time has not moved since the last event, because Bun's recursive watcher on macOS reports reads as well as writes. Events within 100 ms of each other collapse into one rebuild.
+aid watches a single file through its folder. An editor that saves by writing a temporary file and renaming it over the original keeps triggering rebuilds, and a stylesheet created after `aid dev` starts is picked up. After each successful build, aid adds every file that the stylesheet `@import`s to the watch list, so editing a partial rebuilds the site.
+
+The watcher ignores every event under `.aid/`, so the dev server's own writes do not trigger rebuilds. It also drops an event when the file's modification time equals the one from its last event, because Bun's recursive watcher on macOS reports reads as well as writes. Any other modification time counts as a change, including an older one, which `mv`, `cp -p`, and `rsync -a` produce. Events within 100 ms of each other collapse into one rebuild.
 
 aid runs one rebuild at a time. Changes that arrive during a rebuild queue at most one more rebuild, so five quick saves produce at most two builds.
 
-A watched folder or file that does not exist when `aid dev` starts is not watched. If you create `static/` or the stylesheet during a session, restart `aid dev`.
-
-> [!WARNING]
-> aid watches the stylesheet file only. Files that the stylesheet `@import`s are not watched, so editing one does not trigger a rebuild. Save the stylesheet itself, or restart `aid dev`.
+A folder that does not exist when `aid dev` starts is not watched. If you create `static/`, or the folder that holds the stylesheet, during a session, restart `aid dev`.
 
 ### Config changes end the session
 
-When the config file changes, aid prints this message, sends it to the browser overlay, and exits with code 0:
+When the config file changes, aid prints this message and sends it to the overlay in every open tab. It closes the live-reload connections, waits up to one second for the message to reach the browsers, and exits with code 0. It does not rebuild first.
 
 ```text
 [aid] aid.yaml changed. Restart `aid dev` to pick up the new configuration.
 ```
 
-Start `aid dev` again to load the new config.
+The overlay stays on screen after the server stops. Start `aid dev` again to load the new config.
 
 ## Live reload
 

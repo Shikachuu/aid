@@ -23,11 +23,13 @@ const DEFAULT_STYLESHEET = AidConfigSchema.shape.stylesheet.parse(undefined)
  * the templates directory, and `htmlContents` for class candidates. `tailwindcss`
  * resolves to aid's own copy, so the user's project needs no install. An
  * `@import "aid/theme";` pulls in the bundled theme, and `theme.dark_mode` decides
- * whether the dark palette is derived, kept, or stripped.
+ * whether the dark palette is derived, kept, or stripped. `onDependency` gets
+ * every file the stylesheet `@import`s, so `aid dev` can watch the partials.
  */
 export async function compileTailwind(
   ctx: BuildContext,
   htmlContents: readonly string[],
+  onDependency: (path: string) => void = () => {},
 ): Promise<string> {
   // lightningcss resolves its native binding when it is first imported, and
   // `@tailwindcss/node` imports it at load time. Install the shim first, then
@@ -42,7 +44,7 @@ export async function compileTailwind(
   const darkApplied = applyDarkModeFlag(inlined, ctx.config.theme.dark_mode)
   const source = buildSourcePrelude(sourceTargets) + darkApplied
 
-  const compiled = await compile(source, compileOptions(entry.base, entry.from))
+  const compiled = await compile(source, compileOptions(entry.base, entry.from, onDependency))
   const scanner = new Scanner({ sources: compiled.sources })
   const themeFiles = fromSource
     ? []
@@ -68,11 +70,15 @@ export async function validateTailwindStylesheet(css: string, from: string): Pro
   compiled.build([])
 }
 
-function compileOptions(base: string, from: string) {
+function compileOptions(
+  base: string,
+  from: string,
+  onDependency: (path: string) => void = () => {},
+) {
   return {
     base,
     from,
-    onDependency: () => {},
+    onDependency,
     customCssResolver: async (id: string) => TAILWIND_FILES[id],
   }
 }
