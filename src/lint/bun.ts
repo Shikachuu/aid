@@ -1,6 +1,6 @@
 import { existsSync, realpathSync } from "node:fs"
-import { tmpdir } from "node:os"
 import { dirname, join, relative, resolve } from "node:path"
+import { stableTempFile } from "../core/internal/extract-embedded"
 import { findUserConfig } from "./config-resolve"
 import { formatOptions, LINT_CATEGORIES, type LintRule, lintRules } from "./configs/bun.default"
 import type { Diagnostic, ToolResult } from "./diagnostics"
@@ -107,15 +107,12 @@ const bunfigWith = async (dir: string, section: "lint" | "fmt"): Promise<string 
 
 let defaultBunfig: Promise<string> | null = null
 
-const writeDefaultBunfig = async (): Promise<string> => {
-  const content = renderBunfig({ lint: { rules: lintRules }, fmt: formatOptions })
-  const path = join(tmpdir(), `aid-bunfig-${Bun.hash(content).toString(36)}`, "bunfig.toml")
-  const file = Bun.file(path)
-  if (!(await file.exists()) || (await file.text()) !== content) {
-    await Bun.write(path, content)
-  }
-  return path
-}
+const writeDefaultBunfig = (): Promise<string> =>
+  stableTempFile(
+    "bunfig",
+    "bunfig.toml",
+    renderBunfig({ lint: { rules: lintRules }, fmt: formatOptions }),
+  )
 
 /**
  * Return the global flags that pick the `bunfig.toml` for `bun lint` or `bun fmt`.

@@ -73,7 +73,16 @@ export function render(node: Child): string {
       return renderIntrinsic(el.type, el.props)
     }
   }
-  return ""
+  throw new TypeError(
+    `aid: cannot render ${describeNode(node)}. A JSX element without the aid runtime marker usually means Bun picked up another jsxImportSource; run aid from its own directory or use the compiled binary.`,
+  )
+}
+
+function describeNode(node: unknown): string {
+  if (typeof node === "object" && node !== null && "$$typeof" in node) {
+    return "a React element"
+  }
+  return typeof node === "object" ? "an object" : `a ${typeof node}`
 }
 
 /** Render a full page, with the `<!doctype html>` prefix. */

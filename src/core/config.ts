@@ -1,5 +1,6 @@
 import path from "node:path"
 import { z } from "zod"
+import { isLexicallyInside } from "./internal/paths"
 import type { BuildContext } from "./types"
 
 const AiTarget = z
@@ -158,13 +159,47 @@ export async function loadConfig(file: string): Promise<AidConfig> {
  * `dir.templates` means no override templates.
  */
 export function buildContext(config: AidConfig, cwd: string): BuildContext {
-  return {
+  const ctx: BuildContext = {
     config,
     cwd,
-    contentDir: path.join(cwd, config.dir.content),
-    outputDir: path.join(cwd, config.dir.output),
-    templatesDir: config.dir.templates === "" ? null : path.join(cwd, config.dir.templates),
-    staticDir: path.join(cwd, config.dir.static),
+    contentDir: path.resolve(cwd, config.dir.content),
+    outputDir: path.resolve(cwd, config.dir.output),
+    templatesDir: config.dir.templates === "" ? null : path.resolve(cwd, config.dir.templates),
+    staticDir: path.resolve(cwd, config.dir.static),
+  }
+  assertSafeOutputDir(ctx)
+  return ctx
+}
+
+/**
+ * Throw unless `outputDir` sits strictly inside `cwd` and shares no path with
+ * an input directory. `aid build --clean` deletes `outputDir` recursively.
+ */
+export function assertSafeOutputDir(ctx: BuildContext): void {
+  const { outputDir, cwd } = ctx
+  if (!isLexicallyInside(outputDir, cwd)) {
+    throw new Error(
+      `aid: dir.output "${ctx.config.dir.output}" resolves to ${outputDir}, which is not inside the project directory ${cwd}.`,
+    )
+  }
+  const inputs = [
+    ["dir.content", ctx.contentDir],
+    ["dir.static", ctx.staticDir],
+    ["dir.templates", ctx.templatesDir],
+  ] as const
+  for (const [key, dir] of inputs) {
+    if (dir === null) {
+      continue
+    }
+    if (
+      outputDir === dir ||
+      isLexicallyInside(outputDir, dir) ||
+      isLexicallyInside(dir, outputDir)
+    ) {
+      throw new Error(
+        `aid: dir.output (${outputDir}) overlaps ${key} (${dir}). Point dir.output at a directory of its own.`,
+      )
+    }
   }
 }
 
