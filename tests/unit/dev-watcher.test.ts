@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { mkdirSync, mkdtempSync, renameSync, rmSync } from "node:fs"
+import { chmodSync, mkdirSync, mkdtempSync, renameSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createChangeQueue, type Schedule, watchContent } from "../../src/dev/watcher"
@@ -52,7 +52,7 @@ describe("createChangeQueue", () => {
     const reports: boolean[] = []
     let pending: (() => void) | null = null
     const queue = createChangeQueue({
-      ignoreRoot: "/site/.aid",
+      devOutputDir: "/site/.aid",
       configPath: "/site/aid.yaml",
       onChange: (configChanged) => reports.push(configChanged),
       schedule: (fn) => {
@@ -188,6 +188,26 @@ describe("watchContent", () => {
       handle.watchFiles([partial])
       await r.until((i) => Bun.write(partial, `b{--i:${i}}`))
     } finally {
+      handle.close()
+    }
+  })
+
+  test("keeps watching when a partial's folder cannot be watched", async () => {
+    const css = join(dir, "main.css")
+    const locked = join(dir, "locked")
+    mkdirSync(locked)
+    chmodSync(locked, 0o000)
+    const r = reporter()
+    const handle = watchContent(ctx(), join(dir, "aid.yaml"), [css], r.onChange, immediate)
+    try {
+      handle.watchFiles([
+        "/$bunfs/root/theme.css",
+        join(locked, "inner", "x.css"),
+        join(locked, "x.css"),
+      ])
+      await r.until((i) => Bun.write(css, `a{--i:${i}}`))
+    } finally {
+      chmodSync(locked, 0o700)
       handle.close()
     }
   })

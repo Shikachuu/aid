@@ -23,16 +23,17 @@ export function requireEmbedded(name: string, bytes: string): string {
   return bytes
 }
 
-/**
- * Browser bundles. `exportName` is the matching export in `src/web/_bundled.ts`,
- * whose compiled-binary copy `scripts/bundle-web.ts` generates.
- */
+type BundledExport = { name: string; exportName: keyof typeof import("../web/_bundled") } & (
+  { source: string } | { specifier: string }
+)
+
+/** Browser bundles that `scripts/bundle-web.ts` embeds for the compiled binary. */
 export const WEB_JS = {
   base: { name: "aid-web", source: "src/web/index.ts", exportName: "aidWebJs" },
   mermaid: { name: "aid-mermaid", source: "src/web/mermaid-entry.ts", exportName: "aidMermaidJs" },
   openapi: { name: "aid-openapi", source: "src/web/openapi-entry.ts", exportName: "aidOpenapiJs" },
   proto: { name: "aid-proto", source: "src/web/proto-entry.ts", exportName: "aidProtoJs" },
-} as const
+} as const satisfies Record<string, BundledExport>
 
 /** Prebuilt stylesheets copied verbatim from their packages. */
 export const WEB_CSS = {
@@ -42,7 +43,7 @@ export const WEB_CSS = {
     exportName: "aidOpenapiCss",
   },
   proto: { name: "aid-proto", specifier: "@aid/proto-ui/styles.css", exportName: "aidProtoCss" },
-} as const
+} as const satisfies Record<string, BundledExport>
 
 /** One entry of {@link WEB_JS}. */
 export type WebJsEntry = (typeof WEB_JS)[keyof typeof WEB_JS]

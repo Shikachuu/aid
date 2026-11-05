@@ -89,6 +89,20 @@ describe("rebuild", () => {
     const result = await rebuild(newState(), ctx)
     expect(result.ok && result.stylesheetDependencies).toContain(partial)
   })
+
+  test("reports the imported partial whose error fails the build", async () => {
+    const ctx = await makeSite(cwd)
+    await writePage(ctx, "# Home\n")
+    const partial = path.join(cwd, "partials", "broken.css")
+    await Bun.write(partial, ".a { @apply no-such-utility; }\n")
+    await Bun.write(
+      path.join(cwd, "main.css"),
+      '@import "tailwindcss";\n@import "aid/theme";\n@import "./partials/broken.css";\n',
+    )
+    const result = await rebuild(newState(), ctx)
+    expect(result.ok).toBe(false)
+    expect(result.stylesheetDependencies).toContain(partial)
+  })
 })
 
 describe("serializeRuns", () => {

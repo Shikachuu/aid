@@ -4,12 +4,12 @@ import type { BuildContext } from "../core/types"
 import { broadcast, type DevErrorPayload, type DevState, toErrorPayload } from "./state"
 
 /**
- * Outcome of one `rebuild`, with its wall-clock duration for the console log.
- * A success lists the files the stylesheet `@import`s, so the session can watch them.
+ * Outcome of one `rebuild`. Both outcomes list the stylesheet partials Tailwind
+ * reached, so a partial whose error failed the build still gets watched.
  */
-export type RebuildResult =
-  | { ok: true; durationMs: number; stylesheetDependencies: string[] }
-  | { ok: false; durationMs: number; error: DevErrorPayload }
+export type RebuildResult = { durationMs: number; stylesheetDependencies: string[] } & (
+  { ok: true } | { ok: false; error: DevErrorPayload }
+)
 
 /**
  * Run a full build into the inactive buffer. On success, flip `state.currentDir`
@@ -38,7 +38,7 @@ export async function rebuild(state: DevState, ctx: BuildContext): Promise<Rebui
     const error = toErrorPayload(err)
     state.errorState = error
     broadcast(state, "error-detail", JSON.stringify(error))
-    return { ok: false, durationMs: elapsed(), error }
+    return { ok: false, durationMs: elapsed(), stylesheetDependencies, error }
   }
 }
 

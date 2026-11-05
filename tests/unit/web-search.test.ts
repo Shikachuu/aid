@@ -85,12 +85,14 @@ describe("attachSearch", () => {
     const warn = spyOn(console, "warn").mockImplementation(() => {})
     const error = spyOn(console, "error").mockImplementation(() => {})
     try {
+      document.head.innerHTML = ""
       indexLoads(false)
       await typeQuery("alp")
       expect(results.hidden).toBe(true)
       input.blur()
       await typeQuery("alp")
       expect(warn).toHaveBeenCalledTimes(1)
+      expect(document.head.querySelectorAll("script")).toHaveLength(0)
 
       indexLoads(true)
       input.blur()

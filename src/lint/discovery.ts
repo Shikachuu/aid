@@ -98,7 +98,7 @@ export const listFiles = async (
   return { files: files.sort(), errors }
 }
 
-/** Keep the relative `files` that match any of `patterns`, as sorted absolute paths under `root`. */
+/** Keep the relative `files` that match any of `patterns`, as absolute paths under `root` in the order of `files`. */
 export const matchFiles = (
   root: string,
   files: readonly string[],

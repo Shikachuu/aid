@@ -43,7 +43,7 @@ aid does not change URLs that you write as absolute paths. A link to `/schemas/a
 
 ## base_url
 
-`base_url` is the origin of the published site, for example `https://shikachuu.github.io`. It is optional. It must be an `http` or `https` URL with no path, query, or fragment. aid uses it only in `llms.txt`.
+`base_url` is the origin of the published site, for example `https://shikachuu.github.io`. It is optional. It must be an `http` or `https` URL with no path, query, fragment, or credentials. aid uses it only in `llms.txt`.
 
 Without `base_url`, the links in `llms.txt` are root-relative:
 

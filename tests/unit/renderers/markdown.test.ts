@@ -54,6 +54,11 @@ describe("renderMarkdown", () => {
     expect(page.searchTokens.title).toBe("getting-started")
   })
 
+  test("a leading raw <h1> with no text falls back to the filename title", async () => {
+    const page = await renderFixture("empty-heading.md", `<h1>\n\nTitle\n\n</h1>\n\nProse.\n`)
+    expect(page.searchTokens.title).toBe("empty-heading")
+  })
+
   test("no frontmatter, body has H1: H1 text becomes the title", async () => {
     const page = await renderFixture("page.md", `# Body Wins\n\nProse here.\n`)
     const h1Count = (page.html.match(/<h1\b/g) ?? []).length

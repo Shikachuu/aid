@@ -96,7 +96,7 @@ export function routePathFromStem(stem: string): string {
   return `/${posix.replace(/(^|\/)index$/, "")}`
 }
 
-/** Public URL of a route under `base_path`, for nav, links and search. The root route maps to `base_path` itself. */
+/** Public URL of a route under `base_path`. The root route maps to `base_path` itself, without a trailing slash. */
 export function routeUrl(routePath: string, basePath: string): string {
   return routePath === "/" ? basePath : path.posix.join(basePath, routePath)
 }

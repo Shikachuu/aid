@@ -163,8 +163,14 @@ function toLink(hit: SearchHit): HTMLAnchorElement {
 
 function loadIndexScript(src: string): Promise<unknown> {
   return new Promise((resolve, reject) => {
-    document.head.append(
-      Object.assign(document.createElement("script"), { src, onload: resolve, onerror: reject }),
-    )
+    const script = Object.assign(document.createElement("script"), {
+      src,
+      onload: resolve,
+      onerror: (err: unknown) => {
+        script.remove()
+        reject(err)
+      },
+    })
+    document.head.append(script)
   })
 }

@@ -5,7 +5,6 @@ import type { BuildContext } from "../core/types"
 /** Stops every watcher that `watchContent` opened, and adds single files to watch later. */
 export type WatchHandle = {
   close: () => void
-  /** Watch more single files, such as the partials a stylesheet `@import`s. */
   watchFiles: (files: Iterable<string>) => void
 }
 
@@ -13,6 +12,8 @@ export type WatchHandle = {
 export type Schedule = (fn: () => void) => () => void
 
 const DEBOUNCE_MS = 100
+
+const EMBEDDED_PREFIX = "/$bunfs/"
 
 const debounce: Schedule = (fn) => {
   const timer = setTimeout(fn, DEBOUNCE_MS)
@@ -34,7 +35,7 @@ export function watchContent(
   schedule: Schedule = debounce,
 ): WatchHandle {
   const queue = createChangeQueue({
-    ignoreRoot: path.join(ctx.cwd, ".aid"),
+    devOutputDir: path.join(ctx.cwd, ".aid"),
     configPath,
     onChange,
     schedule,
@@ -66,7 +67,6 @@ export function watchContent(
       return true
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
-        closeAll()
         throw err
       }
       return false
@@ -75,6 +75,9 @@ export function watchContent(
 
   const watchFiles = (paths: Iterable<string>) => {
     for (const file of paths) {
+      if (file.startsWith(EMBEDDED_PREFIX)) {
+        continue
+      }
       const dir = path.dirname(file)
       const names = fileDirs.get(dir)
       if (names !== undefined) {
@@ -88,20 +91,34 @@ export function watchContent(
     }
   }
 
-  for (const dir of [ctx.contentDir, ctx.staticDir, ctx.templatesDir]) {
-    if (dir !== null) {
-      tryWatch(dir, true, (name) => path.join(dir, name))
+  try {
+    for (const dir of [ctx.contentDir, ctx.staticDir, ctx.templatesDir]) {
+      if (dir !== null) {
+        tryWatch(dir, true, (name) => path.join(dir, name))
+      }
+    }
+    watchFiles([configPath, ...files])
+  } catch (err) {
+    closeAll()
+    throw err
+  }
+
+  const watchMoreFiles = (paths: Iterable<string>) => {
+    for (const file of paths) {
+      try {
+        watchFiles([file])
+      } catch (err) {
+        console.error(`[aid] cannot watch ${file}: ${(err as Error).message}`)
+      }
     }
   }
-  watchFiles([configPath, ...files])
 
-  return { close: closeAll, watchFiles }
+  return { close: closeAll, watchFiles: watchMoreFiles }
 }
 
 /** Inputs for {@link createChangeQueue}. */
 export type ChangeQueueArgs = {
-  /** Events at or under this path are dropped, so the dev server's own writes cannot loop back. */
-  ignoreRoot: string
+  devOutputDir: string
   configPath: string
   onChange: (configChanged: boolean) => void
   schedule: Schedule
@@ -116,7 +133,7 @@ export type ChangeQueueArgs = {
  * as a change, including an older one from `mv`, `cp -p` or `rsync -a`.
  */
 export function createChangeQueue(args: ChangeQueueArgs) {
-  const { ignoreRoot, configPath, onChange, schedule, statMtime = statFileMtime } = args
+  const { devOutputDir, configPath, onChange, schedule, statMtime = statFileMtime } = args
   const seenMtimes = new Map<string, number>()
   let dirty = false
   let configChanged = false
@@ -134,7 +151,7 @@ export function createChangeQueue(args: ChangeQueueArgs) {
   }
 
   const enqueue = async (absPath: string) => {
-    if (absPath === ignoreRoot || absPath.startsWith(`${ignoreRoot}${path.sep}`)) {
+    if (absPath === devOutputDir || absPath.startsWith(`${devOutputDir}${path.sep}`)) {
       return
     }
     const mtime = await statMtime(absPath)

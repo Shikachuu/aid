@@ -52,10 +52,10 @@ export async function startDevSession(args: StartDevSessionArgs): Promise<void> 
     const result = await rebuild(state, ctx)
     if (result.ok) {
       console.log(`[aid] rebuilt in ${result.durationMs}ms`)
-      handle.watchFiles(result.stylesheetDependencies)
     } else {
       console.error(`[aid] build failed (${result.durationMs}ms): ${result.error.message}`)
     }
+    handle.watchFiles(result.stylesheetDependencies)
   })
 
   const endAndExit = async (message: string) => {
@@ -78,9 +78,7 @@ export async function startDevSession(args: StartDevSessionArgs): Promise<void> 
       void endAndExit(message)
     },
   )
-  if (initial.ok) {
-    handle.watchFiles(initial.stylesheetDependencies)
-  }
+  handle.watchFiles(initial.stylesheetDependencies)
 
   const shutdown = () => {
     handle.close()

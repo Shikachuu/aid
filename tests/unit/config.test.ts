@@ -90,6 +90,7 @@ describe("base_url", () => {
     "https://example.com/docs",
     "https://example.com/?v=1",
     "https://example.com/#top",
+    "https://:secret@example.com",
     "ftp://example.com",
     "example.com",
   ])("rejects %s", (input) => {

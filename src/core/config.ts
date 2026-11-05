@@ -19,7 +19,11 @@ const isOrigin = (value: string): boolean => {
   const url = URL.parse(value)
   return (
     url === null ||
-    (url.pathname === "/" && url.search === "" && url.hash === "" && url.username === "")
+    (url.pathname === "/" &&
+      url.search === "" &&
+      url.hash === "" &&
+      url.username === "" &&
+      url.password === "")
   )
 }
 

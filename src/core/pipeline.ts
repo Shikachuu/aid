@@ -32,7 +32,6 @@ const STYLESHEET_PLACEHOLDER = "__AID_STYLESHEET_HREF__"
 
 /** Hooks for callers that need more than the written output, such as `aid dev`. */
 export type BuildOptions = {
-  /** Called with each file the stylesheet `@import`s. */
   onStylesheetDependency?: (path: string) => void
 }
 
