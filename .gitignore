@@ -5,6 +5,7 @@ vendor/
 .bun/
 .cache/
 coverage/
+tests/e2e/__screenshots__/
 
 .DS_Store
 *.log

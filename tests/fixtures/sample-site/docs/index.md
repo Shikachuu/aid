@@ -14,6 +14,9 @@ This is a small fixture that covers every page kind aid supports in v0.1:
 - [`api`](./api), an OpenAPI spec that aid renders with the embedded reference UI.
 - [`events`](./events), a `.proto` file that aid renders with its proto UI.
 
+> [!NOTE]
+> The fixture builds without network access.
+
 ```ts
 const greet = (name: string): string => `hello, ${name}`
 ```

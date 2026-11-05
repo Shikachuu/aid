@@ -44,6 +44,7 @@ To add a dependency, run `bun add <pkg>` to update `package.json`, then `mise in
 | `bun run docs:affected` | `scripts/docs-affected.ts`: lists the docs pages that document the files changed since `--base` (default `origin/main`). |
 | `bun run deps:binaries` | `scripts/check-binaries.ts`: checks the platform packages, the staged lightningcss bindings, and the Bun version, then reports newer upstream versions. Add `--offline` to skip the upstream lookup. |
 | `bun test` | The Bun test runner over `tests/`. |
+| `bun run test:e2e` | The Playwright browser tests in `tests/e2e`, with screenshots in `tests/e2e/__screenshots__/`. `bun run check` does not run them. Run them after a change to the theme, the browser runtime, or a renderer. See [testing](./testing.md#browser-tests). |
 | `bun run typecheck` | `tsc --noEmit`. |
 | `bun run lint` | `bun lint` over `src`, `scripts`, `tests`, and `packages`, then `aid lint . --filter css` over every CSS file. |
 | `bun run fmt` | `bun fmt` over the JS, TS, JSON, and CSS files in `src`, `scripts`, `tests`, `packages`, and `site`, and the root `*.json` files. |
