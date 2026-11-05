@@ -154,7 +154,7 @@
     },
     "on_broken_links": {
       "default": "error",
-      "description": "What to do when a relative link, link fragment or colocated image does not resolve. 'error' fails the build; 'warn' prints the report and continues.",
+      "description": "What to do when a relative link, link fragment, colocated image or _meta.yaml nav entry does not resolve. 'error' fails the build; 'warn' prints the report and continues.",
       "type": "string",
       "enum": [
         "error",

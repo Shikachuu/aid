@@ -9,9 +9,9 @@ import type { BuildContext, PageKind, Route } from "./types"
  * Walk `ctx.contentDir` and produce a Route for every supported source file.
  * Segments starting with `_` are excluded (drafts, partials, includes).
  * `.md` is markdown, `.html` is html, and `.proto` is proto. `.yaml`/`.yml`/`.json`
- * are content-sniffed: they become OpenAPI routes if they carry a top-level
- * `openapi:`/`swagger:` key, JSON Schema routes if they carry a `json-schema.org`
- * `$schema` key, and are silently skipped otherwise. Symlinks are followed when
+ * are content-sniffed: they become OpenAPI routes when their first 64 KiB holds
+ * an `openapi`/`swagger` version key, JSON Schema routes when they carry a
+ * `json-schema.org` `$schema` key, and are silently skipped otherwise. Symlinks are followed when
  * their real path stays inside the content dir; one that leaves it throws.
  */
 export async function buildRoutes(ctx: BuildContext): Promise<Route[]> {
@@ -96,7 +96,7 @@ export function routePathFromStem(stem: string): string {
   return `/${posix.replace(/(^|\/)index$/, "")}`
 }
 
-/** Public URL of a route. The one place that applies `base_path`, for nav, links and search. */
+/** Public URL of a route under `base_path`, for nav, links and search. The root route maps to `base_path` itself. */
 export function routeUrl(routePath: string, basePath: string): string {
   return routePath === "/" ? basePath : path.posix.join(basePath, routePath)
 }

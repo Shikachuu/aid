@@ -17,7 +17,10 @@ const trimTrailingSlashes = (basePath: string): string => basePath.replace(/\/+$
 
 const isOrigin = (value: string): boolean => {
   const url = URL.parse(value)
-  return url === null || url.pathname === "/" && url.search === "" && url.hash === "" && url.username === ""
+  return (
+    url === null ||
+    (url.pathname === "/" && url.search === "" && url.hash === "" && url.username === "")
+  )
 }
 
 const SearchWeights = z
@@ -148,7 +151,7 @@ export const AidConfigSchema = z
       .enum(["error", "warn"])
       .default("error")
       .describe(
-        "What to do when a relative link, link fragment or colocated image does not resolve. 'error' fails the build; 'warn' prints the report and continues.",
+        "What to do when a relative link, link fragment, colocated image or _meta.yaml nav entry does not resolve. 'error' fails the build; 'warn' prints the report and continues.",
       ),
 
     dev: z

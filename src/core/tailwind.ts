@@ -57,8 +57,9 @@ export async function compileTailwind(
 }
 
 /**
- * Compile `css` the way `aid build` does, with no class candidates, and throw
- * Tailwind's error when the stylesheet is invalid.
+ * Compile `css` with aid's Tailwind copy and `aid/theme` import, with no class
+ * candidates, and throw Tailwind's error when the stylesheet is invalid. It
+ * skips the dark-mode pass and the theme `@source` prelude of `aid build`.
  */
 export async function validateTailwindStylesheet(css: string, from: string): Promise<void> {
   await installLightningcssShim()
