@@ -1,9 +1,6 @@
 import { expect, test } from "bun:test"
 import path from "node:path"
 
-// The published aid.schema.json is a contract with every existing aid.yaml.
-// Removing or renaming a key or enum value breaks those files, so this list
-// changes only on purpose. Adding a key means adding it here too.
 const PUBLISHED_KEYS = [
   "ai_targets",
   "ai_targets[]=chatgpt",

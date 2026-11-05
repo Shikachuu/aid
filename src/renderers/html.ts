@@ -90,7 +90,7 @@ export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
 
   const searchTokens: SearchTokens = {
     title,
-    body: visibleText(bodyTree),
+    body: searchBodyText(bodyTree),
     headings: headingTexts(bodyTree),
     extras: {},
   }
@@ -159,8 +159,7 @@ function extractHeadMetadata(head: HastElement | null): Frontmatter {
   return out
 }
 
-/** Body text for search, without the code inside `<script>`, `<style>` and `<template>`. */
-function visibleText(tree: HastRoot): string {
+function searchBodyText(tree: HastRoot): string {
   const parts: string[] = []
   visit(tree, (node) => {
     if (node.type === "element" && NON_TEXT_TAGS.has(node.tagName)) {

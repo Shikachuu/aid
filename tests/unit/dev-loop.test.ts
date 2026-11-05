@@ -27,7 +27,6 @@ const newState = (): DevState => ({
   sseClients: new Set(),
 })
 
-/** An SSE client stand-in that records the event names it receives. */
 const recordEvents = (state: DevState): string[] => {
   const events: string[] = []
   state.sseClients.add({

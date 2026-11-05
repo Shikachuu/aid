@@ -17,14 +17,10 @@ const bundledMainCssPath = path.join(AID_ROOT, "src/theme/main.css")
 const DEFAULT_STYLESHEET = AidConfigSchema.shape.stylesheet.parse(undefined)
 
 /**
- * Compile the site stylesheet. Uses `config.stylesheet` when it exists and the
- * bundled `src/theme/main.css` when the default `main.css` is missing; a
- * missing custom `stylesheet` throws. Tailwind scans the theme components,
- * the templates directory, and `htmlContents` for class candidates. `tailwindcss`
- * resolves to aid's own copy, so the user's project needs no install. An
- * `@import "aid/theme";` pulls in the bundled theme, and `theme.dark_mode` decides
- * whether the dark palette is derived, kept, or stripped. `onDependency` gets
- * every file the stylesheet `@import`s, so `aid dev` can watch the partials.
+ * Compile the site stylesheet: `config.stylesheet`, or the bundled theme when the
+ * default `main.css` is missing. A missing custom `stylesheet` throws.
+ * `onDependency` gets every file the stylesheet `@import`s, so `aid dev` can
+ * watch the partials.
  */
 export async function compileTailwind(
   ctx: BuildContext,

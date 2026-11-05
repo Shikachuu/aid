@@ -26,7 +26,6 @@ type LayoutProps = {
 /**
  * Render the full HTML document for one page. Each optional bundle and stylesheet href is linked
  * only when set, so a page loads only the runtimes it uses. Omit `search` to turn search off.
- * Below the `md` breakpoint the sidebar nav collapses into a `<details>` menu, so it needs no JS.
  */
 export function Layout(props: LayoutProps) {
   const {

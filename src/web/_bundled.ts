@@ -1,8 +1,3 @@
-/**
- * Empty placeholders. Source runs bundle from `src/web/`, and `scripts/compile.ts`
- * swaps this module for the `.aid-build/_bundled.ts` that `scripts/bundle-web.ts` writes.
- */
-
 /** Minified ESM of `src/web/index.ts`, embedded in the compiled binary. */
 export const aidWebJs = ""
 /** Minified ESM of `src/web/mermaid-entry.ts`, embedded in the compiled binary. */

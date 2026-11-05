@@ -31,7 +31,7 @@ function wireInput(input: HTMLInputElement, results: HTMLElement, indexHref: str
 
   let ms: MiniSearch | null = null
   let loading = false
-  let warned = false
+  let warnedLoadFailure = false
   let items: SearchHit[] = []
   let active = -1
   let debounce: ReturnType<typeof setTimeout> | undefined
@@ -51,7 +51,6 @@ function wireInput(input: HTMLInputElement, results: HTMLElement, indexHref: str
   })
 
   input.addEventListener("keydown", (e) => {
-    // Keys pressed while an IME composes text belong to the IME, not the result list.
     if (results.hidden || e.isComposing || e.keyCode === IME_KEY_CODE) {
       return
     }
@@ -96,10 +95,9 @@ function wireInput(input: HTMLInputElement, results: HTMLElement, indexHref: str
       ms = MiniSearchCtor.loadJS(data, SEARCH_OPTIONS)
       runQuery(input.value)
     } catch (err) {
-      // Let the next focus retry, and warn once rather than on every retry.
       loading = false
-      if (!warned) {
-        warned = true
+      if (!warnedLoadFailure) {
+        warnedLoadFailure = true
         console.warn(`aid: search index ${indexHref} failed to load`, err)
       }
     }

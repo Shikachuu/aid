@@ -7,7 +7,6 @@ import { loadBuildContext } from "../../src/core/config"
 import { build } from "../../src/core/pipeline"
 import { serveFile } from "../../src/dev/server"
 
-/** True when the run opted into the browser tests through `bun run test:e2e`. */
 export const E2E = process.env.AID_E2E === "1"
 
 if (!E2E) {
@@ -15,6 +14,9 @@ if (!E2E) {
 }
 
 export const BASE_PATH = "/e2e"
+
+// Mermaid first inserts an empty measuring svg, so wait for a rendered node.
+export const MERMAID_NODE = "pre.mermaid svg g.node, div.mermaid svg g.node"
 
 export const SCREENSHOT_DIR = path.join(import.meta.dir, "__screenshots__")
 
@@ -48,10 +50,6 @@ export type BuiltSite = {
   close: () => Promise<void>
 }
 
-/**
- * Build the sample site with `base_path: /e2e` and the given dark mode into a temp dir, and serve
- * it on a free port. `manual` appends explicit dark tokens to the fixture stylesheet.
- */
 export async function buildSite(darkMode: DarkMode): Promise<BuiltSite> {
   const cwd = await mkdtemp(path.join(tmpdir(), `aid-e2e-${darkMode}-`))
   await cp(FIXTURE_DIR, cwd, { recursive: true, filter: (src) => path.basename(src) !== "dist" })
@@ -94,12 +92,10 @@ function serveDir(distDir: string): Server<undefined> {
   })
 }
 
-/** Launch headless Chromium once per test file. */
 export function launchBrowser(): Promise<Browser> {
   return chromium.launch()
 }
 
-/** Open a page at the named viewport and color scheme, collecting uncaught page errors. */
 export async function openPage(
   browser: Browser,
   viewport: ViewportName,
@@ -112,13 +108,11 @@ export async function openPage(
   return { context, page, errors }
 }
 
-/** Write a full-page screenshot to `tests/e2e/__screenshots__/<name>.png`. */
 export async function screenshot(page: Page, name: string): Promise<void> {
   await mkdir(SCREENSHOT_DIR, { recursive: true })
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, `${name}.png`), fullPage: true })
 }
 
-/** Read a computed color property of the first element matching `selector` as `[r, g, b]`. */
 export function computedColor(
   page: Page,
   selector: string,
@@ -140,6 +134,5 @@ export function computedColor(
   )
 }
 
-/** Relative luminance on a 0-1 scale, enough to tell a light page from a dark one. */
 export const luminance = ([r, g, b]: [number, number, number]): number =>
   (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255

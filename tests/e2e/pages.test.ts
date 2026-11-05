@@ -6,6 +6,7 @@ import {
   buildSite,
   E2E,
   launchBrowser,
+  MERMAID_NODE,
   openPage,
   type Scheme,
   screenshot,
@@ -14,9 +15,6 @@ import {
 } from "./site"
 
 setDefaultTimeout(60_000)
-
-// Mermaid first inserts an empty measuring svg, so wait for a rendered node.
-const MERMAID_NODE = "pre.mermaid svg g.node, div.mermaid svg g.node"
 
 type PageKind = { name: string; route: string; ready: (page: Page) => Promise<void> }
 

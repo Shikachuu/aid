@@ -35,9 +35,8 @@ export type RenderMarkdownArgs = {
   sourcePath: string
   /**
    * Optional callback invoked once per relative markdown image (`![](...)`).
-   * Raw `<img>` tags are not copied. The pipeline supplies one that copies
-   * assets into the route's output dir; omit during unit tests for a pure
-   * render with no side effects.
+   * Raw `<img>` tags are not copied. The pipeline passes one that copies
+   * assets into the route's output dir.
    */
   copyAsset?: CopyAsset
   resolveLink?: ResolveLink
@@ -178,10 +177,6 @@ function resolveAndEnsureLeadingH1(opts: {
   }
 }
 
-/**
- * The H1 that opens the page: the first element when it is an `<h1>`, or a
- * raw `<h1>` that comes before the first element.
- */
 function leadingH1(tree: HastRoot): HastElement | undefined {
   for (const child of tree.children) {
     if (child.type === "element") {

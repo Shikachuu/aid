@@ -15,10 +15,7 @@ const OKLCH_RE = /^oklch\(\s*([\d.]+%?)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+%
 /**
  * Walk every `@theme { ... }` block in the input CSS and derive a dark
  * counterpart for every `--color-*` token whose value is `oklch(...)`.
- * Neutral tokens invert into the 12%-100% band, so the page background is not
- * pure black and borders stay visible against it. Saturated mid and dark tones
- * act as accents and text, so they mirror into the 70%-85% band to stay
- * readable on the dark background. Chroma, hue, and alpha pass through.
+ * Chroma, hue, and alpha pass through; only the lightness changes.
  * `--color-*` tokens whose value is not oklch are skipped with a warning.
  * Non-color tokens are silently ignored.
  *

@@ -37,13 +37,17 @@ export function broadcast(state: DevState, event: string, data: string): void {
 /** End every SSE stream after the frames already queued, so the server can stop gracefully. */
 export function closeClients(state: DevState): void {
   for (const ctrl of state.sseClients) {
-    try {
-      ctrl.close()
-    } catch {
-      // The client already disconnected.
-    }
+    closeUnlessDisconnected(ctrl)
   }
   state.sseClients.clear()
+}
+
+function closeUnlessDisconnected(ctrl: ReadableStreamDefaultController<Uint8Array>): void {
+  try {
+    ctrl.close()
+  } catch {
+    return
+  }
 }
 
 /** Normalize a thrown value for the overlay, keeping the stack when it is an `Error`. */

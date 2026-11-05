@@ -54,7 +54,7 @@ export function collectAnchors(tree: HastRoot): string[] {
   return anchors
 }
 
-/** Parse an HTML string, such as a raw node or a JSX-rendered page, into a hast fragment. */
+/** Use for HTML without `<html>` or `<body>`, such as a raw node, so rehype adds no wrapper elements. */
 export function parseHtmlFragment(html: string): HastRoot {
   return unified().use(rehypeParse, { fragment: true }).parse(html)
 }

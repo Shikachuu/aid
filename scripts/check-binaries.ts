@@ -258,7 +258,7 @@ export const misePin = async (root = REPO_ROOT): Promise<string | null> => {
 
 const LOOKUP_TIMEOUT_MS = 10_000
 
-/** Fetch the latest version of an npm package from the registry. */
+/** Latest published version of `pkg`. Throws after 10 s, on a non-2xx reply, or when the reply has no string `version`. */
 export const npmLatest = async (
   pkg: string,
   fetchImpl: (url: string, init: RequestInit) => Promise<Response> = fetch,

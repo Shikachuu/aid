@@ -47,7 +47,7 @@ export const WEB_CSS = {
 /** One entry of {@link WEB_JS}. */
 export type WebJsEntry = (typeof WEB_JS)[keyof typeof WEB_JS]
 
-/** Bundle one browser entry as minified ESM and return every output: the entry point, chunks and assets. */
+/** For the build pipeline, which writes and registers every chunk and asset. Throws naming the entry when the bundle fails. */
 export async function bundleWebOutputs(
   entry: WebJsEntry,
   options: Partial<Bun.BuildConfig> = {},
@@ -69,7 +69,7 @@ export async function bundleWebOutputs(
   return result.outputs
 }
 
-/** Bundle one browser entry as minified ESM and return its entry-point output. */
+/** For callers that need only the entry-point file, such as the compiled-binary embedding. */
 export async function bundleWebEntry(
   entry: WebJsEntry,
   options: Partial<Bun.BuildConfig> = {},

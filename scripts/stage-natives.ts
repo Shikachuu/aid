@@ -17,7 +17,7 @@
 import { resolve } from "node:path"
 import { lcssNodeFile, TARGETS } from "./natives"
 
-/** Copy every installed lightningcss binding under `root` to `vendor/natives/<pkg>.bin`. */
+/** Run after install, so `scripts/compile.ts` can embed every target's lightningcss binding from `vendor/natives/`. */
 export const stageNatives = async (root: string): Promise<void> => {
   for (const { lcssSubpkg: pkg } of TARGETS) {
     const src = resolve(root, "node_modules", pkg, lcssNodeFile(pkg))

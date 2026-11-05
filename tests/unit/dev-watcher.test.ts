@@ -17,7 +17,6 @@ afterEach(() => {
 
 const ctx = () => makeCtx(dir, { dir: { templates: "templates" } })
 
-/** Flushes the debounce window as soon as the event is queued. */
 const immediate: Schedule = (fn) => {
   queueMicrotask(fn)
   return () => {}

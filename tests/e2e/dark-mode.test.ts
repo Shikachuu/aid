@@ -8,6 +8,7 @@ import {
   E2E,
   launchBrowser,
   luminance,
+  MERMAID_NODE,
   openPage,
   type Scheme,
   screenshot,
@@ -16,8 +17,6 @@ import {
 setDefaultTimeout(60_000)
 
 const MERMAID_SVG = "pre.mermaid svg"
-// Mermaid first inserts an empty measuring svg, so wait for a rendered node.
-const MERMAID_NODE = `${MERMAID_SVG} g.node`
 
 type Expectation = { mode: DarkMode; scheme: Scheme; dark: boolean }
 

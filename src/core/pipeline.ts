@@ -166,12 +166,6 @@ function makeCopyAsset(route: Route, ctx: BuildContext, registry: AssetRegistry)
   }
 }
 
-/**
- * Path segments of a colocated asset under its page's output folder: the path
- * relative to the source folder with any leading `..` dropped, so
- * `./light/logo.png` and `./dark/logo.png` stay apart and `../logo.svg` lands
- * next to the page.
- */
 function colocatedSubpath(sourceDir: string, absoluteSource: string): string[] {
   const segments = path.relative(sourceDir, absoluteSource).split(path.sep)
   const firstKept = segments.findIndex((segment) => segment !== "..")

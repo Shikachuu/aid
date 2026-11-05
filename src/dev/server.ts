@@ -70,7 +70,7 @@ export function startDevServer(args: StartDevServerArgs): DevServerHandle {
 }
 
 async function handle(req: Request, state: DevState, config: AidConfig): Promise<Response> {
-  const rawPath = decodePath(new URL(req.url).pathname)
+  const rawPath = decodePathOrNull(new URL(req.url).pathname)
   if (rawPath === null) {
     return new Response("Bad Request", { status: 400 })
   }
@@ -95,8 +95,7 @@ async function handle(req: Request, state: DevState, config: AidConfig): Promise
   return res
 }
 
-/** Decode a URL path, or return null for a malformed escape or a NUL byte. */
-function decodePath(pathname: string): string | null {
+function decodePathOrNull(pathname: string): string | null {
   try {
     const decoded = decodeURIComponent(pathname)
     return decoded.includes("\0") ? null : decoded

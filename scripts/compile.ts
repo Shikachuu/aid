@@ -90,8 +90,6 @@ export const nativeStubs = (target: Target): Bun.BunPlugin => {
   }
 }
 
-// The tracked src/web/_bundled.ts keeps empty placeholders, so source runs and
-// git status stay clean; release binaries import the generated copy instead.
 const redirectBundled = (file: string): Bun.BunPlugin => ({
   name: "aid-redirect-bundled",
   setup(build) {
@@ -99,7 +97,7 @@ const redirectBundled = (file: string): Bun.BunPlugin => ({
   },
 })
 
-/** Compile the CLI into a standalone binary for one target, embedding the `bundled` module. */
+/** Release binary for `target`. Throws when `bundled` is missing, so no binary ships empty browser bundles. */
 export const compileTarget = async (
   target: Target,
   outfile: string,

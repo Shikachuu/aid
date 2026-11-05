@@ -10,8 +10,7 @@ let outdir = ""
 let ProtoReference: FunctionComponent<ProtoReferenceProps>
 let html = ""
 
-// The repo tsconfig points JSX at @aid/jsx, so the React components are bundled with React's
-// runtime first. The output lives under node_modules so `react` resolves to the same copy.
+// The output lives under node_modules so `react` resolves to the same copy.
 beforeAll(async () => {
   const cache = path.join(ROOT, "node_modules", ".cache")
   await mkdir(cache, { recursive: true })
