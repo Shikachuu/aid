@@ -1,4 +1,5 @@
 import { resolve as resolvePath } from "node:path"
+import { FORMAT_CONFIGS, LINT_CONFIGS } from "./bun"
 import { KNOWN_TOOLS, type Report, type Tool, type ToolResult } from "./diagnostics"
 
 /** Directory names discovery never walks into, whatever the tool. */
@@ -27,7 +28,8 @@ export const PATTERNS: Record<Tool, readonly string[]> = {
     "**/*.openapi.{yaml,yml,json}",
     "**/openapi/**/*.{yaml,yml,json}",
   ],
-  biome: ["**/*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,css}"],
+  bun: ["**/*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,css}"],
+  css: ["**/*.css"],
   proto: ["**/*.proto"],
 }
 
@@ -38,7 +40,8 @@ export const PATTERNS: Record<Tool, readonly string[]> = {
 export const USER_CONFIGS: Record<Tool, readonly string[]> = {
   md: [".markdownlint.json", ".markdownlint.jsonc", ".markdownlint.yaml", ".markdownlint.yml"],
   openapi: [".spectral.yaml", ".spectral.yml", ".spectral.json"],
-  biome: ["biome.json", "biome.jsonc"],
+  bun: [...LINT_CONFIGS, ...FORMAT_CONFIGS, "bunfig.toml"],
+  css: [],
   proto: ["buf.yaml"],
 }
 
@@ -59,15 +62,21 @@ export const discover = async (dir: string, patterns: readonly string[]): Promis
   return [...files].sort()
 }
 
-/** Discover each tool's files under `dir` and run the tools that `filter` allows in parallel. */
+/**
+ * Discover each tool's files under `dir` and run, in parallel, the tools that
+ * `filter` allows and `run` has a runner for.
+ */
 export const runTools = async (
   dir: string,
   filter: Set<Tool> | null,
-  run: Record<Tool, (paths: string[]) => Promise<ToolResult>>,
+  run: Partial<Record<Tool, (paths: string[]) => Promise<ToolResult>>>,
 ): Promise<Report> => {
-  const tools = KNOWN_TOOLS.filter((tool) => filter === null || filter.has(tool))
+  const selected = KNOWN_TOOLS.flatMap((tool) => {
+    const runner = run[tool]
+    return runner !== undefined && (filter === null || filter.has(tool)) ? [{ tool, runner }] : []
+  })
   const results = await Promise.all(
-    tools.map(async (tool) => run[tool](await discover(dir, PATTERNS[tool]))),
+    selected.map(async ({ tool, runner }) => runner(await discover(dir, PATTERNS[tool]))),
   )
   return { ok: results.every((r) => r.ok), results }
 }

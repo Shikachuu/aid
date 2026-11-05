@@ -1,16 +1,8 @@
 import { createRequire } from "node:module"
-import lcssDarwinArm64 from "../../../vendor/natives/lightningcss-darwin-arm64.bin" with {
-  type: "file",
-}
-import lcssDarwinX64 from "../../../vendor/natives/lightningcss-darwin-x64.bin" with {
-  type: "file",
-}
-import lcssLinuxArm64 from "../../../vendor/natives/lightningcss-linux-arm64-gnu.bin" with {
-  type: "file",
-}
-import lcssLinuxX64 from "../../../vendor/natives/lightningcss-linux-x64-gnu.bin" with {
-  type: "file",
-}
+import lcssDarwinArm64 from "../../../vendor/natives/lightningcss-darwin-arm64.bin" with { type: "file" }
+import lcssDarwinX64 from "../../../vendor/natives/lightningcss-darwin-x64.bin" with { type: "file" }
+import lcssLinuxArm64 from "../../../vendor/natives/lightningcss-linux-arm64-gnu.bin" with { type: "file" }
+import lcssLinuxX64 from "../../../vendor/natives/lightningcss-linux-x64-gnu.bin" with { type: "file" }
 import { extractEmbedded } from "./extract-embedded"
 
 type EmbeddedBinding = { stagedPath: string; subpkg: string }

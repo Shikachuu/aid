@@ -1,7 +1,7 @@
 /** Severity shared by every tool. Pretty output colors and counts by it. */
 export type Severity = "error" | "warn" | "info"
 
-/** One finding from markdownlint, Spectral, Biome or buf, normalized so both reporters print every tool the same way. */
+/** One finding from any lint or format tool, normalized so both reporters print every tool the same way. */
 export type Diagnostic = {
   file: string
   line?: number
@@ -12,7 +12,7 @@ export type Diagnostic = {
 }
 
 /** Tools that `aid lint` and `aid fmt` dispatch to, in report order. */
-export const KNOWN_TOOLS = ["md", "openapi", "biome", "proto"] as const
+export const KNOWN_TOOLS = ["md", "openapi", "bun", "css", "proto"] as const
 
 /** Tool name as accepted by `--filter` and printed in reports. */
 export type Tool = (typeof KNOWN_TOOLS)[number]
@@ -33,14 +33,17 @@ export type ToolResult = {
 export type Report = { ok: boolean; results: ToolResult[] }
 
 /**
- * Parse a `--filter` value such as `md,biome` into a tool set. Unknown names
- * are dropped; `null` (run every tool) is returned when nothing valid remains.
+ * Parse a `--filter` value such as `md,bun` into a tool set. Names outside
+ * `allowed` are dropped; `null` (run every tool) is returned when nothing valid remains.
  */
-export const parseFilter = (raw: string | undefined): Set<Tool> | null => {
+export const parseFilter = (
+  raw: string | undefined,
+  allowed: readonly Tool[] = KNOWN_TOOLS,
+): Set<Tool> | null => {
   const tools = (raw ?? "")
     .split(",")
     .map((part) => part.trim())
-    .filter((part): part is Tool => (KNOWN_TOOLS as readonly string[]).includes(part))
+    .filter((part): part is Tool => (allowed as readonly string[]).includes(part))
   return tools.length === 0 ? null : new Set(tools)
 }
 
@@ -70,7 +73,7 @@ export const renderPretty = (results: ToolResult[]): string => {
   let errors = 0
   let warnings = 0
   let infos = 0
-  const perTool: Record<Tool, number> = { md: 0, openapi: 0, biome: 0, proto: 0 }
+  const perTool = new Map<Tool, number>(results.map((r) => [r.tool, 0]))
 
   for (const r of results) {
     if (r.skipped) {
@@ -93,7 +96,7 @@ export const renderPretty = (results: ToolResult[]): string => {
       } else {
         infos++
       }
-      perTool[r.tool]++
+      perTool.set(r.tool, (perTool.get(r.tool) ?? 0) + 1)
     }
     if (r.wouldChange && r.wouldChange.length > 0) {
       for (const f of r.wouldChange) {
@@ -101,12 +104,12 @@ export const renderPretty = (results: ToolResult[]): string => {
           `${f}  ${colorize("would-change", "yellow")}  ${colorize(`${r.tool}/format`, "bold")}  file would be reformatted`,
         )
         warnings++
-        perTool[r.tool]++
+        perTool.set(r.tool, (perTool.get(r.tool) ?? 0) + 1)
       }
     }
   }
 
-  const summary = `${errors} error${errors === 1 ? "" : "s"}, ${warnings} warning${warnings === 1 ? "" : "s"}${infos > 0 ? `, ${infos} info` : ""} (md ${perTool.md}, openapi ${perTool.openapi}, biome ${perTool.biome}, proto ${perTool.proto})`
+  const summary = `${errors} error${errors === 1 ? "" : "s"}, ${warnings} warning${warnings === 1 ? "" : "s"}${infos > 0 ? `, ${infos} info` : ""} (${[...perTool].map(([tool, n]) => `${tool} ${n}`).join(", ")})`
   lines.push("")
   lines.push(colorize(summary, errors > 0 ? "red" : warnings > 0 ? "yellow" : "dim"))
   return lines.join("\n")

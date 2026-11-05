@@ -7,7 +7,7 @@ export const command = defineCommand({
   meta: {
     name: "lint",
     description:
-      "Run bundled linters across markdown, OpenAPI, protobuf, and Biome-supported files (JS, TS, JSON, CSS).",
+      "Run bundled linters across markdown, OpenAPI, protobuf, CSS, and JS, TS, and JSON files.",
   },
   args: {
     dir: {
@@ -17,11 +17,12 @@ export const command = defineCommand({
     },
     fix: {
       type: "boolean",
-      description: "Apply autofixes where the underlying tool supports it (markdown, biome).",
+      description:
+        "Apply autofixes where the underlying tool supports it (markdown, bun). css has none.",
     },
     filter: {
       type: "string",
-      description: "Comma-separated list of tools to run: md, openapi, biome, proto.",
+      description: "Comma-separated list of tools to run: md, openapi, bun, css, proto.",
     },
     format: {
       type: "enum",

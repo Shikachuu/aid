@@ -1,9 +1,5 @@
 export { ProtoReference, type ProtoReferenceProps } from "./components/ProtoReference"
-export {
-  type UseProtoAstOptions,
-  type UseProtoAstResult,
-  useProtoAst,
-} from "./hooks/useProtoAst"
+export { type UseProtoAstOptions, type UseProtoAstResult, useProtoAst } from "./hooks/useProtoAst"
 export type {
   ProtoAst,
   ProtoEnum,

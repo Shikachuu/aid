@@ -1,6 +1,6 @@
 ---
 title: Conventions
-description: The repository rules in .claude/rules, the Biome configuration, the format-on-edit hook, and the commit style.
+description: The repository rules in .claude/rules, the bun lint and bun fmt configuration, the format-on-edit hook, and the commit style.
 llms: optional
 sidebar:
   order: 7
@@ -21,39 +21,37 @@ Claude Code loads a rule file without `paths:` frontmatter in every session. It 
 | `tests.md` | `tests/**`, `src/**/*.test.ts` | `bun test` only. Fixtures go in `tests/fixtures/`. Prefer integration tests through public entry points. See [testing](./testing.md). |
 | `docs-sync.md` | `src/**`, `scripts/**`, `packages/proto-ui/src/**`, `.github/workflows/**`, `mise.toml`, `site/**` | Run the `docs-sync` skill after a change that users or contributors can see. See [docs site](./docs-site.md). |
 
-## Biome
+## bun lint and bun fmt
 
-`biome.json` configures formatting and linting for `src/`, `scripts/`, `tests/`, `packages/`, `site/`, and the root `*.json` and `*.md` files. It skips `node_modules`, `dist`, `.bun`, every `*.svg`, `schemas/aid.schema.json`, and the invalid JSON fixture in `tests/fixtures/lint-fixtures/openapi-bad-json`. It turns off Biome's markdown and YAML formatter and linter, so Biome leaves `.md` files to aid's own formatter and markdownlint.
+`bunfig.toml` configures `bun lint` for the repository, and `.prettierrc.json` configures `bun fmt`. `scripts/gen-bunfig.ts` generates both from the rules and options `aid lint` and `aid fmt` bundle for user projects (`src/lint/configs/bun.default.ts`), plus the repository rules below. Run `bun run gen-bunfig` after changing either, and `bun run gen-bunfig --check` to find drift.
+
+- `bun run lint` runs `bun lint` over `src/`, `scripts/`, `tests/`, and `packages/`, then aid's own CSS checks over every `.css` file.
+- `bun run fmt` runs `bun fmt` over the JS, TS, JSON, and CSS files in `src/`, `scripts/`, `tests/`, `packages/`, and `site/`, and the root `*.json` files. Markdown stays with aid's own formatter and markdownlint.
+- `.prettierignore` keeps `bun fmt` away from the generated files, `.prettierrc.json` among them, and from the invalid JSON fixture in `tests/fixtures/lint-fixtures/openapi-bad-json`.
 
 Formatter settings:
 
-- Two-space indentation, a line width of 100, and LF line endings.
-- Double quotes in JavaScript and JSX.
+- A line width of 100.
 - No semicolons, except where automatic semicolon insertion needs one.
-- Trailing commas everywhere and parentheses around every arrow function parameter.
+- Prettier's defaults for the rest: two-space indentation, double quotes, trailing commas everywhere, parentheses around every arrow function parameter, and LF line endings.
+- `prettier-plugin-tailwindcss`, which `bun fmt` has built in, sorts Tailwind classes in `className` attributes, `@apply` rules, and the `clsx`, `cn`, `tw`, `twMerge`, and `cva` calls. Its `tailwindStylesheet` option points at `src/theme/main.css`, and at `packages/proto-ui/src/tailwind-entry.css` for files under `packages/proto-ui/`. Without it, the plugin would not know aid's theme classes such as `bg-aid-bg` and would sort them first. The repo formats through a Prettier config because `bunfig.toml`'s `[fmt]` section has no stylesheet option.
 
-Lint rules beyond Biome's `recommended` preset:
+Rules on top of the bundled set:
 
 | Rule | Level | Effect |
 | --- | --- | --- |
-| `style/noDefaultExport` | error | Named exports only. The three `.d.ts` files that declare `with { type: "file" }` and `with { type: "text" }` imports (`src/css.d.ts`, `src/lint/buf-bin.d.ts`, `src/core/internal/lightningcss-bin.d.ts`) turn it off with `biome-ignore-all`. |
-| `style/useBlockStatements` | error | Every `if`, `else`, and loop body needs braces. |
-| `style/useConsistentTypeDefinitions` | error | Use `type`, not `interface`. |
-| `complexity/useArrowFunction` | error | Use arrow functions instead of function expressions. |
-| `performance/noNamespaceImport` | error | No `import * as`. |
-| `nursery/useTailwindSortedClasses` | warn | Tailwind classes must be sorted. The top-level `tailwind` block applies it to the `class` and `className` attributes, the `clsx`, `cn`, `tw`, and `twMerge` calls, and `cva` variants. |
-
-The CSS parser has `tailwindDirectives` on, so Biome accepts `@theme`, `@apply`, and the other Tailwind directives.
-
-### No promise chains
-
-`biome.json` loads the GritQL plugin `plugins/no-promise-chains.grit`. It reports every `.then(...)`, `.catch(...)`, and `.finally(...)` call with the message "Prefer async/await over Promise.then/.catch/.finally." Write `await` with `try`/`catch` instead.
+| `import/no-default-export` | error | Named exports only. The three `.d.ts` files that declare `with { type: "file" }` and `with { type: "text" }` imports (`src/css.d.ts`, `src/lint/buf-bin.d.ts`, `src/core/internal/lightningcss-bin.d.ts`) turn it off with an `eslint-disable` comment. |
+| `curly` | error | Every `if`, `else`, and loop body needs braces. |
+| `@typescript-eslint/consistent-type-definitions` | error | Use `type`, not `interface`. |
+| `prefer-arrow-callback` | error | Use arrow functions instead of function expressions as callbacks. |
+| `import/no-namespace` | error | No `import * as`. |
+| `promise/prefer-await-to-then` | error | No `.then(...)`, `.catch(...)`, or `.finally(...)` chains. Write `await` with `try`/`catch` instead. |
 
 ## Format-on-edit hook
 
 `.claude/settings.json` registers `.claude/hooks/format-on-edit.sh` as a `PostToolUse` hook for Claude Code's `Edit`, `Write`, and `MultiEdit` tools. The script reads the edited path from the hook payload and formats that one file:
 
-- `.ts`, `.tsx`, `.js`, `.jsx`, `.json`, `.jsonc`, and `.css` files go through `bun x biome check --write`.
+- `.ts`, `.tsx`, `.js`, `.jsx`, `.json`, `.jsonc`, and `.css` files go through `bun fmt`. JS and TS files then go through `bun lint --fix`.
 - `.md` files go through `formatMarkdown` from `src/fmt/markdown.ts`, which applies markdownlint's fixable rules with the same config resolution as `aid lint`.
 
 It skips files under `node_modules`, `dist`, and `.bun`, plus the generated `schemas/aid.schema.json`, `site/docs/reference/**`, and `site/static/schemas/**`. It ignores formatter failures and always exits 0. Without Claude Code, run `bun run fmt` for code and `bun src/cli/index.ts fmt <dir> --filter md` for markdown.

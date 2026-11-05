@@ -6,7 +6,7 @@ aid is a single-binary documentation tool that generates static documentation si
 
 ### Key differentiators
 
-- **Single binary.** One executable contains the Tailwind CSS compiler, Biome, the linters and formatters, the API reference renderers, and a dev server. Users install nothing else. Release builds target macOS and Linux on x64 and arm64.
+- **Single binary.** One executable contains the Tailwind CSS compiler, the linters and formatters, the API reference renderers, and a dev server. Users install nothing else. Release builds target macOS and Linux on x64 and arm64.
 - **Colocated formats.** Markdown, HTML, OpenAPI (v2 and v3), and `.proto` files can share a directory. aid picks the renderer from the file type, and every page shares one layout.
 - **LLM exports by default.** Markdown and HTML pages are available as markdown (`.md` suffix), OpenAPI pages as JSON (`.json` suffix), and proto pages as their `.proto` source. The build writes a spec-compliant `llms.txt` at the site root. Each page also has an "Open in AI" button, which is not wired up yet.
 - **Convention over configuration.** A fixed folder layout and one `aid.yaml` are all a project needs, and only `name` is required.
@@ -23,7 +23,7 @@ aid is for teams that publish API specs and proto definitions next to prose and 
 
 ### Single binary
 
-The `aid` executable embeds the Tailwind CSS 4 compiler, Biome, markdownlint, Spectral, Buf, the Scalar and proto reference UIs, and the dev server. Users install `aid` and nothing else.
+The `aid` executable embeds the Tailwind CSS 4 compiler, markdownlint, Spectral, Buf, the Scalar and proto reference UIs, and the dev server. Users install `aid` and nothing else.
 
 ### Convention over configuration
 
@@ -107,7 +107,7 @@ aid stops at writing static files. Any static host can serve the output director
 
 ### `aid lint` and `aid fmt`
 
-`aid lint` and `aid fmt` run the embedded tools over the project. Biome handles CSS, JSON, and JavaScript or TypeScript files, markdownlint handles markdown, Spectral lints OpenAPI files, and Buf handles `.proto` files. aid finds OpenAPI files for linting by name: `openapi.yaml`, `*.openapi.yaml`, or any YAML or JSON file under an `openapi/` folder.
+`aid lint` and `aid fmt` run the embedded tools over the project. `bun lint` and `bun fmt` handle JavaScript, TypeScript, and JSON files, aid's CSS checks and `bun fmt` handle CSS, markdownlint handles markdown, Spectral lints OpenAPI files, and Buf handles `.proto` files. aid finds OpenAPI files for linting by name: `openapi.yaml`, `*.openapi.yaml`, or any YAML or JSON file under an `openapi/` folder.
 
 ---
 
@@ -373,7 +373,7 @@ aid has no external runtime dependencies. `bun build --compile` packs the Bun ru
 | Tool | Purpose | Bundling strategy |
 | ------ | --------- | ------------------- |
 | Tailwind CSS 4 compiler | Processes `main.css` and generates the final stylesheet | `@tailwindcss/node` and `@tailwindcss/oxide`, called in-process. The lightningcss native file is embedded per target. |
-| Biome | Linting and formatting for CSS, JSON, and JavaScript or TypeScript | `@biomejs/js-api` over the WASM build |
+| `bun lint` and `bun fmt` | Linting for JavaScript and TypeScript, formatting for those plus JSON and CSS | Built into the Bun runtime, run as a subprocess of the aid binary with `BUN_BE_BUN=1` |
 | markdownlint | Lint and format `.md` files | npm library (`markdownlint`) |
 | Spectral | Lint OpenAPI files | npm libraries (`@stoplight/spectral-*`) |
 | OpenAPI formatter | Canonicalize OpenAPI files | `Bun.YAML` or JSON round trip. It drops YAML comments. |
@@ -440,4 +440,4 @@ Each renderer also returns search tokens. The search index builder collects them
 | Search index builder | Builds the MiniSearch index from each page's search tokens and writes `search-index.<hash>.js` (`src/core/search-index.ts`) |
 | AI link builder | Planned. Will generate per-page "Open in AI" URLs for ChatGPT, Claude, and Gemini. No code exists yet. |
 | Dev server | HTTP server, file watcher, and live reload over Server-Sent Events (`src/dev`) |
-| Linter and formatter | Runs the embedded tools: Biome, markdownlint, Spectral, Buf (`src/lint`, `src/fmt`) |
+| Linter and formatter | Runs the embedded tools: `bun lint` and `bun fmt`, markdownlint, Spectral, Buf, and the CSS checks (`src/lint`, `src/fmt`) |

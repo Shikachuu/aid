@@ -5,13 +5,7 @@ type SchemaObject = Record<string, unknown>
 
 /** Where a field sits in its parent, which decides how the page labels it. */
 export type SchemaNodeKind =
-  | "root"
-  | "definition"
-  | "property"
-  | "pattern"
-  | "additional"
-  | "items"
-  | "option"
+  "root" | "definition" | "property" | "pattern" | "additional" | "items" | "option"
 
 /** A `$ref` on a field. `href` is set when the page links to the target instead of expanding it. */
 export type SchemaRef = { label: string; href?: string }

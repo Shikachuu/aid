@@ -7,12 +7,13 @@ file=$(printf '%s' "$payload" | jq -r '.tool_input.file_path // .tool_input.note
 
 case "$file" in
   */node_modules/*|*/dist/*|*/.bun/*|*/schemas/aid.schema.json) exit 0 ;;
-  */site/docs/reference/*|*/site/static/schemas/*) exit 0 ;;
+  */site/docs/reference/*|*/site/static/schemas/*|*/.prettierrc.json) exit 0 ;;
 esac
 
 case "$file" in
   *.ts|*.tsx|*.js|*.jsx|*.json|*.jsonc|*.css)
-    bun x biome check --write --no-errors-on-unmatched "$file" >/dev/null 2>&1 || true
+    mise x -- bun fmt --no-script "$file" >/dev/null 2>&1 || true
+    case "$file" in *.css|*.json|*.jsonc) ;; *) mise x -- bun lint --no-script --fix "$file" >/dev/null 2>&1 || true ;; esac
     ;;
   *.md)
     AID_MD_FILE="$file" bun -e '

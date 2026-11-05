@@ -77,6 +77,8 @@ export const checkStaged = (natives: StagedNative[]): string[] =>
 
 const majorMinor = (v: string): string => v.split(".").slice(0, 2).join(".")
 
+const baseVersion = (v: string): string => v.split("-")[0] ?? v
+
 /** List where the Bun runtime disagrees with its pins. */
 export const checkRuntime = ({ running, pinned, engines, types }: Runtime): string[] => {
   if (pinned === null) {
@@ -86,7 +88,7 @@ export const checkRuntime = ({ running, pinned, engines, types }: Runtime): stri
   if (running !== pinned) {
     problems.push(`running Bun ${running}, but mise.toml pins ${pinned} (run \`mise install\`)`)
   }
-  if (!Bun.semver.satisfies(pinned, engines)) {
+  if (!Bun.semver.satisfies(baseVersion(pinned), engines)) {
     problems.push(`mise.toml pins Bun ${pinned}, which does not satisfy engines.bun "${engines}"`)
   }
   if (types === null) {
@@ -96,10 +98,6 @@ export const checkRuntime = ({ running, pinned, engines, types }: Runtime): stri
   }
   return problems
 }
-
-/** Read the version out of a `https://biomejs.dev/schemas/<version>/schema.json` URL. */
-export const schemaVersion = (url: string | undefined): string | null =>
-  url?.match(/\/schemas\/([^/]+)\/schema\.json$/)?.[1] ?? null
 
 /** Return the commands that bump one family to its latest version. */
 export const updateCommands = ({ family, latest }: Update & { latest: string }): string[] => {
@@ -119,20 +117,17 @@ export const updateCommands = ({ family, latest }: Update & { latest: string }):
         "mise install",
       ]
     case "lightningcss":
-      return ["# lightningcss follows the exact pin in @tailwindcss/node; bump Tailwind instead"]
-    case "@biomejs/biome":
       return [
-        `bun add -d @biomejs/biome@^${latest}`,
-        `bun add @biomejs/wasm-nodejs@^${latest}`,
-        "mise install",
-        "bun x biome migrate --write",
+        "# lightningcss follows the exact pin in @tailwindcss/node; bump Tailwind instead,",
+        "# then run `bun add --exact lightningcss@<that pin>` so aid's own pin matches",
       ]
     case "bun":
       return [
-        `# set bun = "${latest}" in mise.toml`,
-        "mise lock",
+        `# set version = "${latest}" under [tools."http:bun"] in mise.toml`,
+        "mise lock --platform linux-x64,linux-arm64,macos-arm64,macos-x64",
         "mise install",
-        `bun add -d @types/bun@^${latest}`,
+        `bun add -d --exact ${exact(TARGETS.map((t) => t.bunSubpkg))}`,
+        `bun add -d @types/bun@^${baseVersion(latest)}`,
       ]
     default:
       return []
@@ -168,22 +163,19 @@ const subpackageFamily = async (
   expected: await installed(parent),
   members: (
     await Promise.all(
-      subpkgs.map(
-        async (pkg): Promise<Member[]> => [
-          { name: `${pkg} (package.json)`, version: pins[pkg] ?? null },
-          { name: pkg, version: await installed(pkg) },
-        ],
-      ),
+      subpkgs.map(async (pkg): Promise<Member[]> => [
+        { name: `${pkg} (package.json)`, version: pins[pkg] ?? null },
+        { name: pkg, version: await installed(pkg) },
+      ]),
     )
   ).flat(),
 })
 
-const collectFamilies = async (pkg: PackageJson): Promise<Family[]> => {
+const collectFamilies = async (pkg: PackageJson, bunPin: string | null): Promise<Family[]> => {
   const pins = pkg.devDependencies ?? {}
   const twNode = await readJson<PackageJson>(
     resolve(ROOT, "node_modules", "@tailwindcss/node", "package.json"),
   )
-  const biomeJson = await readJson<{ $schema?: string }>(resolve(ROOT, "biome.json"))
   return [
     await subpackageFamily(
       "@bufbuild/buf",
@@ -196,9 +188,25 @@ const collectFamilies = async (pkg: PackageJson): Promise<Family[]> => {
       pins,
     ),
     {
+      name: "Bun runtime (pinned by mise.toml)",
+      expected: bunPin,
+      members: (
+        await Promise.all(
+          TARGETS.map(async (t) => [
+            { name: `${t.bunSubpkg} (package.json)`, version: pins[t.bunSubpkg] ?? null },
+            { name: t.bunSubpkg, version: (await installed(t.bunSubpkg))?.split("+")[0] ?? null },
+          ]),
+        )
+      ).flat(),
+    },
+    {
       name: "lightningcss (pinned by @tailwindcss/node)",
       expected: twNode?.dependencies?.lightningcss ?? null,
       members: [
+        {
+          name: "lightningcss (package.json)",
+          version: pkg.dependencies?.lightningcss ?? null,
+        },
         { name: "lightningcss", version: await installed("lightningcss") },
         ...(await Promise.all(
           TARGETS.map(async (t) => ({
@@ -206,14 +214,6 @@ const collectFamilies = async (pkg: PackageJson): Promise<Family[]> => {
             version: await installed(t.lcssSubpkg),
           })),
         )),
-      ],
-    },
-    {
-      name: "@biomejs/biome",
-      expected: await installed("@biomejs/biome"),
-      members: [
-        { name: "@biomejs/wasm-nodejs", version: await installed("@biomejs/wasm-nodejs") },
-        { name: "biome.json $schema", version: schemaVersion(biomeJson?.$schema) },
       ],
     },
   ]
@@ -232,8 +232,12 @@ const misePin = async (): Promise<string | null> => {
   const toml = Bun.TOML.parse(await Bun.file(resolve(ROOT, "mise.toml")).text()) as {
     tools?: Record<string, unknown>
   }
-  const pin = toml.tools?.bun
-  return typeof pin === "string" ? pin : null
+  const pin = toml.tools?.bun ?? toml.tools?.["http:bun"]
+  if (typeof pin === "string") {
+    return pin
+  }
+  const version = (pin as { version?: unknown } | undefined)?.version
+  return typeof version === "string" ? version : null
 }
 
 const npmLatest = async (pkg: string): Promise<string> => {
@@ -244,12 +248,16 @@ const npmLatest = async (pkg: string): Promise<string> => {
   return ((await res.json()) as { version: string }).version
 }
 
-const bunLatest = async (): Promise<string> =>
-  (await Bun.$`mise latest bun`.cwd(ROOT).text()).trim()
+const latestBunKeepingCanaryPin = async (pinned: string | null): Promise<string> => {
+  const stable = (await Bun.$`mise latest bun`.cwd(ROOT).text()).trim()
+  const stableHasNotPassedPin =
+    pinned !== null && Bun.semver.order(stable, baseVersion(pinned)) <= 0
+  return stableHasNotPassedPin ? pinned : stable
+}
 
-const fetchLatest = async (family: string): Promise<string | null> => {
+const fetchLatest = async (family: string, current: string): Promise<string | null> => {
   try {
-    return family === "bun" ? await bunLatest() : await npmLatest(family)
+    return family === "bun" ? await latestBunKeepingCanaryPin(current) : await npmLatest(family)
   } catch (err) {
     console.error(`[check-binaries] could not look up ${family}: ${(err as Error).message}`)
     return null
@@ -258,9 +266,10 @@ const fetchLatest = async (family: string): Promise<string | null> => {
 
 const collectUpdates = async (current: Record<string, string | null>): Promise<Update[]> => {
   const updates = await Promise.all(
-    Object.entries(current).map(
-      async ([family, version]): Promise<Update | null> =>
-        version === null ? null : { family, current: version, latest: await fetchLatest(family) },
+    Object.entries(current).map(async ([family, version]): Promise<Update | null> =>
+      version === null
+        ? null
+        : { family, current: version, latest: await fetchLatest(family, version) },
     ),
   )
   return updates.filter((u): u is Update => u !== null)
@@ -288,14 +297,27 @@ const printUpdates = (updates: Update[]): void => {
   }
 }
 
+// A canary reports only its base version, such as 1.4.4.
+const runningBun = async (pinned: string | null): Promise<string> => {
+  if (!pinned?.includes("-")) {
+    return Bun.version
+  }
+  const host = TARGETS.find((t) => t.platform === process.platform && t.arch === process.arch)
+  const pinnedBinary = host && resolve(ROOT, "node_modules", host.bunSubpkg, "bin", "bun")
+  const same =
+    pinnedBinary !== undefined &&
+    (await hashFile(process.execPath)) === (await hashFile(pinnedBinary))
+  return same ? pinned : `${Bun.version}+${Bun.revision.slice(0, 9)}`
+}
+
 const main = async (): Promise<number> => {
   const pkg = (await readJson<PackageJson>(resolve(ROOT, "package.json"))) ?? {}
   const pinned = await misePin()
   const problems = [
-    ...(await collectFamilies(pkg)).flatMap(checkFamily),
+    ...(await collectFamilies(pkg, pinned)).flatMap(checkFamily),
     ...checkStaged(await collectStaged()),
     ...checkRuntime({
-      running: Bun.version,
+      running: await runningBun(pinned),
       pinned,
       engines: pkg.engines?.bun ?? "*",
       types: await installed("@types/bun"),
@@ -317,7 +339,6 @@ const main = async (): Promise<number> => {
         "@bufbuild/buf": await installed("@bufbuild/buf"),
         "@tailwindcss/oxide": await installed("@tailwindcss/oxide"),
         lightningcss: await installed("lightningcss"),
-        "@biomejs/biome": await installed("@biomejs/biome"),
         bun: pinned,
       }),
     )

@@ -7,9 +7,5 @@ type DocBlockProps = {
 
 export const DocBlock = ({ raw }: DocBlockProps) =>
   raw ? (
-    <div
-      className="proto-doc"
-      // biome-ignore lint/security/noDangerouslySetInnerHtml: renderDocMarkdown escapes raw HTML in the comment.
-      dangerouslySetInnerHTML={{ __html: renderDocMarkdown(raw) }}
-    />
+    <div className="proto-doc" dangerouslySetInnerHTML={{ __html: renderDocMarkdown(raw) }} />
   ) : null

@@ -54,7 +54,7 @@ aid build [OPTIONS] [DIR]
 
 ## `aid lint`
 
-Run bundled linters across markdown, OpenAPI, protobuf, and Biome-supported files (JS, TS, JSON, CSS).
+Run bundled linters across markdown, OpenAPI, protobuf, CSS, and JS, TS, and JSON files.
 
 ```sh
 aid lint [OPTIONS] [DIR]
@@ -63,13 +63,13 @@ aid lint [OPTIONS] [DIR]
 | Argument | Type | Default | Description |
 | --- | --- | --- | --- |
 | `DIR` | positional | none | Project directory (default: current directory). |
-| `--fix` | boolean | none | Apply autofixes where the underlying tool supports it (markdown, biome). |
-| `--filter` | string | none | Comma-separated list of tools to run: md, openapi, biome, proto. |
+| `--fix` | boolean | none | Apply autofixes where the underlying tool supports it (markdown, bun). css has none. |
+| `--filter` | string | none | Comma-separated list of tools to run: md, openapi, bun, css, proto. |
 | `--format` | one of `pretty`, `json` | `pretty` | Output format. |
 
 ## `aid fmt`
 
-Run bundled formatters across markdown, OpenAPI, protobuf, and Biome-supported files (JS, TS, JSON, CSS).
+Run bundled formatters across markdown, OpenAPI, protobuf, and JS, TS, JSON, and CSS files.
 
 ```sh
 aid fmt [OPTIONS] [DIR]
@@ -79,7 +79,7 @@ aid fmt [OPTIONS] [DIR]
 | --- | --- | --- | --- |
 | `DIR` | positional | none | Project directory (default: current directory). |
 | `--check` | boolean | none | Don't write changes; exit non-zero if any file would be reformatted. |
-| `--filter` | string | none | Comma-separated list of tools to run: md, openapi, biome, proto. |
+| `--filter` | string | none | Comma-separated list of tools to run: md, openapi, bun, proto. |
 | `--format` | one of `pretty`, `json` | `pretty` | Output format. |
 
 ## `aid help`

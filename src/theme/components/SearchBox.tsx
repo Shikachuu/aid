@@ -32,6 +32,7 @@ export function SearchBox(props: SearchBoxProps) {
       <div
         id="aid-search-results"
         class="aid-search-results"
+        // eslint-disable-next-line jsx-a11y/prefer-tag-over-role -- a combobox popup list, which datalist and select cannot style
         role="listbox"
         data-aid-search-results
         hidden

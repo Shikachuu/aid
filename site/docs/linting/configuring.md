@@ -1,6 +1,6 @@
 ---
 title: Configuring the linters
-description: Where aid lint and aid fmt look for markdownlint, Spectral, Biome, and buf config files, and how a config file replaces the bundled default.
+description: Where aid lint and aid fmt look for markdownlint, Spectral, bun lint, bun fmt, and buf config files, how a config file replaces the bundled default, and why the CSS checks have none.
 sidebar:
   order: 1
 ---
@@ -11,7 +11,7 @@ Each tool behind [`aid lint`](./index.md) and [`aid fmt`](../formatting/index.md
 
 For each tool, aid starts in the target directory and checks for that tool's config file names. If none exists, it moves to the parent directory and checks again. It stops after the first directory that contains `.git`, so it never reads a config file from outside your repository. If the walk finds nothing, aid uses its bundled default for that tool.
 
-The file names per tool, in the order aid checks them, are in [the lint defaults reference](../reference/lint-defaults.md). In short: `.markdownlint.*`, `.spectral.*`, `biome.json` or `biome.jsonc`, and `buf.yaml`.
+The file names per tool, in the order aid checks them, are in [the lint defaults reference](../reference/lint-defaults.md). In short: `.markdownlint.*`, `.spectral.*`, the `bun lint` and `bun fmt` configs below, and `buf.yaml`. The `css` tool reads no config file.
 
 aid parses `.json` and `.jsonc` files as JSON with comments, and `.yaml` and `.yml` files as YAML. The same reference page lists the bundled defaults.
 
@@ -40,30 +40,41 @@ MD009: warning
 
 aid prints these findings as `warn`, and warnings do not change the exit code. `aid fmt` reads the same file to decide which fixes to apply.
 
-## Biome
+## bun lint and bun fmt
 
-```json
-{
-  "formatter": {
-    "indentStyle": "space",
-    "indentWidth": 2,
-    "lineWidth": 100
-  },
-  "javascript": {
-    "formatter": { "quoteStyle": "double", "semicolons": "asNeeded" }
-  },
-  "linter": {
-    "rules": {
-      "recommended": true,
-      "suspicious": { "noDebugger": "off" }
-    }
-  }
-}
+The `bun` tool reads the same config files as `bun lint` and `bun fmt`.
+
+| Tool | Config files |
+| --- | --- |
+| `aid lint` | `eslint.config.*`, `.eslintrc*`, `.oxlintrc.json`, or a `bunfig.toml` with a `[lint]` section |
+| `aid fmt` | `.prettierrc*`, `prettier.config.*`, `.oxfmtrc.json`, `.oxfmtrc.jsonc`, `oxfmt.config.ts`, `oxfmt.config.mts`, or a `bunfig.toml` with an `[fmt]` section |
+
+Without one of them, `aid lint` runs [the bundled rules](../reference/lint-defaults.md#bun-default-bun) and `aid fmt` formats with a line width of 100 and no semicolons. One `bunfig.toml` can configure both:
+
+```toml
+# bunfig.toml
+[lint.categories]
+correctness = "error"
+
+[lint.rules]
+"no-console" = "warn"
+"eqeqeq" = ["error", "smart"]
+
+[fmt]
+printWidth = 100
+semi = false
 ```
 
-Save this as `biome.json`. aid hands the parsed file to Biome's `applyConfiguration`. Keys you leave out fall back to Biome's own defaults, not to aid's bundled default. Biome's own formatter default indents with tabs and always adds semicolons, so a `biome.json` with only a `linter` block changes how `aid fmt` formats JS and TS.
+Rule names are `bun lint`'s names, the same as ESLint's for core rules and plugin-prefixed for the rest, such as `@typescript-eslint/no-explicit-any`. Without a `[lint.categories]` section, `bun lint` keeps its own default rules on and adds yours. `bun fmt` takes Prettier's option names and also reads `.editorconfig`. The [bun lint](https://bun.com/docs/lint) and [bun fmt](https://bun.com/docs/format) docs list every option.
 
-aid finds the files itself, so `files.includes` in your `biome.json` does not widen or narrow what aid checks.
+Bun reads `bunfig.toml` only from the directory it runs in. aid finds the nearest one with the right section, walking up as for every other tool, and passes it to Bun.
+
+> [!WARNING]
+> ESLint JS plugins that a config loads run from the project's `node_modules`, so they need an `npm install` in your project. The rules that `bun lint` has built in need nothing.
+
+## CSS
+
+The `css` tool has no config file and no setting to turn a check off. It always runs the checks in [the CSS checks table](../reference/lint-defaults.md#css-checks-css). To skip CSS, leave `css` out of `--filter`, for example `aid lint docs --filter md,openapi,bun,proto`. A `bun fmt` config changes how `aid fmt` formats CSS, not what `aid lint` reports.
 
 ## buf
 

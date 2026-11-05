@@ -7,6 +7,7 @@ export type Target = {
   bufSubpkg: string
   lcssSubpkg: string
   oxideSubpkg: string
+  bunSubpkg: string
 }
 
 /** Every platform aid ships a binary for. */
@@ -19,6 +20,7 @@ export const TARGETS: readonly Target[] = [
     bufSubpkg: "@bufbuild/buf-darwin-arm64",
     lcssSubpkg: "lightningcss-darwin-arm64",
     oxideSubpkg: "@tailwindcss/oxide-darwin-arm64",
+    bunSubpkg: "@oven/bun-darwin-aarch64",
   },
   {
     triple: "bun-darwin-x64",
@@ -28,6 +30,7 @@ export const TARGETS: readonly Target[] = [
     bufSubpkg: "@bufbuild/buf-darwin-x64",
     lcssSubpkg: "lightningcss-darwin-x64",
     oxideSubpkg: "@tailwindcss/oxide-darwin-x64",
+    bunSubpkg: "@oven/bun-darwin-x64",
   },
   {
     triple: "bun-linux-arm64",
@@ -37,6 +40,7 @@ export const TARGETS: readonly Target[] = [
     bufSubpkg: "@bufbuild/buf-linux-aarch64",
     lcssSubpkg: "lightningcss-linux-arm64-gnu",
     oxideSubpkg: "@tailwindcss/oxide-linux-arm64-gnu",
+    bunSubpkg: "@oven/bun-linux-aarch64",
   },
   {
     triple: "bun-linux-x64",
@@ -46,6 +50,7 @@ export const TARGETS: readonly Target[] = [
     bufSubpkg: "@bufbuild/buf-linux-x64",
     lcssSubpkg: "lightningcss-linux-x64-gnu",
     oxideSubpkg: "@tailwindcss/oxide-linux-x64-gnu",
+    bunSubpkg: "@oven/bun-linux-x64",
   },
 ]
 

@@ -52,3 +52,27 @@ test.skipIf(host === undefined)(
   },
   60_000,
 )
+
+const runAid = async (args: string[], cwd: string): Promise<unknown> => {
+  const proc = Bun.spawn([binary, ...args, "--format", "json"], {
+    cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+  })
+  const [stdout] = await Promise.all([new Response(proc.stdout).text(), proc.exited])
+  return JSON.parse(stdout)
+}
+
+test.skipIf(host === undefined)(
+  "the compiled binary runs bun lint and bun fmt from its embedded runtime",
+  async () => {
+    const project = await mkdtemp(path.join(tmpdir(), "aid-compiled-bun-"))
+    await Bun.write(path.join(project, "x.ts"), "let x = 1\nconsole.log( x );\n")
+    const lint = await runAid(["lint", project, "--filter", "bun"], ROOT)
+    expect(JSON.stringify(lint)).toContain('"code":"prefer-const"')
+    const fmt = await runAid(["fmt", project, "--filter", "bun", "--check"], ROOT)
+    expect(JSON.stringify(fmt)).toContain(`"wouldChange":["${path.join(project, "x.ts")}"]`)
+    await rm(project, { recursive: true, force: true })
+  },
+  60_000,
+)

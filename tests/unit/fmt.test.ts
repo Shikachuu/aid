@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { formatWithBiome } from "../../src/fmt/biome"
+import { formatWithBun } from "../../src/fmt/bun"
 import { formatMarkdown } from "../../src/fmt/markdown"
 import { formatOpenApi } from "../../src/fmt/openapi"
 import { formatAll } from "../../src/fmt/orchestrate"
@@ -87,26 +87,68 @@ describe("formatOpenApi", () => {
   )
 })
 
-describe("formatWithBiome", () => {
-  test("formats and is idempotent", async () => {
+describe("formatWithBun", () => {
+  test("formats with the bundled options and is idempotent", async () => {
     const file = join(dir, "x.ts")
-    await Bun.write(file, "const   x   =   1\nconsole.log( x )\n")
-    await formatWithBiome([file], dir, { check: false })
+    await Bun.write(file, "const   x   =   { a: 'b' };\nconsole.log( x )\n")
+    await formatWithBun([file], dir, { check: false })
     const first = await Bun.file(file).text()
-    expect(first).not.toContain("   ")
-    await formatWithBiome([file], dir, { check: false })
-    const second = await Bun.file(file).text()
-    expect(second).toBe(first)
+    expect(first).toBe('const x = { a: "b" }\nconsole.log(x)\n')
+    await formatWithBun([file], dir, { check: false })
+    expect(await Bun.file(file).text()).toBe(first)
   })
 
   test("--check reports wouldChange without writing", async () => {
     const file = join(dir, "x.ts")
-    const original = "const   x   =   1\nconsole.log( x )\n"
+    const original = "const   x   =   1\n"
     await Bun.write(file, original)
-    const result = await formatWithBiome([file], dir, { check: true })
+    await Bun.write(join(dir, "ok.ts"), "export const y = 1\n")
+    const result = await formatWithBun([file, join(dir, "ok.ts")], dir, { check: true })
     expect(result.ok).toBe(false)
-    expect(result.wouldChange).toContain(file)
+    expect(result.wouldChange).toEqual([file])
     expect(await Bun.file(file).text()).toBe(original)
+  })
+
+  test("uses a project Prettier config instead of the bundled options", async () => {
+    await Bun.write(join(dir, ".prettierrc"), '{ "semi": true, "singleQuote": true }\n')
+    const file = join(dir, "x.ts")
+    await Bun.write(file, 'const x = "a"\n')
+    await formatWithBun([file], dir, { check: false })
+    expect(await Bun.file(file).text()).toBe("const x = 'a';\n")
+  })
+
+  test("reports a file it cannot parse", async () => {
+    const file = join(dir, "x.ts")
+    await Bun.write(file, "const = 1\n")
+    const result = await formatWithBun([file], dir, { check: true })
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics[0]).toMatchObject({ file, line: 1, code: "bun/format" })
+  })
+})
+
+describe("formatWithBun --check with other configs", () => {
+  for (const [name, content] of [
+    [".prettierrc", "{}\n"],
+    [".oxfmtrc.json", "{}\n"],
+  ] as const) {
+    test(`lists the files a ${name} project would reformat`, async () => {
+      await Bun.write(join(dir, name), content)
+      const file = join(dir, "b.js")
+      await Bun.write(file, "const   b = 1\n")
+      await Bun.write(join(dir, "c.js"), "export const c = 1;\n")
+      const result = await formatWithBun([file, join(dir, "c.js")], dir, { check: true })
+      expect(result.ok).toBe(false)
+      expect(result.wouldChange).toEqual([file])
+    })
+  }
+
+  test("fails when bun fmt fails without naming a file", async () => {
+    await Bun.write(join(dir, "bunfig.toml"), "[fmt]\nnotAnOption = true\n")
+    const file = join(dir, "x.ts")
+    await Bun.write(file, "export const x = 1\n")
+    const result = await formatWithBun([file], dir, { check: true })
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics[0]?.code).toBe("bun/format")
   })
 })
 

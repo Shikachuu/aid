@@ -42,7 +42,7 @@ A `.json`, `.yaml`, or `.yml` file in the content folder becomes a JSON Schema p
 - A file with a match is parsed, and only a top-level `$schema` counts. A data file that embeds a schema fragment deeper down stays skipped.
 - A file with a match that fails to parse becomes a page anyway, so the build reports the syntax error instead of dropping the file.
 - aid checks for OpenAPI first, so an OpenAPI 3.1 spec whose models carry `$schema` keys stays an OpenAPI page.
-- A file whose `$schema` points somewhere else, such as a `biome.json`, is skipped. A schema without a `$schema` key is skipped too. Add the key to publish it.
+- A file whose `$schema` points somewhere else, such as an editor config that points at schemastore.org, is skipped. A schema without a `$schema` key is skipped too. Add the key to publish it.
 
 To keep a schema in the content folder out of the site, start its file name or a parent folder name with `_`, such as `_internal.json`.
 

@@ -1,5 +1,5 @@
 import { defineCommand } from "citty"
-import { formatAll } from "../../fmt/orchestrate"
+import { FORMAT_TOOLS, formatAll } from "../../fmt/orchestrate"
 import { parseFilter, printReport } from "../../lint/diagnostics"
 
 /** `aid fmt`. Use `--check` in CI. It writes nothing and exits 1 when any tool fails. */
@@ -7,7 +7,7 @@ export const command = defineCommand({
   meta: {
     name: "fmt",
     description:
-      "Run bundled formatters across markdown, OpenAPI, protobuf, and Biome-supported files (JS, TS, JSON, CSS).",
+      "Run bundled formatters across markdown, OpenAPI, protobuf, and JS, TS, JSON, and CSS files.",
   },
   args: {
     dir: {
@@ -21,7 +21,7 @@ export const command = defineCommand({
     },
     filter: {
       type: "string",
-      description: "Comma-separated list of tools to run: md, openapi, biome, proto.",
+      description: "Comma-separated list of tools to run: md, openapi, bun, proto.",
     },
     format: {
       type: "enum",
@@ -34,7 +34,7 @@ export const command = defineCommand({
     const report = await formatAll({
       dir: args.dir ?? ".",
       check: Boolean(args.check),
-      filter: parseFilter(args.filter),
+      filter: parseFilter(args.filter, FORMAT_TOOLS),
     })
     printReport(report, args.format)
   },

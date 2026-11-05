@@ -67,7 +67,7 @@
       <tr>
         <td>Compiled binaries</td>
         <td><code>bun run build</code> writes four binaries to <code>dist/bin/</code>, and they build sites when run inside a checkout of the aid repository.</td>
-        <td>A <code>darwin-x64</code> binary cross-compiled on Apple silicon carries an invalid ad-hoc signature, and macOS kills it on start until you re-sign it. Outside the aid repository the <code>darwin-arm64</code> binary fails on start with <code>Cannot find module '@bufbuild/buf-darwin-x64/bin/buf'</code>. Every binary also reads Biome's <code>biome_wasm_bg.wasm</code> from the build machine's <code>node_modules</code> path, so <code>aid lint</code> fails with <code>ENOENT</code> elsewhere. See <a href="./getting-started/installation.md">installation</a>.</td>
+        <td>A <code>darwin-x64</code> binary cross-compiled on Apple silicon carries an invalid ad-hoc signature, and macOS kills it on start until you re-sign it. Outside the aid repository the <code>darwin-arm64</code> binary fails on start with <code>Cannot find module '@bufbuild/buf-darwin-x64/bin/buf'</code>. Every binary embeds a Bun canary runtime, because no stable Bun ships <code>bun lint</code> yet. See <a href="./getting-started/installation.md">installation</a>.</td>
       </tr>
       <tr>
         <td>Rebuilds</td>

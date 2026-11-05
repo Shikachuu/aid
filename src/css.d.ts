@@ -1,4 +1,4 @@
-// biome-ignore-all lint/style/noDefaultExport: Bun text-import attribute exposes file content as default.
+/* eslint-disable import/no-default-export -- Bun text-import attribute exposes file content as default. */
 
 declare module "*.css" {
   const text: string

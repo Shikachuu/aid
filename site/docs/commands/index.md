@@ -12,8 +12,8 @@ sidebar:
 | `aid init [dir]` | Not implemented yet. Prints an error and exits 1. | [aid init](./init.md) |
 | `aid build [dir]` | Builds the static site into the output folder (`dist/` by default). | [aid build](./build.md) |
 | `aid dev [dir]` | Builds the site, serves it on `http://localhost:3000/`, and rebuilds and reloads on every change. | [Dev server](../dev-server/index.md) |
-| `aid lint [dir]` | Runs the bundled linters: markdownlint, Spectral for OpenAPI, Biome, and `buf` for Protobuf. | [Linting](../linting/index.md) |
-| `aid fmt [dir]` | Runs the bundled formatters for markdown, OpenAPI, Biome-supported files, and Protobuf. | [Formatting](../formatting/index.md) |
+| `aid lint [dir]` | Runs the bundled linters: markdownlint, Spectral for OpenAPI, `bun lint` for JS and TS, the CSS checks, and `buf` for Protobuf. | [Linting](../linting/index.md) |
+| `aid fmt [dir]` | Runs the bundled formatters for markdown, OpenAPI, JS, TS, JSON, CSS, and Protobuf. | [Formatting](../formatting/index.md) |
 | `aid help [command]` | Prints the help for aid or for one command. | [CLI reference](../reference/cli.md#aid-help) |
 
 Every command takes the project folder as an optional first argument. Without it, aid uses the current folder.
