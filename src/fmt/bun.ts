@@ -2,8 +2,9 @@ import { resolve } from "node:path"
 import { argPath, batches, configArgs, dedupe, runBun, stderrDiagnostics } from "../lint/bun"
 import { type Diagnostic, processFailure, type ToolResult } from "../lint/diagnostics"
 
-// `bun fmt --check` lists each file on its own line. With a Prettier config the
-// line goes to stderr and reads `[warn] b.js`; with an oxfmt config it reads `b.js (1ms)`.
+// `bun fmt --check` lists each file on its own line: a bare path on stdout with a
+// bunfig `[fmt]` section (aid's bundled default), `[warn] b.js` on stderr with a
+// Prettier config, and `b.js (1ms)` with an oxfmt config.
 const listedPath = (line: string): string =>
   line
     .trim()

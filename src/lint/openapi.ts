@@ -21,7 +21,25 @@ export const lintOpenApi = async (paths: string[], dir: string): Promise<ToolRes
   if (paths.length === 0) {
     return { tool: "openapi", ok: true, diagnostics: [] }
   }
-  const ruleset = await resolveSpectralRuleset(dir)
+  let ruleset: RulesetDefinition
+  try {
+    ruleset = await resolveSpectralRuleset(dir)
+  } catch (err) {
+    const file = (await findUserConfig(dir, USER_CONFIGS.openapi)) ?? dir
+    const detail = err instanceof Error ? err.message : String(err)
+    return {
+      tool: "openapi",
+      ok: false,
+      diagnostics: [
+        {
+          file,
+          severity: "error",
+          code: "openapi/config",
+          message: `cannot read config: ${detail}`,
+        },
+      ],
+    }
+  }
   const spectral = new Spectral()
   spectral.setRuleset(ruleset)
 
@@ -41,7 +59,7 @@ export const lintOpenApi = async (paths: string[], dir: string): Promise<ToolRes
       const startLine = r.range?.start?.line
       const startChar = r.range?.start?.character
       diagnostics.push({
-        file: path,
+        file: r.source ?? path,
         line: typeof startLine === "number" ? startLine + 1 : undefined,
         col: typeof startChar === "number" ? startChar + 1 : undefined,
         severity: sev,

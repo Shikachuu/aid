@@ -14,11 +14,12 @@ export const formatProto = async (
   paths: string[],
   dir: string,
   opts: { check: boolean },
+  findBuf: () => Promise<string | null> = resolveBufBinary,
 ): Promise<ToolResult> => {
   if (paths.length === 0) {
     return { tool: "proto", ok: true, diagnostics: [] }
   }
-  const bin = await resolveBufBinary()
+  const bin = await findBuf()
   if (bin === null) {
     return BUF_SKIPPED
   }

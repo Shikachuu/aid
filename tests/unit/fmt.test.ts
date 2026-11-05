@@ -64,6 +64,18 @@ describe("formatMarkdown", () => {
   })
 })
 
+describe("formatMarkdown config", () => {
+  test("reports a config that does not parse and leaves files untouched", async () => {
+    await Bun.write(join(dir, ".markdownlint.json"), '{"MD012": ')
+    const file = join(dir, "doc.md")
+    await Bun.write(file, "# Title\n\n\n\nbody\n")
+    const result = await formatMarkdown([file], dir, { check: false })
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics.map((d) => d.code)).toEqual(["md/config"])
+    expect(await Bun.file(file).text()).toBe("# Title\n\n\n\nbody\n")
+  })
+})
+
 describe("formatOpenApi", () => {
   const SPEC = `# Pet store spec
 openapi: 3.1.0
@@ -281,6 +293,13 @@ describe("formatProto", () => {
         message: expect.stringContaining("bogus"),
       }),
     ])
+  })
+
+  test("is skipped, not failed, when no buf binary is available", async () => {
+    const file = join(dir, "ok.proto")
+    await Bun.write(file, 'syntax = "proto3";\nmessage   M {}\n')
+    const result = await formatProto([file], dir, { check: true }, async () => null)
+    expect(result).toMatchObject({ tool: "proto", ok: true, skipped: true })
   })
 
   test("--check lists an unformatted proto as would-change", async () => {
