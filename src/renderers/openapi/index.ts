@@ -2,7 +2,7 @@ import path from "node:path"
 import type { RenderedPage, Route } from "../../core/types"
 import { render } from "../../jsx-runtime"
 import { PageOpenAPI } from "../../theme/components/PageOpenAPI"
-import { nonEmpty } from "../shared"
+import { firstParagraph, nonEmpty } from "../shared"
 import { parseOpenApi } from "./parser"
 
 /** Arguments for {@link renderOpenApi}. */
@@ -29,7 +29,8 @@ export async function renderOpenApi(args: RenderOpenApiArgs): Promise<RenderedPa
   const info = (doc.info ?? {}) as { title?: unknown; description?: unknown }
   const fallbackTitle = path.basename(args.sourcePath, path.extname(args.sourcePath))
   const title = typeof info.title === "string" && info.title.length > 0 ? info.title : fallbackTitle
-  const description = typeof info.description === "string" ? info.description : undefined
+  const description =
+    typeof info.description === "string" ? firstParagraph(info.description) : undefined
 
   const specJson = JSON.stringify(doc)
   const html = render(PageOpenAPI({ title, specJson, machineUrl: "" }))

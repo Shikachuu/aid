@@ -49,7 +49,7 @@ describe("parseOpenApi", () => {
     const yaml = `openapi: "3.1.0"\ninfo:\n  title: Refs\n  version: "1"\npaths: {}\ncomponents:\n  schemas:\n    A:\n      $ref: "#/components/schemas/Missing"\n`
     const { warnings } = await parseOpenApi(yaml, "refs.yaml")
     expect(warnings).toEqual([
-      "refs.yaml: <root> — Can't resolve reference: #/components/schemas/Missing",
+      "refs.yaml: <root>: Can't resolve reference: #/components/schemas/Missing",
     ])
   })
 
@@ -91,6 +91,37 @@ describe("sniffOpenApi", () => {
 })
 
 describe("renderOpenApi", () => {
+  test("names the file when the spec does not parse", async () => {
+    await expect(renderFixture("openapi.yaml", "openapi: [3.1.0\n")).rejects.toThrow(
+      /aid: failed to parse OpenAPI source at .*openapi\.yaml: /,
+    )
+  })
+
+  test("describes the page with the first paragraph of info.description", async () => {
+    const page = await renderFixture(
+      "openapi.yaml",
+      'openapi: 3.1.0\ninfo:\n  title: T\n  version: "1"\n  description: |\n    First.\n\n    ## Later\npaths: {}\n',
+    )
+    expect(page.description).toBe("First.")
+  })
+
+  test("embeds a spec whose strings hold <!--<script and </script> without leaving the script element", async () => {
+    const hostile = "<!--<script> x </script><b>after</b>"
+    const page = await renderFixture(
+      "openapi.json",
+      JSON.stringify({
+        openapi: "3.1.0",
+        info: { title: "T", version: "1", description: hostile },
+        paths: {},
+      }),
+    )
+    const body = page.html.slice(page.html.indexOf('id="aid-openapi-spec">'))
+    const inner = body.slice(body.indexOf(">") + 1, body.indexOf("</script>"))
+    expect(inner).not.toContain("<")
+    expect(JSON.parse(inner).info.description).toBe(hostile)
+    expect(body.slice(body.indexOf("</script>"))).not.toContain("<b>after</b>")
+  })
+
   test("info.title becomes the page title and is in the rendered <h1>", async () => {
     const page = await renderFixture(
       "api.yaml",

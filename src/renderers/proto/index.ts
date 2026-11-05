@@ -1,5 +1,5 @@
 import path from "node:path"
-import { type ProtoAst, type ProtoMessage, parseProto } from "@aid/proto-ui/parser"
+import { type ProtoAst, type ProtoEnum, type ProtoMessage, parseProto } from "@aid/proto-ui/parser"
 import { exportPath } from "../../core/router"
 import type { RenderedPage, Route, SearchTokens } from "../../core/types"
 import { render } from "../../jsx-runtime"
@@ -27,7 +27,7 @@ export type RenderProtoArgs = {
  */
 export const renderProto = async (args: RenderProtoArgs): Promise<RenderedPage> => {
   const source = await Bun.file(args.sourcePath).text()
-  const ast = parseProto(source)
+  const ast = parseOrExplain(source, args.sourcePath)
   const fallbackTitle = path.basename(args.sourcePath, path.extname(args.sourcePath))
   const title = ast.package ?? fallbackTitle
   const description = firstParagraph(ast.packageLeadingComment)
@@ -47,68 +47,87 @@ export const renderProto = async (args: RenderProtoArgs): Promise<RenderedPage> 
   }
 }
 
-const collectMessageTokens = (m: ProtoMessage, fqns: string[], comments: string[]): void => {
-  fqns.push(m.fqn)
-  if (m.comment) {
-    comments.push(m.comment)
+type TokenLists = {
+  messages: string[]
+  enums: string[]
+  values: string[]
+  fields: string[]
+  comments: string[]
+}
+
+const pushComment = (lists: TokenLists, comment: string | null): void => {
+  if (comment) {
+    lists.comments.push(comment)
   }
+}
+
+const collectEnumTokens = (e: ProtoEnum, lists: TokenLists): void => {
+  lists.enums.push(e.fqn)
+  pushComment(lists, e.comment)
+  for (const v of e.values) {
+    lists.values.push(v.name)
+    pushComment(lists, v.comment)
+  }
+}
+
+const collectMessageTokens = (m: ProtoMessage, lists: TokenLists): void => {
+  lists.messages.push(m.fqn)
+  pushComment(lists, m.comment)
   for (const f of m.fields) {
-    if (f.comment) {
-      comments.push(f.comment)
-    }
+    lists.fields.push(f.name)
+    pushComment(lists, f.comment)
+  }
+  for (const o of m.oneofs) {
+    lists.fields.push(o.name)
+    pushComment(lists, o.comment)
   }
   for (const nm of m.nestedMessages) {
-    collectMessageTokens(nm, fqns, comments)
+    collectMessageTokens(nm, lists)
   }
   for (const ne of m.nestedEnums) {
-    fqns.push(ne.fqn)
-    if (ne.comment) {
-      comments.push(ne.comment)
-    }
+    collectEnumTokens(ne, lists)
   }
 }
 
 const extractSearchTokens = (ast: ProtoAst, title: string): SearchTokens => {
-  const messages: string[] = []
+  const lists: TokenLists = { messages: [], enums: [], values: [], fields: [], comments: [] }
   const services: string[] = []
   const rpcs: string[] = []
-  const enums: string[] = []
-  const fieldNames: string[] = []
-  const comments: string[] = []
-
-  if (ast.packageLeadingComment) {
-    comments.push(ast.packageLeadingComment)
-  }
-
+  pushComment(lists, ast.packageLeadingComment)
   for (const m of ast.messages) {
-    collectMessageTokens(m, messages, comments)
-    for (const f of m.fields) {
-      fieldNames.push(f.name)
-    }
+    collectMessageTokens(m, lists)
   }
   for (const e of ast.enums) {
-    enums.push(e.fqn)
-    if (e.comment) {
-      comments.push(e.comment)
-    }
+    collectEnumTokens(e, lists)
   }
   for (const s of ast.services) {
     services.push(s.fqn)
-    if (s.comment) {
-      comments.push(s.comment)
-    }
+    pushComment(lists, s.comment)
     for (const rpc of s.rpcs) {
       rpcs.push(`${s.fqn}.${rpc.name}`)
-      if (rpc.comment) {
-        comments.push(rpc.comment)
-      }
+      pushComment(lists, rpc.comment)
     }
   }
-
   return {
     title,
-    body: comments.join("\n\n"),
+    body: lists.comments.join("\n\n"),
     headings: [],
-    extras: nonEmpty({ messages, services, rpcs, enums, fields: [...new Set(fieldNames)] }),
+    extras: nonEmpty({
+      messages: lists.messages,
+      services,
+      rpcs,
+      enums: lists.enums,
+      values: [...new Set(lists.values)],
+      fields: [...new Set(lists.fields)],
+    }),
+  }
+}
+
+const parseOrExplain = (source: string, sourcePath: string): ProtoAst => {
+  try {
+    return parseProto(source)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    throw new Error(`aid: failed to parse ${sourcePath}: ${message}`, { cause: err })
   }
 }
