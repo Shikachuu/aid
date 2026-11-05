@@ -28,7 +28,7 @@ const LOADING: UseProtoAstResult = { status: "loading", ast: null, error: null, 
 export const useProtoAst = (options: UseProtoAstOptions): UseProtoAstResult => {
   const { protoText, protoUrl, ast } = options
   const [fetched, setFetched] = useState<{ url: string; source: string } | null>(null)
-  const [fetchError, setFetchError] = useState<Error | null>(null)
+  const [fetchError, setFetchError] = useState<{ url: string; error: Error } | null>(null)
 
   useEffect(() => {
     if (!protoUrl) {
@@ -50,7 +50,10 @@ export const useProtoAst = (options: UseProtoAstOptions): UseProtoAstResult => {
         }
       } catch (err: unknown) {
         if (!controller.signal.aborted) {
-          setFetchError(err instanceof Error ? err : new Error(String(err)))
+          setFetchError({
+            url: protoUrl,
+            error: err instanceof Error ? err : new Error(String(err)),
+          })
         }
       }
     }
@@ -65,8 +68,8 @@ export const useProtoAst = (options: UseProtoAstOptions): UseProtoAstResult => {
     if (protoText != null) {
       return parseSafe(protoText)
     }
-    if (fetchError) {
-      return { status: "error", ast: null, error: fetchError, source: null }
+    if (fetchError?.url === protoUrl) {
+      return { status: "error", ast: null, error: fetchError.error, source: null }
     }
     if (fetched?.url === protoUrl) {
       return parseSafe(fetched.source)
