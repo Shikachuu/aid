@@ -104,7 +104,7 @@ describe("rebuild", () => {
     expect(result.stylesheetDependencies).toContain(partial)
   })
 
-  test("reports an imported partial that does not exist yet", async () => {
+  test("reports a missing partial and rebuilds as soon as it exists", async () => {
     const ctx = await makeSite(cwd)
     await writePage(ctx, "# Home\n")
     await Bun.write(
@@ -144,7 +144,11 @@ describe("rebuild", () => {
     const result = await rebuild(newState(), ctx)
     expect(result.ok).toBe(false)
     expect(result.stylesheetDependencies).toEqual(
-      expect.arrayContaining([path.join(cwd, "ref.css"), path.join(cwd, "partials", "bare.css")]),
+      expect.arrayContaining([
+        path.join(cwd, "ref.css"),
+        path.join(cwd, "partials", "bare.css"),
+        path.join(cwd, "partials", "bare", "index.css"),
+      ]),
     )
   })
 })

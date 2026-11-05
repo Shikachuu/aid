@@ -45,6 +45,7 @@ export function watchContent(
   const watchers: FSWatcher[] = []
   const fileDirs = new Map<string, Set<string>>()
   const unwatchableDirs = new Set<string>()
+  const reportedDirs = new Set<string>()
   let closed = false
 
   const closeAll = () => {
@@ -120,7 +121,10 @@ export function watchContent(
         if (PERMISSION_ERRORS.has((err as NodeJS.ErrnoException).code ?? "")) {
           unwatchableDirs.add(dir)
         }
-        console.error(`[aid] cannot watch ${file}: ${(err as Error).message}`)
+        if (!reportedDirs.has(dir)) {
+          reportedDirs.add(dir)
+          console.error(`[aid] cannot watch ${file}: ${(err as Error).message}`)
+        }
       }
     }
   }

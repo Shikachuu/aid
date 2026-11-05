@@ -164,7 +164,10 @@ function resolveAndEnsureLeadingH1(opts: {
     if (existing) {
       opts.sink.value =
         opts.frontmatterTitle ??
-        (hastText(existing).replace(/\s+/g, " ").trim() || opts.filenameTitle)
+        (hastText(existing)
+          .replace(/[ \t\n\r\f]+/g, " ")
+          .trim() ||
+          opts.filenameTitle)
       return
     }
     const title = opts.frontmatterTitle ?? opts.filenameTitle

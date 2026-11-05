@@ -1,3 +1,4 @@
+import { realpath } from "node:fs/promises"
 import path from "node:path"
 import tailwindIndexCss from "tailwindcss/index.css" with { type: "file" }
 import tailwindPreflightCss from "tailwindcss/preflight.css" with { type: "file" }
@@ -87,9 +88,12 @@ async function resolveRelativeCss(id: string, importerDir: string): Promise<stri
     return undefined
   }
   const target = path.resolve(importerDir, id)
-  for (const candidate of [target, `${target}.css`]) {
+  const directoryIndex = (await Bun.file(path.join(target, "package.json")).exists())
+    ? []
+    : [path.join(target, "index.css")]
+  for (const candidate of [target, `${target}.css`, ...directoryIndex]) {
     if (await Bun.file(candidate).exists()) {
-      return candidate
+      return realpath(candidate)
     }
   }
   return undefined

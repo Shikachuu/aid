@@ -60,7 +60,7 @@ async function relativeImports(files: readonly string[]): Promise<string[]> {
       .catch(() => "")
     for (const [, specifier = ""] of css.matchAll(RELATIVE_IMPORT_RE)) {
       const target = path.resolve(path.dirname(file), specifier)
-      found.push(target, ...(path.extname(target) === "" ? [`${target}.css`] : []))
+      found.push(target, `${target}.css`, path.join(target, "index.css"))
     }
   }
   return found

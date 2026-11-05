@@ -72,6 +72,11 @@ describe("renderMarkdown", () => {
     expect(page.searchTokens.title).toBe("My Project")
   })
 
+  test("a leading raw <h1> keeps its non-breaking spaces", async () => {
+    const page = await renderFixture("page.md", `<h1>v1.0&nbsp;beta</h1>\n\nProse.\n`)
+    expect(page.searchTokens.title).toBe("v1.0\u00a0beta")
+  })
+
   test("no frontmatter, body has H1: H1 text becomes the title", async () => {
     const page = await renderFixture("page.md", `# Body Wins\n\nProse here.\n`)
     const h1Count = (page.html.match(/<h1\b/g) ?? []).length

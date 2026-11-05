@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdir, mkdtemp, realpath, rm, symlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { compileTailwind } from "../../src/core/tailwind"
@@ -146,5 +146,32 @@ describe("compileTailwind", () => {
     const css = await compileTailwind(ctx, [stubHtml("aid-body")])
     expect(css).not.toMatch(/\.aid-body\s*\{/)
     expect(css).toContain("--color-aid-custom")
+  })
+})
+
+describe("relative stylesheet imports", () => {
+  const compileMain = async (main: string) => {
+    await Bun.write(path.join(cwd, "main.css"), `@import "tailwindcss";\n${main}`)
+    const dependencies: string[] = []
+    const css = await compileTailwind(makeCtx(cwd), [], (dep) => dependencies.push(dep))
+    return { css, dependencies }
+  }
+
+  test("a symlinked partial resolves its own imports from its real folder", async () => {
+    await Bun.write(path.join(cwd, "common", "shared.css"), '@import "./vars.css";\n')
+    await Bun.write(path.join(cwd, "common", "vars.css"), ".from-vars { color: red; }\n")
+    await mkdir(path.join(cwd, "theme"))
+    await symlink("../common/shared.css", path.join(cwd, "theme", "shared.css"))
+    const { css, dependencies } = await compileMain('@import "./theme/shared.css";\n')
+    expect(css).toContain(".from-vars")
+    expect(dependencies).toContain(await realpath(path.join(cwd, "common", "shared.css")))
+  })
+
+  test("resolves extensionless and folder imports", async () => {
+    await Bun.write(path.join(cwd, "bare.css"), ".from-bare { color: red; }\n")
+    await Bun.write(path.join(cwd, "folder", "index.css"), ".from-folder { color: red; }\n")
+    const { css } = await compileMain('@import "./bare";\n@import "./folder";\n')
+    expect(css).toContain(".from-bare")
+    expect(css).toContain(".from-folder")
   })
 })
