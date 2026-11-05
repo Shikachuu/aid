@@ -1,7 +1,7 @@
 import path from "node:path"
 import bundledMainCss from "../theme/main.css" with { type: "text" }
 import { deriveDarkPalette } from "./dark-mode"
-import { findMatchingBrace } from "./internal/css-scan"
+import { blankStringsAndComments, findMatchingBrace } from "./internal/css-scan"
 import { installLightningcssShim } from "./internal/lightningcss-native"
 import type { BuildContext } from "./types"
 import { AID_ROOT } from "./web-entries"
@@ -144,15 +144,16 @@ const PREFERS_DARK_RE = /@media\s*\(\s*prefers-color-scheme\s*:\s*dark\s*\)\s*\{
 function stripPrefersDarkBlocks(css: string): string {
   let out = ""
   let cursor = 0
+  const code = blankStringsAndComments(css).code
   PREFERS_DARK_RE.lastIndex = 0
   while (true) {
-    const match = PREFERS_DARK_RE.exec(css)
+    const match = PREFERS_DARK_RE.exec(code)
     if (!match) {
       break
     }
     const blockStart = match.index
     const bodyStart = match.index + match[0].length
-    const bodyEnd = findMatchingBrace(css, bodyStart - 1)
+    const bodyEnd = findMatchingBrace(code, bodyStart - 1)
     if (bodyEnd < 0) {
       break
     }

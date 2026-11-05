@@ -1,11 +1,39 @@
+const STRING_OR_COMMENT =
+  /"(?:\\[\s\S]|[^"\\\n])*"|'(?:\\[\s\S]|[^'\\\n])*'|\/\*([\s\S]*?)\*\/|\/\*[\s\S]*$/g
+
+/** CSS with every string and comment replaced by spaces, so offsets still line up with the source. */
+export type Blanked = { code: string; emptyComments: number[]; unterminatedComment?: number }
+
 /**
- * Return the index of the `}` matching the `{` at `openIdx`, or -1 if unbalanced.
- * Braces inside CSS strings and comments are counted too.
+ * Replace each CSS string and comment with spaces of the same length. Strings
+ * come first in the pattern, so `content: "/*"` is not read as a comment.
  */
-export function findMatchingBrace(css: string, openIdx: number): number {
+export const blankStringsAndComments = (text: string): Blanked => {
+  let code = ""
+  let cursor = 0
+  const emptyComments: number[] = []
+  let unterminatedComment: number | undefined
+  for (const match of text.matchAll(STRING_OR_COMMENT)) {
+    code += text.slice(cursor, match.index) + " ".repeat(match[0].length)
+    cursor = match.index + match[0].length
+    if (match[1]?.trim() === "") {
+      emptyComments.push(match.index)
+    } else if (match[0].startsWith("/*") && match[1] === undefined) {
+      unterminatedComment = match.index
+    }
+  }
+  return { code: code + text.slice(cursor), emptyComments, unterminatedComment }
+}
+
+/**
+ * Return the index of the `}` matching the `{` at `openIdx` in `code`, or -1 if
+ * unbalanced. Pass {@link blankStringsAndComments} output, so braces in strings
+ * and comments do not count.
+ */
+export function findMatchingBrace(code: string, openIdx: number): number {
   let depth = 0
-  for (let i = openIdx; i < css.length; i++) {
-    const c = css[i]
+  for (let i = openIdx; i < code.length; i++) {
+    const c = code[i]
     if (c === "{") {
       depth++
     } else if (c === "}") {

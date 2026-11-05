@@ -54,4 +54,17 @@ describe("deriveDarkPalette", () => {
     expect(result.darkBlock).not.toContain("--space-c")
     expect(result.warnings).toEqual([])
   })
+
+  test("a brace inside a string or comment does not end the @theme block", () => {
+    const result = deriveDarkPalette(
+      `@theme {\n  --font-x: "}";\n  /* } */\n  --color-foo: oklch(80% 0.1 200);\n}`,
+    )
+    expect(result.darkBlock).toContain("--color-foo: oklch(20% 0.1 200);")
+  })
+
+  test("ignores an @theme inside a comment", () => {
+    expect(deriveDarkPalette("/* @theme { --color-foo: oklch(80% 0.1 200); } */").darkBlock).toBe(
+      "",
+    )
+  })
 })
