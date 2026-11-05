@@ -21,9 +21,7 @@
     --proto-font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --proto-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
-    @apply grid w-full;
-    grid-template-columns: 16rem 1fr;
-    gap: 2rem;
+    @apply grid w-full grid-cols-1 gap-8 md:grid-cols-[16rem_1fr];
     background: var(--proto-color-bg);
     color: var(--proto-color-text);
     font-family: var(--proto-font-sans);
@@ -49,8 +47,8 @@
   }
 
   .proto-sidebar {
-    @apply sticky top-0 flex max-h-screen flex-col gap-4 overflow-y-auto py-6 pr-4 text-sm;
-    border-right: 1px solid var(--proto-color-border);
+    @apply flex flex-col gap-4 border-b py-6 text-sm md:sticky md:top-0 md:max-h-screen md:overflow-y-auto md:border-r md:border-b-0 md:pr-4;
+    border-color: var(--proto-color-border);
   }
 
   .proto-sidebar-group {
@@ -191,7 +189,7 @@
 
   .proto-field-table,
   .proto-enum-table {
-    @apply w-full border-collapse text-sm;
+    @apply w-full border-collapse text-sm max-md:block max-md:overflow-x-auto;
   }
 
   .proto-field-table th,
