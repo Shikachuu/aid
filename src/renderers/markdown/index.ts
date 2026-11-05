@@ -162,7 +162,7 @@ function resolveAndEnsureLeadingH1(opts: {
   return (tree: HastRoot): void => {
     const existing = leadingH1(tree)
     if (existing) {
-      opts.sink.value = opts.frontmatterTitle ?? (hastText(existing) || opts.filenameTitle)
+      opts.sink.value = opts.frontmatterTitle ?? (hastText(existing).trim() || opts.filenameTitle)
       return
     }
     const title = opts.frontmatterTitle ?? opts.filenameTitle

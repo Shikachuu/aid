@@ -1,11 +1,13 @@
 import { rm } from "node:fs/promises"
+import path from "node:path"
 import { build } from "../core/pipeline"
 import type { BuildContext } from "../core/types"
 import { broadcast, type DevErrorPayload, type DevState, toErrorPayload } from "./state"
 
 /**
- * Outcome of one `rebuild`. Both outcomes list the stylesheet partials Tailwind
- * reached, so a partial whose error failed the build still gets watched.
+ * Outcome of one `rebuild`. Both outcomes list the stylesheet partials, so a
+ * partial whose error failed the build still gets watched. A failure also lists
+ * the relative `@import` targets, including one that does not exist yet.
  */
 export type RebuildResult = { durationMs: number; stylesheetDependencies: string[] } & (
   { ok: true } | { ok: false; error: DevErrorPayload }
@@ -35,11 +37,32 @@ export async function rebuild(state: DevState, ctx: BuildContext): Promise<Rebui
     broadcast(state, "reload", "")
     return { ok: true, durationMs: elapsed(), stylesheetDependencies }
   } catch (err) {
+    stylesheetDependencies.push(
+      ...(await relativeImports([
+        path.resolve(ctx.cwd, ctx.config.stylesheet),
+        ...stylesheetDependencies,
+      ])),
+    )
     const error = toErrorPayload(err)
     state.errorState = error
     broadcast(state, "error-detail", JSON.stringify(error))
     return { ok: false, durationMs: elapsed(), stylesheetDependencies, error }
   }
+}
+
+const RELATIVE_IMPORT_RE = /@import\s+(?:url\(\s*)?["'](\.{1,2}\/[^"']+)["']/g
+
+async function relativeImports(files: readonly string[]): Promise<string[]> {
+  const found: string[] = []
+  for (const file of files) {
+    const css = await Bun.file(file)
+      .text()
+      .catch(() => "")
+    for (const [, specifier = ""] of css.matchAll(RELATIVE_IMPORT_RE)) {
+      found.push(path.resolve(path.dirname(file), specifier))
+    }
+  }
+  return found
 }
 
 /**

@@ -42,8 +42,11 @@ export function watchContent(
   })
   const watchers: FSWatcher[] = []
   const fileDirs = new Map<string, Set<string>>()
+  const unwatchableDirs = new Set<string>()
+  let closed = false
 
   const closeAll = () => {
+    closed = true
     queue.cancel()
     for (const w of watchers) {
       w.close()
@@ -105,9 +108,14 @@ export function watchContent(
 
   const watchMoreFiles = (paths: Iterable<string>) => {
     for (const file of paths) {
+      const dir = path.dirname(file)
+      if (closed || unwatchableDirs.has(dir)) {
+        continue
+      }
       try {
         watchFiles([file])
       } catch (err) {
+        unwatchableDirs.add(dir)
         console.error(`[aid] cannot watch ${file}: ${(err as Error).message}`)
       }
     }

@@ -103,6 +103,18 @@ describe("rebuild", () => {
     expect(result.ok).toBe(false)
     expect(result.stylesheetDependencies).toContain(partial)
   })
+
+  test("reports an imported partial that does not exist yet", async () => {
+    const ctx = await makeSite(cwd)
+    await writePage(ctx, "# Home\n")
+    await Bun.write(
+      path.join(cwd, "main.css"),
+      '@import "tailwindcss";\n@import "aid/theme";\n@import "./partials/new.css";\n',
+    )
+    const result = await rebuild(newState(), ctx)
+    expect(result.ok).toBe(false)
+    expect(result.stylesheetDependencies).toContain(path.join(cwd, "partials", "new.css"))
+  })
 })
 
 describe("serializeRuns", () => {

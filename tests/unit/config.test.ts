@@ -66,16 +66,28 @@ describe("base_path", () => {
     ["/docs", "/docs"],
     ["/docs/", "/docs"],
     ["/a/b//", "/a/b"],
+    ["/.well-known/...", "/.well-known/..."],
   ])("normalizes %j to %j", (input, expected) => {
     expect(AidConfigSchema.parse({ name: "T", base_path: input }).base_path).toBe(expected)
   })
 
-  test.each(["docs", "", "//", "//evil.example", "javascript:alert(1)", "/a b", "/a?b", "/a#b"])(
-    "rejects %j",
-    (input) => {
-      expect(() => AidConfigSchema.parse({ name: "T", base_path: input })).toThrow(/base_path/)
-    },
-  )
+  test.each([
+    "docs",
+    "",
+    "//",
+    "//evil.example",
+    "javascript:alert(1)",
+    "/a b",
+    "/a?b",
+    "/a#b",
+    "/docs%20v2",
+    "/a/../b",
+    "/a/./b",
+    "/..",
+    "/a//b",
+  ])("rejects %j", (input) => {
+    expect(() => AidConfigSchema.parse({ name: "T", base_path: input })).toThrow(/base_path/)
+  })
 })
 
 describe("base_url", () => {

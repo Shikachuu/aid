@@ -39,7 +39,7 @@ The same prefix applies to the sidebar links, the site name link in the header, 
 
 aid does not change URLs that you write as absolute paths. A link to `/schemas/aid.schema.json` stays as written and misses the prefix. To link a file in `dir.static`, write the prefix yourself (`/aid/schemas/aid.schema.json`), or put the file next to the page and link it with a relative path. [Links](../content-types/links.md) covers which links aid rewrites.
 
-`base_path` must start with a single `/` and must not hold whitespace, `\`, `?`, or `#`. aid rejects other values, because a value without the leading slash produces relative URLs that break on nested pages. aid drops a trailing slash, so `/aid/` and `/aid` give the same URLs.
+`base_path` must start with a single `/` and must not hold whitespace, `\`, `?`, `#`, `%`, empty segments, or `.` and `..` segments. aid rejects other values, because a value without the leading slash produces relative URLs that break on nested pages. aid drops a trailing slash, so `/aid/` and `/aid` give the same URLs.
 
 ## base_url
 

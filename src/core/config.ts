@@ -11,7 +11,10 @@ const AiTarget = z
 /** Valid TCP port for the dev server. Shared by the config schema and the `--port` flag. */
 export const PortSchema = z.number().int().min(0).max(65535)
 
-const BASE_PATH_RE = /^\/(?:[^/\s\\?#][^\s\\?#]*)?$/
+const BASE_PATH_SEGMENT = String.raw`(?:[^/\s\\?#%.]|\.[^/\s\\?#%.]|\.\.[^/\s\\?#%])[^/\s\\?#%]*`
+const BASE_PATH_RE = new RegExp(
+  String.raw`^\/(?:${BASE_PATH_SEGMENT}(?:\/${BASE_PATH_SEGMENT})*\/*)?$`,
+)
 
 const trimTrailingSlashes = (basePath: string): string => basePath.replace(/\/+$/, "") || "/"
 
@@ -75,7 +78,8 @@ export const AidConfigSchema = z
     base_path: z
       .string()
       .regex(BASE_PATH_RE, {
-        message: "base_path must start with a single '/' and hold no whitespace, '\\', '?' or '#'",
+        message:
+          "base_path must start with a single '/' and hold no whitespace, '\\', '?', '#', '%', empty segments, or '.' and '..' segments",
       })
       .default("/")
       .transform(trimTrailingSlashes)

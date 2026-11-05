@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
 import { chmodSync, mkdirSync, mkdtempSync, renameSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -192,23 +192,28 @@ describe("watchContent", () => {
     }
   })
 
-  test("keeps watching when a partial's folder cannot be watched", async () => {
-    const css = join(dir, "main.css")
-    const locked = join(dir, "locked")
-    mkdirSync(locked)
-    chmodSync(locked, 0o000)
-    const r = reporter()
-    const handle = watchContent(ctx(), join(dir, "aid.yaml"), [css], r.onChange, immediate)
-    try {
-      handle.watchFiles([
-        "/$bunfs/root/theme.css",
-        join(locked, "inner", "x.css"),
-        join(locked, "x.css"),
-      ])
-      await r.until((i) => Bun.write(css, `a{--i:${i}}`))
-    } finally {
-      chmodSync(locked, 0o700)
-      handle.close()
-    }
-  })
+  test.skipIf(process.getuid?.() === 0)(
+    "keeps watching when a partial's folder cannot be watched, and logs each folder once",
+    async () => {
+      const css = join(dir, "main.css")
+      const locked = join(dir, "locked")
+      mkdirSync(locked)
+      chmodSync(locked, 0o000)
+      const error = spyOn(console, "error").mockImplementation(() => {})
+      const r = reporter()
+      const handle = watchContent(ctx(), join(dir, "aid.yaml"), [css], r.onChange, immediate)
+      try {
+        const partials = ["/$bunfs/root/theme.css", join(locked, "a.css"), join(locked, "b.css")]
+        handle.watchFiles(partials)
+        handle.watchFiles(partials)
+        expect(error).toHaveBeenCalledTimes(1)
+        expect(String(error.mock.calls[0]?.[0])).toContain(`cannot watch ${join(locked, "a.css")}`)
+        await r.until((i) => Bun.write(css, `a{--i:${i}}`))
+      } finally {
+        error.mockRestore()
+        chmodSync(locked, 0o700)
+        handle.close()
+      }
+    },
+  )
 })

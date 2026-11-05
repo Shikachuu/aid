@@ -28,7 +28,7 @@ components:
           description: "URL path prefix for all routes. Must start with '/'; a trailing slash is dropped. Default '/'. Use '/docs' to host at example.com/docs/."
           default: /
           type: string
-          pattern: "^\\/(?:[^/\\s\\\\?#][^\\s\\\\?#]*)?$"
+          pattern: "^\\/(?:(?:[^/\\s\\\\?#%.]|\\.[^/\\s\\\\?#%.]|\\.\\.[^/\\s\\\\?#%])[^/\\s\\\\?#%]*(?:\\/(?:[^/\\s\\\\?#%.]|\\.[^/\\s\\\\?#%.]|\\.\\.[^/\\s\\\\?#%])[^/\\s\\\\?#%]*)*\\/*)?$"
         stylesheet:
           default: main.css
           description: "Path to the Tailwind CSS entrypoint. Applied uniformly to every page type (markdown, HTML, OpenAPI, proto)."
