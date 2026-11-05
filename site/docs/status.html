@@ -62,8 +62,8 @@
     <tbody>
       <tr>
         <td>Compiled binaries</td>
-        <td><code>bun run build</code> writes four binaries to <code>dist/bin/</code>, and they build sites when run inside a checkout of the aid repository.</td>
-        <td>A <code>darwin-x64</code> binary cross-compiled on Apple silicon carries an invalid ad-hoc signature, and macOS kills it on start until you re-sign it. Outside the aid repository the <code>darwin-arm64</code> binary fails on start with <code>Cannot find module '@bufbuild/buf-darwin-x64/bin/buf'</code>. Every binary embeds a Bun canary runtime, because no stable Bun ships <code>bun lint</code> yet. See <a href="./getting-started/installation.md">installation</a>.</td>
+        <td><code>bun run build</code> writes four binaries to <code>dist/bin/</code>, and the Linux binaries build sites from any directory.</td>
+        <td>A <code>darwin-x64</code> binary cross-compiled on Apple silicon carries an invalid ad-hoc signature, and macOS kills it on start until you re-sign it. Nothing runs the macOS binaries on macOS yet. Every binary embeds a Bun canary runtime, because no stable Bun ships <code>bun lint</code> yet. See <a href="./getting-started/installation.md">installation</a>.</td>
       </tr>
       <tr>
         <td>Rebuilds</td>

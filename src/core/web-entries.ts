@@ -5,7 +5,7 @@ export const AID_ROOT = path.join(import.meta.dir, "../..")
 
 /**
  * True when aid runs from its source tree. A compiled binary has none and uses
- * the bytes `scripts/bundle-web.ts` embedded in `src/web/_bundled.ts`.
+ * the bytes that `scripts/compile.ts` swaps in for `src/web/_bundled.ts`.
  */
 export const hasSourceTree = (): Promise<boolean> =>
   Bun.file(path.join(AID_ROOT, "src/web/index.ts")).exists()
@@ -17,7 +17,7 @@ export const hasSourceTree = (): Promise<boolean> =>
 export function requireEmbedded(name: string, bytes: string): string {
   if (bytes.length === 0) {
     throw new Error(
-      `aid: ${name} has no embedded bytes and no source tree on disk. Run \`bun scripts/bundle-web.ts\` before \`bun run build\`.`,
+      `aid: ${name} has no embedded bytes and no source tree on disk. Build the binary with \`bun run build\`, which runs \`scripts/bundle-web.ts\` first.`,
     )
   }
   return bytes
@@ -25,7 +25,7 @@ export function requireEmbedded(name: string, bytes: string): string {
 
 /**
  * Browser bundles. `exportName` is the matching export in `src/web/_bundled.ts`,
- * which `scripts/bundle-web.ts` generates for the compiled binary.
+ * whose compiled-binary copy `scripts/bundle-web.ts` generates.
  */
 export const WEB_JS = {
   base: { name: "aid-web", source: "src/web/index.ts", exportName: "aidWebJs" },

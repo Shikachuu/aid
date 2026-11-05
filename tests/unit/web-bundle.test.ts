@@ -30,7 +30,7 @@ describe("requireEmbedded", () => {
 
   test("names the bundle and the fix when the bytes are empty", () => {
     expect(() => requireEmbedded("aid-web", "")).toThrow(
-      /^aid: aid-web has no embedded bytes.*bun scripts\/bundle-web\.ts/,
+      /^aid: aid-web has no embedded bytes.*bun run build/,
     )
   })
 })

@@ -74,4 +74,4 @@ bun run build
 There is no Windows target. The Linux binaries need glibc: on a musl system such as Alpine, a binary stops with `aid: unsupported platform` when it first compiles CSS. Each binary is between 199 and 222 MB, because it embeds Bun, the Tailwind compiler, `buf`, and the browser scripts.
 
 > [!WARNING]
-> The compiled binaries do not work as standalone installs yet. A `darwin-x64` binary cross-compiled on Apple silicon carries an invalid ad-hoc signature, and macOS kills it on start. Re-sign a copy with `codesign --force --sign - <file>` to run it. Outside the aid checkout, the `darwin-arm64` binary fails on start with `Cannot find module '@bufbuild/buf-darwin-x64/bin/buf'`. Run aid from source until this is fixed. The [status page](../status.html) tracks it.
+> A `darwin-x64` binary cross-compiled on Apple silicon carries an invalid ad-hoc signature, and macOS kills it on start. Re-sign a copy with `codesign --force --sign - <file>` to run it. The test suite runs the Linux binary outside the checkout, but nothing tests the macOS binaries on macOS yet. The [status page](../status.html) tracks it.
