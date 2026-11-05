@@ -216,10 +216,16 @@ describe("css in the lint and fmt pipelines", () => {
     expect(renderPretty(report.results)).toContain("(md 0, openapi 0, bun 0, css 1, proto 0)")
   })
 
-  test("fmt drops css from --filter", () => {
-    expect(parseFilter("css", FORMAT_TOOLS)).toBeNull()
-    expect(parseFilter("css,md", FORMAT_TOOLS)).toEqual(new Set(["md"]))
+  test("fmt rejects css and unknown names in --filter instead of running every tool", () => {
+    expect(() => parseFilter("css", FORMAT_TOOLS)).toThrow(/unknown --filter tool css/)
+    expect(() => parseFilter("css,md", FORMAT_TOOLS)).toThrow(
+      /Choose from: md, openapi, bun, proto/,
+    )
+    expect(() => parseFilter("mdd")).toThrow(/unknown --filter tool mdd/)
     expect(parseFilter("css")).toEqual(new Set(["css"]))
+    expect(parseFilter(" md , bun ")).toEqual(new Set(["md", "bun"]))
+    expect(parseFilter(undefined)).toBeNull()
+    expect(parseFilter("")).toBeNull()
   })
 
   test("fmt has no css tool", async () => {

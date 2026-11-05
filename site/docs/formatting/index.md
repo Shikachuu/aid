@@ -39,7 +39,7 @@ Each file that would change prints as one line and counts as a warning in the su
 | --- | --- |
 | `[dir]` | Directory to format. Defaults to the current directory. |
 | `--check` | Write nothing. List the files that would change and exit 1 if there are any. |
-| `--filter md,openapi,bun,proto` | Run only the listed tools. aid drops unknown names. When no valid name is left, every tool runs. |
+| `--filter md,openapi,bun,proto` | Run only the listed tools. An unknown name, such as a typo, stops the run with an error that lists the valid names. |
 | `--format pretty\|json` | Output format. Defaults to `pretty`. |
 
 In JSON output, each tool result has a `wouldChange` array with the files that would change in `--check` mode. The rest of the shape matches [the lint JSON output](../linting/index.md#json-output).

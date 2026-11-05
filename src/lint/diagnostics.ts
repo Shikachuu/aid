@@ -33,18 +33,28 @@ export type ToolResult = {
 export type Report = { ok: boolean; results: ToolResult[] }
 
 /**
- * Parse a `--filter` value such as `md,bun` into a tool set. Names outside
- * `allowed` are dropped; `null` (run every tool) is returned when nothing valid remains.
+ * Parse a `--filter` value such as `md,bun` into a tool set, or `null` to run
+ * every tool when no filter is given. Throws on a name outside `allowed`, so a
+ * typo never widens a run that rewrites files.
  */
 export const parseFilter = (
   raw: string | undefined,
   allowed: readonly Tool[] = KNOWN_TOOLS,
 ): Set<Tool> | null => {
-  const tools = (raw ?? "")
+  const names = (raw ?? "")
     .split(",")
     .map((part) => part.trim())
-    .filter((part): part is Tool => (allowed as readonly string[]).includes(part))
-  return tools.length === 0 ? null : new Set(tools)
+    .filter((part) => part !== "")
+  if (names.length === 0) {
+    return null
+  }
+  const unknown = names.filter((name) => !(allowed as readonly string[]).includes(name))
+  if (unknown.length > 0) {
+    throw new Error(
+      `aid: unknown --filter ${unknown.length === 1 ? "tool" : "tools"} ${unknown.join(", ")}. Choose from: ${allowed.join(", ")}.`,
+    )
+  }
+  return new Set(names as Tool[])
 }
 
 const ANSI = {

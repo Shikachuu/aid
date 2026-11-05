@@ -47,7 +47,7 @@ The line format is `file:line:col  severity  code  message`. The summary counts 
 | Flag | Effect |
 | --- | --- |
 | `[dir]` | Directory to scan. Defaults to the current directory. |
-| `--filter md,openapi,bun,css,proto` | Run only the listed tools. aid drops unknown names. When no valid name is left, every tool runs. |
+| `--filter md,openapi,bun,css,proto` | Run only the listed tools. An unknown name, such as a typo, stops the run with an error that lists the valid names. |
 | `--fix` | Write autofixes to disk. Only markdownlint fixes and `bun lint --fix` apply. Spectral, `css`, and buf have no fix mode. |
 | `--format pretty\|json` | Output format. Defaults to `pretty`. |
 
@@ -85,7 +85,7 @@ flowchart TD
   JS --> X
 ```
 
-1. aid parses `--filter` into a set of tools. No filter, or a filter with no valid names, selects all five.
+1. aid parses `--filter` into a set of tools. No filter selects all five. An unknown name stops the run with exit code 1.
 2. For each selected tool, aid globs the target directory with that tool's patterns. It skips `node_modules`, `dist`, `.git`, and the other folders listed in [the lint defaults reference](../reference/lint-defaults.md).
 3. aid runs the selected tools in parallel. A tool with no matching files passes with no findings.
 4. Each tool finds its config file (see [configuring the linters](./configuring.md)) or falls back to the bundled default.
