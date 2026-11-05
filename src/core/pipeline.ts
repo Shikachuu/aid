@@ -56,7 +56,7 @@ export async function build(ctx: BuildContext): Promise<void> {
     ctx,
   )
 
-  const web = await buildWebBundle(ctx, {
+  const web = await buildWebBundle(ctx, registry, {
     mermaid: rendered.some((p) => p.hasMermaid),
     openapi: rendered.some((p) => p.hasOpenApi),
     proto: rendered.some((p) => p.hasProto),
@@ -85,7 +85,7 @@ export async function build(ctx: BuildContext): Promise<void> {
     ctx,
     docs.map((d) => d.html),
   )
-  const href = await writeHashed(ctx, "main", "css", css)
+  const href = await writeHashed(ctx, registry, "main", "css", css)
 
   const writes: Promise<unknown>[] = [Bun.write(llmsTxtPath, llmsTxt)]
   if (searchIndex) {

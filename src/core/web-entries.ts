@@ -47,17 +47,18 @@ export const WEB_CSS = {
 /** One entry of {@link WEB_JS}. */
 export type WebJsEntry = (typeof WEB_JS)[keyof typeof WEB_JS]
 
-/** Bundle one browser entry as minified ESM and return its entry-point output. */
-export async function bundleWebEntry(
+/** Bundle one browser entry as minified ESM and return every output: the entry point, chunks and assets. */
+export async function bundleWebOutputs(
   entry: WebJsEntry,
   options: Partial<Bun.BuildConfig> = {},
-): Promise<Bun.BuildArtifact> {
+): Promise<Bun.BuildArtifact[]> {
   const result = await Bun.build({
     entrypoints: [path.join(AID_ROOT, entry.source)],
     target: "browser",
     format: "esm",
     minify: true,
     ...options,
+    throw: false,
   })
   if (!result.success) {
     for (const log of result.logs) {
@@ -65,7 +66,20 @@ export async function bundleWebEntry(
     }
     throw new Error(`failed to bundle ${entry.source}`)
   }
-  const output = result.outputs.find((o) => o.kind === "entry-point")
+  return result.outputs
+}
+
+/** Bundle one browser entry as minified ESM and return its entry-point output. */
+export async function bundleWebEntry(
+  entry: WebJsEntry,
+  options: Partial<Bun.BuildConfig> = {},
+): Promise<Bun.BuildArtifact> {
+  return entryPointOf(entry, await bundleWebOutputs(entry, options))
+}
+
+/** The entry-point artifact among `outputs`. Throws when the build produced none. */
+export function entryPointOf(entry: WebJsEntry, outputs: Bun.BuildArtifact[]): Bun.BuildArtifact {
+  const output = outputs.find((o) => o.kind === "entry-point")
   if (!output) {
     throw new Error(`no entry-point output for ${entry.source}`)
   }

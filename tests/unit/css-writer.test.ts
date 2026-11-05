@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
+import { AssetRegistry } from "../../src/core/assets"
 import type { BuildContext } from "../../src/core/types"
 import { writeHashed } from "../../src/core/web-bundle"
 import { makeCtx } from "../helpers"
@@ -17,7 +18,7 @@ afterEach(async () => {
 })
 
 async function writeCss({ ctx, css }: { ctx: BuildContext; css: string }) {
-  const href = await writeHashed(ctx, "main", "css", css)
+  const href = await writeHashed(ctx, new AssetRegistry(), "main", "css", css)
   return { href, path: path.join(ctx.outputDir, path.posix.basename(href)) }
 }
 
@@ -58,6 +59,17 @@ describe("writeHashed (main.css)", () => {
     const ctx = makeCtx(cwd, { base_path: "/docs" })
     const result = await writeCss({ ctx, css: ".x{}" })
     expect(result.href).toMatch(/^\/docs\/main\.[0-9a-f]{8}\.css$/)
+  })
+
+  test("a file already registered at the same path is a collision", async () => {
+    const ctx = makeCtx(cwd)
+    const registry = new AssetRegistry()
+    const href = await writeHashed(ctx, registry, "main", "css", ".x{}")
+    const taken = new AssetRegistry()
+    taken.register(path.join(ctx.outputDir, path.posix.basename(href)), "static/main.css")
+    await expect(writeHashed(ctx, taken, "main", "css", ".x{}")).rejects.toThrow(
+      /asset collision.*static\/main\.css/,
+    )
   })
 
   test("href handles trailing slash in base_path", async () => {
