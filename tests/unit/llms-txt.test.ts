@@ -56,7 +56,7 @@ function makePage(args: {
   }
 }
 
-describe("buildLlmsTxt — bundled default template", () => {
+describe("buildLlmsTxt - bundled default template", () => {
   test("emits name, description, grouped TOC, and Optional section", async () => {
     const ctx = makeCtx(cwd, { description: "A test site." })
     const out = await buildLlmsTxt(ctx, [
@@ -112,7 +112,7 @@ describe("buildLlmsTxt — bundled default template", () => {
   })
 })
 
-describe("buildLlmsTxt — sections follow the sidebar", () => {
+describe("buildLlmsTxt - sections follow the sidebar", () => {
   test("a folder landing page joins its folder's section, named by its title", async () => {
     const ctx = makeCtx(cwd)
     const out = await buildLlmsTxt(ctx, [
@@ -141,7 +141,7 @@ describe("buildLlmsTxt — sections follow the sidebar", () => {
   })
 })
 
-describe("buildLlmsTxt — optional filter", () => {
+describe("buildLlmsTxt - optional filter", () => {
   test("optional pages move to {{toc:optional}} and out of {{toc}}", async () => {
     const ctx = makeCtx(cwd)
     const out = await buildLlmsTxt(ctx, [
@@ -160,17 +160,34 @@ describe("buildLlmsTxt — optional filter", () => {
     expect(docsSection).toContain("[Home](/index.md)")
   })
 
-  test("no optional pages → {{toc:optional}} expands to empty (header remains in default template)", async () => {
+  test("no optional pages -> the default template has no Optional section", async () => {
     const ctx = makeCtx(cwd)
     const out = await buildLlmsTxt(ctx, [makePage({ routePath: "/", title: "Home" })])
-    expect(out).toContain("## Optional")
-    const tail = out.split("## Optional")[1] ?? ""
-    expect(tail.trim()).toBe("")
+    expect(out).not.toContain("## Optional")
+    expect(out.endsWith("- [Home](/index.md)\n")).toBe(true)
   })
 })
 
-describe("buildLlmsTxt — URL formation", () => {
-  test("kind drives suffix: openapi → .json, proto → .proto, otherwise .md", async () => {
+describe("buildLlmsTxt - page lines", () => {
+  test("escapes brackets in titles and parentheses and spaces in URLs", async () => {
+    const ctx = makeCtx(cwd)
+    const out = await buildLlmsTxt(ctx, [
+      makePage({ routePath: "/a (b) c", title: "Use [x] here" }),
+    ])
+    expect(out).toContain("- [Use \\[x\\] here](/a%20%28b%29%20c.md)")
+  })
+
+  test("joins a multi-line description onto the bullet line", async () => {
+    const ctx = makeCtx(cwd)
+    const out = await buildLlmsTxt(ctx, [
+      makePage({ routePath: "/", title: "Home", description: "First line\n  second line" }),
+    ])
+    expect(out).toContain("- [Home](/index.md): First line second line\n")
+  })
+})
+
+describe("buildLlmsTxt - URL formation", () => {
+  test("kind drives suffix: openapi -> .json, proto -> .proto, otherwise .md", async () => {
     const ctx = makeCtx(cwd)
     const out = await buildLlmsTxt(ctx, [
       makePage({ routePath: "/md", title: "MD", kind: "markdown" }),
@@ -211,7 +228,7 @@ describe("buildLlmsTxt — URL formation", () => {
   })
 })
 
-describe("buildLlmsTxt — template override", () => {
+describe("buildLlmsTxt - template override", () => {
   test("user template at <templatesDir>/llms.txt takes precedence over the bundled default", async () => {
     await Bun.write(path.join(cwd, "templates", "llms.txt"), "# Custom {{name}}\n")
     const ctx = makeCtx(cwd, { dir: { templates: "templates" } })

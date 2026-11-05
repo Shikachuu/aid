@@ -13,3 +13,24 @@ export const driftedFiles = async (root: string, files: GeneratedFile[]): Promis
   )
   return drifted.filter((p): p is string => p !== null)
 }
+
+/** Return the files under `dir` that no generator owns, so a renamed or dropped page does not linger. */
+export const orphanedFiles = async (
+  root: string,
+  dir: string,
+  files: GeneratedFile[],
+): Promise<string[]> => {
+  const owned = new Set(files.map((f) => f.path))
+  const present = await Array.fromAsync(
+    new Bun.Glob("**/*").scan({ cwd: path.join(root, dir), dot: true }),
+  ).catch((err: NodeJS.ErrnoException) => {
+    if (err.code === "ENOENT") {
+      return []
+    }
+    throw err
+  })
+  return present
+    .map((rel) => path.posix.join(dir, rel.split(path.sep).join("/")))
+    .filter((p) => !owned.has(p))
+    .sort()
+}

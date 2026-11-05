@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 import { generated } from "../../scripts/gen-bunfig"
 import { configArgs, renderBunfig } from "../../src/lint/bun"
 
@@ -40,7 +40,7 @@ describe("generated repo config", () => {
     expect(files["bunfig.toml"]).not.toContain("[fmt]")
   })
 
-  test("points the Tailwind plugin at stylesheets that exist", async () => {
+  test("points the Tailwind plugin at stylesheets whose imports resolve", async () => {
     const prettier = JSON.parse(files[".prettierrc.json"] ?? "") as {
       plugins: string[]
       tailwindStylesheet: string
@@ -52,7 +52,12 @@ describe("generated repo config", () => {
       ...prettier.overrides.map((o) => o.options.tailwindStylesheet),
     ]
     for (const sheet of sheets) {
-      expect(await Bun.file(join(ROOT, sheet)).exists()).toBe(true)
+      const css = await Bun.file(join(ROOT, sheet)).text()
+      const imports = [...css.matchAll(/@import\s+"([^"]+)"/g)].map((m) => m[1] ?? "")
+      expect(imports.length).toBeGreaterThan(0)
+      for (const specifier of imports) {
+        expect(() => Bun.resolveSync(specifier, dirname(join(ROOT, sheet)))).not.toThrow()
+      }
     }
   })
 

@@ -113,6 +113,7 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
       "scripts/stage-natives.ts",
       "scripts/natives.ts",
       "src/core/internal/**",
+      "src/core/web-bundle.ts",
       "src/web/_bundled.ts",
     ],
     pages: [`${DOCS}/contributing/single-binary.md`, `${DOCS}/getting-started/installation.md`],
@@ -145,6 +146,7 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
   {
     sources: [
       "scripts/gen-docs.ts",
+      "scripts/generated-files.ts",
       "scripts/docs-affected.ts",
       ".claude/skills/docs-sync/**",
       "site/aid.yaml",
@@ -164,7 +166,7 @@ export const HUB_PAGES: readonly string[] = [`${DOCS}/index.md`, `${DOCS}/deploy
 
 const WATCHED_PREFIXES = ["src/", "scripts/", "packages/proto-ui/src/"]
 
-/** Result of {@link affectedPages}. */
+/** Result of {@link affectedPages}. `unmapped` lists changed sources that no entry covers, so the map can grow with them. */
 export type Affected = {
   pages: { page: string; touched: boolean }[]
   unmapped: string[]
@@ -175,7 +177,7 @@ export type Affected = {
  * touches it, plus changed source files no entry maps. The catch-all
  * `contributing/index.md` entry does not count as a mapping.
  */
-export function affectedPages(changed: readonly string[]): Affected {
+export const affectedPages = (changed: readonly string[]): Affected => {
   const changedSet = new Set(changed)
   const pages = new Set<string>()
   const mapped = new Set<string>()
@@ -204,7 +206,7 @@ export function affectedPages(changed: readonly string[]): Affected {
 
 const REPO_ROOT = path.join(import.meta.dir, "..")
 
-async function changedFiles(base: string): Promise<string[]> {
+const changedFiles = async (base: string): Promise<string[]> => {
   const run = async (...args: string[]) => {
     const result = await Bun.$`git ${args}`.cwd(REPO_ROOT).quiet().nothrow()
     if (result.exitCode !== 0) {
@@ -212,17 +214,17 @@ async function changedFiles(base: string): Promise<string[]> {
       console.error("Pass an existing ref with --base <ref>.")
       process.exit(1)
     }
-    return result.text().split("\n").filter(Boolean)
+    return result.text().split("\0").filter(Boolean)
   }
   const files = [
-    ...(await run("diff", "--name-only", "--no-renames", `${base}...HEAD`)),
-    ...(await run("diff", "--name-only", "--no-renames", "HEAD")),
-    ...(await run("ls-files", "--others", "--exclude-standard", "--full-name")),
+    ...(await run("diff", "-z", "--name-only", "--no-renames", `${base}...HEAD`)),
+    ...(await run("diff", "-z", "--name-only", "--no-renames", "HEAD")),
+    ...(await run("ls-files", "-z", "--others", "--exclude-standard", "--full-name")),
   ]
   return [...new Set(files)].sort()
 }
 
-function baseRef(argv: string[]): string {
+const baseRef = (argv: string[]): string => {
   const at = argv.indexOf("--base")
   if (at === -1) {
     return "origin/main"

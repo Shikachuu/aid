@@ -5,7 +5,7 @@ import { serveFile } from "../src/dev/server"
 
 const ROOT = resolve(import.meta.dir, "..")
 
-const buildBinary = Bun.spawn(["bun", "run", "build"], {
+const buildBinary = Bun.spawn([process.execPath, "run", "build"], {
   stdout: "inherit",
   stderr: "inherit",
   cwd: ROOT,
@@ -35,6 +35,7 @@ const sampleExit = await buildSample.exited
 
 if (sampleExit !== 0) {
   console.error(`[aid] build failed (exit ${sampleExit})`)
+  process.exit(sampleExit)
 }
 
 console.log(`[server] running static file server for sample project ${SAMPLE_PROJECT}/dist`)

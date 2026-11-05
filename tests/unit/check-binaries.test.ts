@@ -284,6 +284,23 @@ describe("against a project root", () => {
     expect(errors).toContain("  - @bufbuild/buf is not installed (run `mise install`)")
     expect(errors).toContain("  - @types/bun is not installed (run `mise install`)")
   })
+
+  test("main flags a @tailwindcss/node that drifted from @tailwindcss/oxide", async () => {
+    const pkg = (name: string, version: string) =>
+      Bun.write(path.join(root, "node_modules", name, "package.json"), JSON.stringify({ version }))
+    await pkg("@tailwindcss/oxide", "4.3.4")
+    await pkg("@tailwindcss/node", "4.3.3")
+    const errors: string[] = []
+    const error = spyOn(console, "error").mockImplementation((msg: string) => errors.push(msg))
+    try {
+      await main(["--offline"], root)
+    } finally {
+      error.mockRestore()
+    }
+    expect(errors).toContain(
+      "  - @tailwindcss/node is 4.3.3, expected 4.3.4 to match @tailwindcss/oxide",
+    )
+  })
 })
 
 describe("latestBunKeepingCanaryPin", () => {
