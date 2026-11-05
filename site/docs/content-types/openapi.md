@@ -46,7 +46,7 @@ aid runs the spec through `@scalar/openapi-parser` at build time, in three steps
 2. `upgrade` converts Swagger 2.0 and OpenAPI 3.0 to OpenAPI 3.1.
 3. `dereference` resolves the `$ref` pointers inside the file.
 
-aid does not load other files. A `$ref` to another file, such as `./schemas/pet.yaml#/Pet`, stays unresolved, and aid prints a warning. The build continues and the page renders with the `$ref` left in place.
+aid does not load other files. A `$ref` to another file, such as `./schemas/pet.yaml#/Pet`, stays unresolved, and aid lists an `openapi/ref` warning in the [broken-reference report](./links.md#broken-reference-check). The build continues and the page renders with the `$ref` left in place.
 
 ```text
 aid: <abs path>/docs/api.yaml: <root> — Can't resolve external reference: ./schemas/pet.yaml

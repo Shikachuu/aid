@@ -22,6 +22,7 @@ aid resolves the path against the folder of the source file, copies the file int
 - In markdown, aid rewrites image syntax: `![alt](./x.png)` and reference-style images.
 - In HTML pages, aid rewrites the `src` attribute of `<img>`. It does not rewrite `srcset`, `<source>`, `<video>`, or CSS `url()`.
 - aid leaves absolute paths (`/img/x.png`), `#fragment` sources, and URLs with a scheme (`https:`, `data:`) unchanged.
+- aid percent-decodes the path before it looks for the file, so `./a%20b.png` finds `a b.png`. A query string or `#fragment`, as in `./icons.svg#star`, stays on the rewritten URL.
 - aid does not rewrite raw `<img>` tags inside markdown. Use markdown image syntax.
 
 The copy keeps only the file name, so a page's images land in one folder. Two different files with the same name in one page, such as `./a/icon.png` and `./b/icon.png`, fail the build with an asset collision. An image used by two pages is copied once into each page's folder.

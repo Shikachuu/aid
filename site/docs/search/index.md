@@ -37,7 +37,7 @@ Every entry has four fields: `title`, `headings`, `body`, and `extras`.
 | Kind | `title` | `headings` | `body` | `extras` |
 | --- | --- | --- | --- | --- |
 | [Markdown](../content-types/markdown.md) | page title | the text of every heading, H1 included | the markdown source without frontmatter | none |
-| [HTML](../content-types/html.md) | `<title>` or file name | none | the rendered body HTML, markup included | none |
+| [HTML](../content-types/html.md) | `<title>` or file name | the text of every `<h1>` to `<h6>` | the body text, without markup, scripts, or styles | none |
 | [OpenAPI](../content-types/openapi.md) | `info.title` or file name | none | none | operation ids, paths, schema names, parameter names, operation summaries |
 | [Protobuf](../content-types/proto.md) | package name or file name | none | comments on the package, services, RPCs, messages, fields, and enums | fully qualified message, enum, and service names, `<service>.<rpc>` names, field names of top-level messages |
 | [JSON Schema](../content-types/jsonschema.md) | root `title` or file name | definition names | every `description` | dotted property paths, definition names |

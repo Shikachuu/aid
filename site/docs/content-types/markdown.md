@@ -53,7 +53,7 @@ A page may start with a YAML block between `---` lines. aid parses it with `Bun.
 
 ## Title and H1
 
-aid decides the title and the H1 from the first element of the body.
+aid decides the title and the H1 from the first element of the body. A raw `<h1>` HTML tag before that element also counts as the H1.
 
 - When the body starts with an H1, aid keeps that H1. The title is the frontmatter `title` if set, else the H1 text.
 - Otherwise aid inserts an H1 at the top. Its text is the frontmatter `title` if set, else the file name without `.md`, so `intro.md` without a title gets the H1 `intro`.
