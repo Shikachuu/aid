@@ -65,7 +65,7 @@ aid embeds native binaries from npm packages, and each platform's package must m
 
 It also compares each `vendor/natives/lightningcss-<platform>.bin` with its source in `node_modules`. Any mismatch prints a `drift:` list and exits with code 1.
 
-Without `--offline`, the script then looks up the latest version of each group on the npm registry, and of Bun with `mise latest bun`. For each outdated group, it prints the `bun add` commands that bump the parent and pin every platform package to the same exact version. The script never edits `package.json`.
+Without `--offline`, the script then looks up the latest version of each group on the npm registry, and of Bun with `mise latest bun`. Each lookup gives up after 10 seconds and prints `lookup failed` for that group. A canary pin counts as outdated once a stable release reaches its base version, so `1.4.4` replaces `1.4.4-canary.20261103.1`. For each outdated group, it prints the `bun add` commands that bump the parent and pin every platform package to the same exact version. The script never edits `package.json`.
 
 ## Run the CLI from source
 
