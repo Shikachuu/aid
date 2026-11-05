@@ -62,9 +62,9 @@ const jsoncEsm: Bun.BunPlugin = {
 /**
  * Plugin that swaps every other target's native binary import for an empty
  * string. Bun does not drop unused `with { type: "file" }` imports, so without
- * it each binary would embed all four buf binaries (about 177 MB) and all four
- * lightningcss bindings (about 36 MB). Marking them `external` instead keeps
- * a runtime import that fails on any machine without aid's node_modules.
+ * it each binary would embed all four buf binaries and all four lightningcss
+ * bindings. Marking them `external` instead keeps a runtime import that fails
+ * on any machine without aid's node_modules.
  */
 export const nativeStubs = (target: Target): Bun.BunPlugin => {
   const offTarget = [
@@ -87,7 +87,6 @@ export const nativeStubs = (target: Target): Bun.BunPlugin => {
   }
 }
 
-/** Point imports of `src/web/_bundled.ts` at a module that `bundle-web.ts --out` wrote elsewhere. */
 const redirectBundled = (file: string): Bun.BunPlugin => ({
   name: "aid-redirect-bundled",
   setup(build) {

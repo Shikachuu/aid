@@ -2,7 +2,7 @@ import type { ToolResult } from "../lint/diagnostics"
 import { fixMarkdown, resolveMarkdownConfig } from "../lint/markdown"
 import { applyFormat } from "./apply"
 
-/** Apply markdownlint's safe fixes, with the same config resolution as `aid lint`. */
+/** Backs `aid fmt` for markdown. It shares lint's config and fixes, so fmt only rewrites what lint reports. */
 export const formatMarkdown = async (
   paths: string[],
   dir: string,

@@ -237,7 +237,8 @@ describe("css in the lint and fmt pipelines", () => {
     expect(parseFilter("css")).toEqual(new Set(["css"]))
     expect(parseFilter(" md , bun ")).toEqual(new Set(["md", "bun"]))
     expect(parseFilter(undefined)).toBeNull()
-    expect(parseFilter("")).toBeNull()
+    expect(() => parseFilter("")).toThrow(/needs at least one tool/)
+    expect(() => parseFilter(",")).toThrow(/needs at least one tool/)
   })
 
   test("fmt has no css tool", async () => {

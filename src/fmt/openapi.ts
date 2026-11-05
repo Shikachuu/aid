@@ -20,7 +20,9 @@ export const formatOpenApi = async (
     diagnostics.push({ file, severity, code, message })
   const yamlPaths = paths.filter((file) => !file.endsWith(".json"))
   const result = await applyFormat("openapi", yamlPaths, opts.check, (file, text) => {
-    const docs = parseAllDocuments(text, YAML_OPTIONS)
+    const docs = parseAllDocuments(text, YAML_OPTIONS).filter(
+      (d, i) => i === 0 || d.toJS() !== null,
+    )
     const [doc] = docs
     if (doc === undefined) {
       return text
@@ -39,8 +41,8 @@ export const formatOpenApi = async (
       report(file, "error", "openapi/parse", error.message)
       return text
     }
-    const formatted = doc.toString({ indent: 2 })
-    if (!Bun.deepEquals(parse(text, YAML_OPTIONS), parse(formatted, YAML_OPTIONS), true)) {
+    const formatted = doc.toString({ indent: 2, lineWidth: 0 })
+    if (!sameData(doc.toJS(), formatted)) {
       report(file, "warn", "openapi/lossy", "reformatting would change the spec's data; left as is")
       return text
     }
@@ -48,4 +50,12 @@ export const formatOpenApi = async (
   })
   const failed = diagnostics.some((d) => d.severity === "error")
   return { ...result, ok: result.ok && !failed, diagnostics }
+}
+
+const sameData = (before: unknown, after: string): boolean => {
+  try {
+    return Bun.deepEquals(before, parse(after, YAML_OPTIONS), true)
+  } catch {
+    return false
+  }
 }

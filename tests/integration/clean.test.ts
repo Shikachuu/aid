@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test } from "bun:test"
-import { cp, mkdtemp, rm } from "node:fs/promises"
+import { cp, mkdtemp, rm, symlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 
@@ -44,5 +44,28 @@ test("--clean refuses an output dir that is the project dir", async () => {
   expect(result.exitCode).not.toBe(0)
   expect(result.stderr.toString()).toContain("aid: dir.output")
   expect(await Bun.file(path.join(cwd, "aid.yaml")).exists()).toBe(true)
+  expect(await Bun.file(path.join(cwd, "docs/index.md")).exists()).toBe(true)
+})
+
+test("--clean refuses an output dir outside the project, but a plain build may write there", async () => {
+  const config = await Bun.file(path.join(cwd, "aid.yaml")).text()
+  await Bun.write(
+    path.join(cwd, "aid.yaml"),
+    `${config}\ndir:\n  output: ../${path.basename(cwd)}-public\n`,
+  )
+  const refused = runBuild("--clean")
+  expect(refused.exitCode).not.toBe(0)
+  expect(refused.stderr.toString()).toContain("must be a subdirectory of the project directory")
+  expect(runBuild().exitCode).toBe(0)
+  await rm(`${cwd}-public`, { recursive: true, force: true })
+})
+
+test("--clean refuses an output dir that is a symlink to the content dir", async () => {
+  await symlink(path.join(cwd, "docs"), path.join(cwd, "out"))
+  const config = await Bun.file(path.join(cwd, "aid.yaml")).text()
+  await Bun.write(path.join(cwd, "aid.yaml"), `${config}\ndir:\n  output: out\n`)
+  const result = runBuild("--clean")
+  expect(result.exitCode).not.toBe(0)
+  expect(result.stderr.toString()).toContain("overlaps dir.content")
   expect(await Bun.file(path.join(cwd, "docs/index.md")).exists()).toBe(true)
 })

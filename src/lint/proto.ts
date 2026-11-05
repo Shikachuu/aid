@@ -53,7 +53,7 @@ type BufJsonError = {
   message?: string
 }
 
-/** Result for a run with no `buf` binary available. The proto tool passes. */
+/** Returned as is by lint and fmt on machines with no `buf`, so they pass instead of failing. */
 export const BUF_SKIPPED: ToolResult = {
   tool: "proto",
   ok: true,

@@ -332,11 +332,12 @@ const optionFlag = (options: Record<string, unknown> | undefined, name: string):
   options?.[name] === true || options?.[name] === "true"
 
 const detectSyntax = (source: string): ProtoSyntax => {
-  const declared = source.match(/^\s*syntax\s*=\s*["']([^"']+)["']/m)?.[1]
+  const code = source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "")
+  const declared = code.match(/^\s*syntax\s*=\s*["']([^"']+)["']/m)?.[1]
   if (declared === "proto2" || declared === "proto3") {
     return declared
   }
-  if (/^\s*edition\s*=/m.test(source)) {
+  if (/^\s*edition\s*=/m.test(code)) {
     return "editions"
   }
   return declared === undefined ? "proto2" : "unknown"

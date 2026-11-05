@@ -86,6 +86,11 @@ describe("parseProto field rules", () => {
       { a: "singular", b: "optional", c: "required" },
     ],
     [
+      "a syntax line inside a comment does not count",
+      '/* syntax = "proto2"; */\nsyntax = "proto3";\nmessage M { int32 a = 1; }',
+      { a: "singular" },
+    ],
+    [
       "map fields",
       'syntax = "proto3";\nmessage M { map<string, int32> a = 1; }',
       { a: "singular" },

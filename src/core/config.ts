@@ -1,3 +1,4 @@
+import { realpath } from "node:fs/promises"
 import path from "node:path"
 import { z } from "zod"
 import { isLexicallyInside } from "./internal/paths"
@@ -167,27 +168,20 @@ export function buildContext(config: AidConfig, cwd: string): BuildContext {
     templatesDir: config.dir.templates === "" ? null : path.resolve(cwd, config.dir.templates),
     staticDir: path.resolve(cwd, config.dir.static),
   }
-  assertSafeOutputDir(ctx)
+  assertNoInputOverlap(ctx.outputDir, ctx)
   return ctx
 }
 
-/**
- * Throw unless `outputDir` sits strictly inside `cwd` and shares no path with
- * an input directory. `aid build --clean` deletes `outputDir` recursively.
- */
-export function assertSafeOutputDir(ctx: BuildContext): void {
-  const { outputDir, cwd } = ctx
-  if (!isLexicallyInside(outputDir, cwd)) {
-    throw new Error(
-      `aid: dir.output "${ctx.config.dir.output}" resolves to ${outputDir}, which is not inside the project directory ${cwd}.`,
-    )
-  }
-  const inputs = [
+const inputDirs = (ctx: BuildContext) =>
+  [
     ["dir.content", ctx.contentDir],
     ["dir.static", ctx.staticDir],
     ["dir.templates", ctx.templatesDir],
   ] as const
-  for (const [key, dir] of inputs) {
+
+/** A build that writes into its own sources would read its output back as pages. */
+function assertNoInputOverlap(outputDir: string, ctx: BuildContext, resolved = ctx): void {
+  for (const [key, dir] of inputDirs(resolved)) {
     if (dir === null) {
       continue
     }
@@ -197,10 +191,38 @@ export function assertSafeOutputDir(ctx: BuildContext): void {
       isLexicallyInside(dir, outputDir)
     ) {
       throw new Error(
-        `aid: dir.output (${outputDir}) overlaps ${key} (${dir}). Point dir.output at a directory of its own.`,
+        `aid: dir.output (${ctx.outputDir}) overlaps ${key} (${dir}). Point dir.output at a directory of its own.`,
       )
     }
   }
+}
+
+const realOrSelf = async (p: string): Promise<string> => {
+  try {
+    return await realpath(p)
+  } catch {
+    return p
+  }
+}
+
+/**
+ * Throw unless deleting `outputDir` recursively, as `aid build --clean` does,
+ * can only remove build output. Symlinks and case-insensitive file systems are
+ * resolved through `realpath`, so they cannot point the delete at sources.
+ */
+export async function assertSafeToClean(ctx: BuildContext): Promise<void> {
+  const [outputDir, cwd] = await Promise.all([realOrSelf(ctx.outputDir), realOrSelf(ctx.cwd)])
+  if (!isLexicallyInside(outputDir, cwd)) {
+    throw new Error(
+      `aid: refusing --clean: dir.output "${ctx.config.dir.output}" resolves to ${outputDir}, which must be a subdirectory of the project directory ${cwd}.`,
+    )
+  }
+  const [contentDir, staticDir, templatesDir] = await Promise.all([
+    realOrSelf(ctx.contentDir),
+    realOrSelf(ctx.staticDir),
+    ctx.templatesDir === null ? null : realOrSelf(ctx.templatesDir),
+  ])
+  assertNoInputOverlap(outputDir, ctx, { ...ctx, contentDir, staticDir, templatesDir })
 }
 
 /**

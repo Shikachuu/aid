@@ -120,6 +120,17 @@ paths:   {}
     expect(await Bun.file(file).text()).toBe(original)
   })
 
+  test("keeps long strings on one line and formats a spec that ends in a stray ---", async () => {
+    const file = join(dir, "openapi.yaml")
+    const long = "x".repeat(120)
+    await Bun.write(file, `openapi:   3.1.0\ninfo:\n  title: ${long}\n---\n`)
+    const result = await formatOpenApi([file], dir, { check: false })
+    expect(result.diagnostics).toEqual([])
+    const out = await Bun.file(file).text()
+    expect(out).toContain(`title: ${long}\n`)
+    expect(out).toContain("openapi: 3.1.0")
+  })
+
   test("skips a multi-document file with a warning", async () => {
     const file = join(dir, "openapi.yaml")
     const original = "openapi: 3.1.0\n---\nopenapi:    3.1.0\n"

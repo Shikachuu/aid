@@ -5,18 +5,16 @@ import { markdownlintDefault } from "./configs/markdownlint.default"
 import type { Diagnostic, ToolResult } from "./diagnostics"
 import { USER_CONFIGS } from "./discovery"
 
-/** Load the user's `.markdownlint.*` config for `dir`, or the bundled default. */
+/** Shared by `aid lint` and `aid fmt`, so both apply the same markdown rules. */
 export const resolveMarkdownConfig = async (dir: string): Promise<Configuration> => {
   const path = await findUserConfig(dir, USER_CONFIGS.md)
   return path === null ? markdownlintDefault : ((await parseConfigFile(path)) as Configuration)
 }
 
-/**
- * Fixes that change what the page says: MD037 turns `a * b * c` into
- * emphasis, MD053 deletes link definitions, and MD009 on a line ending in two
- * or more spaces removes a hard line break. aid reports these but never applies them.
- */
 const MEANING_CHANGING_RULES = new Set(["MD037", "MD053"])
+
+const removesHardBreak = (error: LintError, lines: string[]): boolean =>
+  error.ruleNames[0] === "MD009" && /\S {2,}$/.test(lines[error.lineNumber - 1] ?? "")
 
 const isSafeFix = (error: LintError, lines: string[]): boolean => {
   if (error.fixInfo === undefined || error.fixInfo === null) {
@@ -26,10 +24,7 @@ const isSafeFix = (error: LintError, lines: string[]): boolean => {
   if (MEANING_CHANGING_RULES.has(rule)) {
     return false
   }
-  if (rule === "MD009") {
-    return !/ {2,}$/.test(lines[error.lineNumber - 1] ?? "")
-  }
-  return true
+  return !removesHardBreak(error, lines)
 }
 
 const MAX_FIX_PASSES = 3
@@ -70,10 +65,7 @@ const toDiagnostic = (file: string, e: LintError): Diagnostic => ({
   message: e.errorDetail ? `${e.ruleDescription}: ${e.errorDetail}` : e.ruleDescription,
 })
 
-/**
- * Lint markdown files. With `opts.fix`, write the safe fixes back to disk and
- * report what remains after re-linting the fixed text.
- */
+/** With `opts.fix`, write the safe fixes back to disk and report what remains after re-linting the fixed text. */
 export const lintMarkdown = async (
   paths: string[],
   dir: string,

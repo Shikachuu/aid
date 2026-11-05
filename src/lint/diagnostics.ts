@@ -61,12 +61,15 @@ export const parseFilter = (
   raw: string | undefined,
   allowed: readonly Tool[] = KNOWN_TOOLS,
 ): Set<Tool> | null => {
-  const names = (raw ?? "")
+  if (raw === undefined) {
+    return null
+  }
+  const names = raw
     .split(",")
     .map((part) => part.trim())
     .filter((part) => part !== "")
   if (names.length === 0) {
-    return null
+    throw new Error(`aid: --filter needs at least one tool. Choose from: ${allowed.join(", ")}.`)
   }
   const unknown = names.filter((name) => !(allowed as readonly string[]).includes(name))
   if (unknown.length > 0) {

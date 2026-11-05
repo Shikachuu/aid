@@ -10,7 +10,10 @@ export const AID_ROOT = path.join(import.meta.dir, "../..")
 export const hasSourceTree = (): Promise<boolean> =>
   Bun.file(path.join(AID_ROOT, "src/web/index.ts")).exists()
 
-/** Return embedded `bytes`, or throw when the binary was compiled without them. */
+/**
+ * Guard for a binary compiled without running `bundle-web.ts`: the user gets
+ * the command to fix it instead of an empty bundle or stylesheet.
+ */
 export function requireEmbedded(name: string, bytes: string): string {
   if (bytes.length === 0) {
     throw new Error(

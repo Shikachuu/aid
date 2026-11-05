@@ -1,4 +1,4 @@
-import { chmod, lstat, mkdir, rename } from "node:fs/promises"
+import { chmod, lstat, mkdir, rename, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -14,9 +14,8 @@ export const extractEmbedded = async (
 ): Promise<string> => stableTempFile(prefix, name, await Bun.file(src).bytes(), mode)
 
 /**
- * Write `bytes` to `<tmpdir>/aid-<uid>-<prefix>-<hash>/<name>` once and reuse
- * it on later runs. The directory is private to the current user, so another
- * user on a shared `/tmp` can neither pre-create nor swap the file.
+ * Write `bytes` to a per-user temp file once and reuse it on later runs, so
+ * each aid process does not leave another copy of a native binary behind.
  */
 export const stableTempFile = async (
   prefix: string,
@@ -32,15 +31,23 @@ export const stableTempFile = async (
   const dst = join(dir, name)
   await ensurePrivateDir(dir)
   const existing = Bun.file(dst)
-  if ((await existing.exists()) && existing.size === data.byteLength) {
+  if ((await existing.exists()) && Bun.hash(await existing.bytes()) === Bun.hash(data)) {
+    if (mode !== undefined) {
+      await chmod(dst, mode)
+    }
     return dst
   }
   const partial = `${dst}.${process.pid}.tmp`
-  await Bun.write(partial, data)
-  if (mode !== undefined) {
-    await chmod(partial, mode)
+  try {
+    await Bun.write(partial, data)
+    if (mode !== undefined) {
+      await chmod(partial, mode)
+    }
+    await rename(partial, dst)
+  } catch (err) {
+    await rm(partial, { force: true })
+    throw err
   }
-  await rename(partial, dst)
   return dst
 }
 

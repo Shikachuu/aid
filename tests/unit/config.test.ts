@@ -86,6 +86,10 @@ describe("buildContext output dir", () => {
     expect(() => ctxFor(dir)).toThrow(/aid: dir.output/)
   })
 
+  test("allows a plain build into a sibling directory outside the project", () => {
+    expect(ctxFor({ output: "../public" }).outputDir).toBe("/public")
+  })
+
   test("accepts a dir of its own and resolves absolute values", () => {
     expect(ctxFor({ output: "build/site" }).outputDir).toBe("/project/build/site")
     expect(ctxFor({ output: "/project/out" }).outputDir).toBe("/project/out")

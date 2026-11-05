@@ -1,10 +1,9 @@
 import { type ArgsDef, type CommandDef, defineCommand } from "citty"
 import { version } from "../../package.json"
 
-/**
- * Print errors that aid raised on purpose (message starts with `aid:`) as one
- * line and exit 1, so users see the problem instead of a stack trace.
- */
+const isUserFacingError = (err: unknown): err is Error =>
+  err instanceof Error && err.message.startsWith("aid:")
+
 const withAidErrors =
   <T extends ArgsDef>(load: () => Promise<CommandDef<T>>) =>
   async (): Promise<CommandDef<T>> => {
@@ -19,7 +18,7 @@ const withAidErrors =
         try {
           await run(ctx)
         } catch (err) {
-          if (err instanceof Error && err.message.startsWith("aid:")) {
+          if (isUserFacingError(err)) {
             console.error(err.message)
             process.exit(1)
           }

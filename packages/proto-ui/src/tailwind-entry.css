@@ -20,9 +20,7 @@
 
     --proto-font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --proto-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  }
 
-  .proto-root {
     @apply grid w-full;
     grid-template-columns: 16rem 1fr;
     gap: 2rem;

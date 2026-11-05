@@ -1,13 +1,13 @@
 const STRING_OR_COMMENT =
   /"(?:\\[\s\S]|[^"\\\n])*"|'(?:\\[\s\S]|[^'\\\n])*'|\/\*([\s\S]*?)\*\/|\/\*[\s\S]*$/g
 
-/** CSS with every string and comment replaced by spaces, so offsets still line up with the source. */
+/**
+ * Callers scan `code` with regexes and slice the original text at the same
+ * offsets. `emptyComments` and `unterminatedComment` feed the CSS lint.
+ */
 export type Blanked = { code: string; emptyComments: number[]; unterminatedComment?: number }
 
-/**
- * Replace each CSS string and comment with spaces of the same length. Strings
- * come first in the pattern, so `content: "/*"` is not read as a comment.
- */
+/** Lets callers run brace and at-rule regexes over CSS without matching text inside strings or comments. */
 export const blankStringsAndComments = (text: string): Blanked => {
   let code = ""
   let cursor = 0
