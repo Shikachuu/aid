@@ -1,7 +1,6 @@
 import path from "node:path"
-import rehypeShiki from "@shikijs/rehype"
 import type { Element as HastElement, Root as HastRoot } from "hast"
-import type { Root as MdastRoot } from "mdast"
+import type { Html, Root as MdastRoot } from "mdast"
 import rehypeAutolinkHeadings from "rehype-autolink-headings"
 import rehypeSlug from "rehype-slug"
 import rehypeStringify from "rehype-stringify"
@@ -10,6 +9,7 @@ import remarkParse from "remark-parse"
 import remarkRehype from "remark-rehype"
 import remarkStringify from "remark-stringify"
 import { unified } from "unified"
+import { visit } from "unist-util-visit"
 import { VFile } from "vfile"
 import type { ResolveLink } from "../../core/links"
 import type { AnchorRef, RenderedPage, Route, SearchTokens } from "../../core/types"
@@ -18,44 +18,37 @@ import {
   collectAnchors,
   hastText,
   headingTexts,
+  isFootnoteLabel,
   parseHtmlFragment,
   vfileDiagnostics,
 } from "../shared"
 import { rehypeCallouts, remarkCalloutMarkers } from "./callouts"
-import type { CopyAsset } from "./colocated-assets"
+import { type CopyAsset, isRelativeUrl } from "./colocated-assets"
 import { colocatedAssetsMdastPlugin } from "./colocated-assets-mdast"
 import { extractFrontmatter } from "./frontmatter"
-import { HAS_MERMAID_FLAG, mermaidPlugin } from "./mermaid"
-import { SHIKI_OPTIONS } from "./shiki"
+import { codeBlocks, HAS_MERMAID_FLAG } from "./mermaid"
 
-/** Arguments for {@link renderMarkdown}. */
+/** What the pipeline passes to {@link renderMarkdown}; without the callbacks the render has no side effects. */
 export type RenderMarkdownArgs = {
   route: Route
-  /** Absolute path of the source `.md` file on disk. */
   sourcePath: string
-  /**
-   * Optional callback invoked once per relative markdown image (`![](...)`).
-   * Raw `<img>` tags are not copied. The pipeline passes one that copies
-   * assets into the route's output dir.
-   */
+  /** Copies each relative markdown image (`![](...)`) next to the page. Raw `<img>` tags are not copied. */
   copyAsset?: CopyAsset
   resolveLink?: ResolveLink
 }
 
 /**
- * Parse a markdown file into a RenderedPage, with GFM enabled. Headings get
- * slug ids and an appended `#` anchor link. When the body does not start with
- * an H1, the renderer prepends one from the frontmatter title or the file
- * name. The returned `html` is body content only, and the pipeline wraps it in
- * Layout and PageMarkdown. The `.md` export drops the frontmatter and uses the
- * same rewritten image hrefs as the HTML.
+ * Render a GFM markdown file as body content. When the body does not start
+ * with an H1, the renderer prepends one without an id, so it cannot take the
+ * slug of a later heading with the same text. The `.md` export drops the
+ * frontmatter and uses the same rewritten image hrefs as the HTML.
  */
 export async function renderMarkdown(args: RenderMarkdownArgs): Promise<RenderedPage> {
   const source = await Bun.file(args.sourcePath).text()
   const { frontmatter, body, bodyLine } = parseFrontmatter(source, args.sourcePath)
   const filenameTitle = path.basename(args.sourcePath, path.extname(args.sourcePath))
 
-  const titleSink = { value: frontmatter?.title ?? filenameTitle }
+  const titleSink: TitleSink = { value: frontmatter?.title ?? filenameTitle, insert: false }
   const headings: string[] = []
 
   const file = new VFile({ path: args.sourcePath, value: body })
@@ -65,7 +58,7 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
   const htmlProcessor = unified()
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeCallouts)
-    .use(resolveAndEnsureLeadingH1, {
+    .use(resolveTitle, {
       frontmatterTitle: frontmatter?.title,
       filenameTitle,
       sink: titleSink,
@@ -74,6 +67,7 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
     .use(collectHeadings, { sink: headings })
     .use(rehypeAutolinkHeadings, {
       behavior: "append",
+      test: (node) => !isFootnoteLabel(node),
       properties: { className: ["aid-heading-link"], ariaHidden: "true", tabIndex: -1 },
       content: {
         type: "element",
@@ -82,8 +76,8 @@ export async function renderMarkdown(args: RenderMarkdownArgs): Promise<Rendered
         children: [{ type: "text", value: "#" }],
       },
     })
-    .use(mermaidPlugin)
-    .use(rehypeShiki, SHIKI_OPTIONS)
+    .use(insertLeadingH1, { sink: titleSink })
+    .use(codeBlocks)
     .use(rehypeStringify, { allowDangerousHtml: true })
 
   const htmlTree = await htmlProcessor.run(mdast, file)
@@ -128,7 +122,11 @@ async function buildMdast(
   args: RenderMarkdownArgs,
   anchorRefs: AnchorRef[],
 ): Promise<MdastRoot> {
-  let processor = unified().use(remarkParse).use(remarkGfm).use(remarkCalloutMarkers)
+  let processor = unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkCalloutMarkers)
+    .use(warnRawRelativeUrls)
   if (args.copyAsset) {
     processor = processor.use(colocatedAssetsMdastPlugin, {
       sourceDir: path.dirname(args.sourcePath),
@@ -152,33 +150,58 @@ function parseFrontmatter(source: string, sourcePath: string) {
   }
 }
 
-type TitleSink = { value: string }
+/** Raw HTML skips the image copy and link rewrite, so a relative URL in it breaks once deployed. */
+function warnRawRelativeUrls() {
+  return (tree: MdastRoot, file: VFile): void => {
+    visit(tree, "html", (node: Html) => {
+      visit(parseHtmlFragment(node.value), "element", (el: HastElement) => {
+        const url =
+          el.tagName === "img"
+            ? el.properties.src
+            : el.tagName === "a"
+              ? el.properties.href
+              : undefined
+        if (typeof url === "string" && isRelativeUrl(url)) {
+          file.info(
+            `relative URL "${url}" in raw HTML is not copied or rewritten; use markdown image or link syntax`,
+            { place: node.position, ruleId: "html/relative-url", source: "aid" },
+          )
+        }
+      })
+    })
+  }
+}
 
-function resolveAndEnsureLeadingH1(opts: {
+type TitleSink = { value: string; insert: boolean }
+
+function resolveTitle(opts: {
   frontmatterTitle: string | undefined
   filenameTitle: string
   sink: TitleSink
 }) {
   return (tree: HastRoot): void => {
     const existing = leadingH1(tree)
-    if (existing) {
-      opts.sink.value =
-        opts.frontmatterTitle ??
-        (hastText(existing)
+    opts.sink.insert = existing === undefined
+    opts.sink.value =
+      opts.frontmatterTitle ??
+      ((existing &&
+        hastText(existing)
           .replace(/[ \t\n\r\f]+/g, " ")
-          .trim() ||
-          opts.filenameTitle)
-      return
+          .trim()) ||
+        opts.filenameTitle)
+  }
+}
+
+function insertLeadingH1(opts: { sink: TitleSink }) {
+  return (tree: HastRoot): void => {
+    if (opts.sink.insert) {
+      tree.children.unshift({
+        type: "element",
+        tagName: "h1",
+        properties: {},
+        children: [{ type: "text", value: opts.sink.value }],
+      })
     }
-    const title = opts.frontmatterTitle ?? opts.filenameTitle
-    opts.sink.value = title
-    const h1: HastElement = {
-      type: "element",
-      tagName: "h1",
-      properties: {},
-      children: [{ type: "text", value: title }],
-    }
-    tree.children.unshift(h1)
   }
 }
 

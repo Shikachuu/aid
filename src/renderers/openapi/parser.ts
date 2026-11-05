@@ -1,6 +1,7 @@
 import { dereference, normalize, upgrade } from "@scalar/openapi-parser"
+import { assertAcyclic } from "../shared"
 
-/** Result of {@link parseOpenApi}. */
+/** A spec ready to embed, plus the `$ref` failures the page renders around. */
 export type ParsedOpenApi = {
   /** Normalized OpenAPI 3.1 document with `$ref`s resolved. */
   doc: Record<string, unknown>
@@ -29,6 +30,7 @@ export async function parseOpenApi(source: string, sourcePath: string): Promise<
       `aid: failed to parse OpenAPI source at ${sourcePath}: not a YAML or JSON mapping`,
     )
   }
+  assertAcyclic(normalized, `OpenAPI source at ${sourcePath}`)
   const upgraded = upgrade(normalized as Record<string, unknown>)
   const dereferenced = dereference(upgraded.specification as Record<string, unknown>)
   const doc = (dereferenced.specification ?? upgraded.specification) as Record<string, unknown>

@@ -86,9 +86,26 @@ describe("sniffOpenApi", () => {
     const p = await write("a.yaml", `name: foo\nversion: 1\n`)
     expect(await sniffOpenApi(p)).toBe(false)
   })
+
+  test("rejects json that has an openapi key only below the top level", async () => {
+    const p = await write("a.json", `{"fixtures": [{"openapi": "3.1.0"}]}`)
+    expect(await sniffOpenApi(p)).toBe(false)
+  })
+
+  test("accepts json that mentions openapi but does not parse, so the renderer reports it", async () => {
+    const p = await write("a.json", `{"openapi": "3.1.0", `)
+    expect(await sniffOpenApi(p)).toBe(true)
+  })
 })
 
 describe("renderOpenApi", () => {
+  test("names the file when a YAML alias refers to its own ancestor", async () => {
+    const spec = `openapi: "3.1.0"\ninfo: { title: T, version: "1" }\npaths: {}\ncomponents:\n  schemas:\n    A: &a\n      properties:\n        self: *a\n`
+    await expect(renderFixture("cyclic.yaml", spec)).rejects.toThrow(
+      /aid: failed to parse OpenAPI source at .*cyclic\.yaml: a YAML alias refers to its own ancestor/,
+    )
+  })
+
   test("names the file when the spec does not parse", async () => {
     await expect(renderFixture("openapi.yaml", "openapi: [3.1.0\n")).rejects.toThrow(
       /aid: failed to parse OpenAPI source at .*openapi\.yaml: /,
@@ -277,7 +294,7 @@ describe("renderOpenApi — search tokens", () => {
     expect(page.searchTokens.extras.schemas).toEqual(["Pet", "Owner"])
   })
 
-  test("non-HTTP-verb path-item keys (e.g. `parameters`, `summary`) are skipped", async () => {
+  test("path-item parameters are indexed, other non-verb keys are skipped", async () => {
     const spec = [
       `openapi: "3.1.0"`,
       `info: { title: API, version: "1" }`,
@@ -285,7 +302,7 @@ describe("renderOpenApi — search tokens", () => {
       `  /pets:`,
       `    summary: A path-level summary`,
       `    parameters:`,
-      `      - { name: shouldBeIgnored, in: query, schema: { type: string } }`,
+      `      - { name: pathLevel, in: query, schema: { type: string } }`,
       `    get:`,
       `      operationId: listPets`,
       `      responses: { "200": { description: ok } }`,
@@ -294,7 +311,25 @@ describe("renderOpenApi — search tokens", () => {
     const page = await renderFixture("api.yaml", spec)
     expect(page.searchTokens.extras.operationIds).toEqual(["listPets"])
     expect(page.searchTokens.extras.summaries).toBeUndefined()
-    expect(page.searchTokens.extras.parameters).toBeUndefined()
+    expect(page.searchTokens.extras.parameters).toEqual(["pathLevel"])
+  })
+
+  test("webhooks and their operations are indexed", async () => {
+    const spec = [
+      `openapi: "3.1.0"`,
+      `info: { title: API, version: "1" }`,
+      `webhooks:`,
+      `  newPet:`,
+      `    post:`,
+      `      operationId: onNewPet`,
+      `      parameters: [{ name: signature, in: header, schema: { type: string } }]`,
+      `      responses: { "200": { description: ok } }`,
+      ``,
+    ].join("\n")
+    const page = await renderFixture("hooks.yaml", spec)
+    expect(page.searchTokens.extras.webhooks).toEqual(["newPet"])
+    expect(page.searchTokens.extras.operationIds).toEqual(["onNewPet"])
+    expect(page.searchTokens.extras.parameters).toEqual(["signature"])
   })
 
   test("a broken $ref becomes an openapi/ref warning diagnostic", async () => {

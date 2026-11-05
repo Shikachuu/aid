@@ -1,8 +1,11 @@
-import type { RehypeShikiOptions } from "@shikijs/rehype"
+import rehypeShiki, { type RehypeShikiOptions } from "@shikijs/rehype"
+import type { Element as HastElement, Root as HastRoot } from "hast"
 import type { BundledLanguage, BundledTheme } from "shiki"
+import type { Preset } from "unified"
+import { visit } from "unist-util-visit"
+import { hastText } from "../shared"
 
-/** Each shiki grammar is a large JSON file, so the build-time highlighter loads only these. */
-const DEFAULT_LANGS: BundledLanguage[] = [
+const PRELOADED_LANGS: BundledLanguage[] = [
   "ts",
   "tsx",
   "js",
@@ -28,23 +31,48 @@ const DEFAULT_LANGS: BundledLanguage[] = [
   "http",
 ]
 
-const DEFAULT_THEMES: { light: BundledTheme; dark: BundledTheme } = {
+const THEMES: { light: BundledTheme; dark: BundledTheme } = {
   light: "github-light",
   dark: "github-dark",
 }
 
 /**
- * Options for `@shikijs/rehype`. `defaultColor: "light-dark()"` inlines
- * `light-dark(<light>, <dark>)` on every span, so the page's `color-scheme`
- * picks the theme without extra CSS or a client-side re-highlight.
- *
- * Unknown languages fall back to plain text, so a typo in a fence info string
- * does not fail the build.
+ * Code blocks longer than this many lines render as plain text. Shiki takes
+ * about 0.25 ms per line, so one 50,000-line fence would add 12 s to a build.
  */
-export const SHIKI_OPTIONS: RehypeShikiOptions = {
-  themes: DEFAULT_THEMES,
-  langs: DEFAULT_LANGS,
+export const MAX_HIGHLIGHT_LINES = 2000
+
+/**
+ * `defaultColor: "light-dark()"` inlines `light-dark(<light>, <dark>)` on
+ * every span, so the page's `color-scheme` picks the theme without extra CSS
+ * or a client-side re-highlight.
+ */
+const SHIKI_OPTIONS: RehypeShikiOptions = {
+  themes: THEMES,
+  langs: PRELOADED_LANGS,
   defaultColor: "light-dark()",
   fallbackLanguage: "text",
   addLanguageClass: true,
+}
+
+/** Highlight fenced code with shiki, leaving blocks over {@link MAX_HIGHLIGHT_LINES} as plain text. */
+export const highlightCode: Preset = {
+  plugins: [skipLargeCodeBlocks, [rehypeShiki, SHIKI_OPTIONS]],
+}
+
+/** Shiki highlights only `<pre><code>` with a `language-*` class, so dropping the class skips a block. */
+function skipLargeCodeBlocks() {
+  return (tree: HastRoot): void => {
+    visit(tree, "element", (node: HastElement) => {
+      const code = node.tagName === "pre" ? node.children[0] : undefined
+      if (code?.type !== "element" || code.tagName !== "code") {
+        return
+      }
+      const classes = code.properties.className
+      if (Array.isArray(classes) && hastText(code).split("\n").length > MAX_HIGHLIGHT_LINES) {
+        const kept = classes.filter((c) => !String(c).startsWith("language-"))
+        code.properties.className = kept.length > 0 ? kept : undefined
+      }
+    })
+  }
 }

@@ -5,7 +5,7 @@ import { PageOpenAPI } from "../../theme/components/PageOpenAPI"
 import { firstParagraph, nonEmpty, refWarning } from "../shared"
 import { parseOpenApi } from "./parser"
 
-/** Arguments for {@link renderOpenApi}. */
+/** What the pipeline passes to {@link renderOpenApi}. */
 export type RenderOpenApiArgs = {
   route: Route
   /** Absolute path of the source `.yaml` / `.yml` / `.json` spec on disk. */
@@ -13,11 +13,9 @@ export type RenderOpenApiArgs = {
 }
 
 /**
- * Render an OpenAPI spec as a `PageOpenAPI` shell. The page embeds the
- * normalized 3.1 spec as `<script type="application/json">` next to an empty
- * mount point, and the browser-side `aid-openapi` bundle hands it to Scalar.
- * Operation ids, paths, schema names, parameter names and summaries go into
- * `searchTokens.extras`, so a search for `getPets` finds this page.
+ * Render an OpenAPI spec as a shell that the `aid-openapi` bundle hands to
+ * Scalar. Operation ids, paths, webhooks, schema and parameter names, and
+ * summaries go into search extras, so a search for `getPets` finds the page.
  */
 export async function renderOpenApi(args: RenderOpenApiArgs): Promise<RenderedPage> {
   const source = await Bun.file(args.sourcePath).text()
@@ -53,53 +51,61 @@ export async function renderOpenApi(args: RenderOpenApiArgs): Promise<RenderedPa
 const HTTP_VERBS = new Set(["get", "post", "put", "patch", "delete", "head", "options", "trace"])
 
 function extractSearchExtras(doc: Record<string, unknown>): Record<string, string[]> {
-  const operationIds: string[] = []
-  const paths: string[] = []
-  const summaries: string[] = []
-  const parameters: string[] = []
-
-  const docPaths = (doc.paths ?? {}) as Record<string, unknown>
-  for (const [pathKey, pathItem] of Object.entries(docPaths)) {
-    paths.push(pathKey)
-    if (pathItem === null || typeof pathItem !== "object") {
-      continue
-    }
-    for (const [verbKey, op] of Object.entries(pathItem as Record<string, unknown>)) {
-      if (!HTTP_VERBS.has(verbKey)) {
-        continue
-      }
-      if (op === null || typeof op !== "object") {
-        continue
-      }
-      const opObj = op as { operationId?: unknown; summary?: unknown; parameters?: unknown }
-      if (typeof opObj.operationId === "string") {
-        operationIds.push(opObj.operationId)
-      }
-      if (typeof opObj.summary === "string") {
-        summaries.push(opObj.summary)
-      }
-      if (Array.isArray(opObj.parameters)) {
-        for (const param of opObj.parameters) {
-          const name = (param as { name?: unknown } | null)?.name
-          if (typeof name === "string") {
-            parameters.push(name)
-          }
-        }
-      }
-    }
+  const lists = {
+    operationIds: [] as string[],
+    summaries: [] as string[],
+    parameters: [] as string[],
+  }
+  const docPaths = asRecord(doc.paths)
+  const webhooks = asRecord(doc.webhooks)
+  for (const pathItem of [...Object.values(docPaths), ...Object.values(webhooks)]) {
+    collectPathItem(pathItem, lists)
   }
 
-  const components = doc.components as { schemas?: unknown } | undefined
-  const schemas =
-    components?.schemas && typeof components.schemas === "object"
-      ? Object.keys(components.schemas as Record<string, unknown>)
-      : []
+  const schemas = Object.keys(asRecord(asRecord(doc.components).schemas))
 
   return nonEmpty({
-    operationIds,
-    paths,
+    operationIds: lists.operationIds,
+    paths: Object.keys(docPaths),
+    webhooks: Object.keys(webhooks),
     schemas,
-    parameters: [...new Set(parameters)],
-    summaries,
+    parameters: [...new Set(lists.parameters)],
+    summaries: lists.summaries,
   })
 }
+
+function collectPathItem(
+  pathItem: unknown,
+  lists: { operationIds: string[]; summaries: string[]; parameters: string[] },
+): void {
+  const item = asRecord(pathItem)
+  collectParameters(item.parameters, lists.parameters)
+  for (const [verbKey, op] of Object.entries(item)) {
+    if (!HTTP_VERBS.has(verbKey)) {
+      continue
+    }
+    const opObj = asRecord(op)
+    if (typeof opObj.operationId === "string") {
+      lists.operationIds.push(opObj.operationId)
+    }
+    if (typeof opObj.summary === "string") {
+      lists.summaries.push(opObj.summary)
+    }
+    collectParameters(opObj.parameters, lists.parameters)
+  }
+}
+
+function collectParameters(params: unknown, into: string[]): void {
+  if (!Array.isArray(params)) {
+    return
+  }
+  for (const param of params) {
+    const name = asRecord(param).name
+    if (typeof name === "string") {
+      into.push(name)
+    }
+  }
+}
+
+const asRecord = (v: unknown): Record<string, unknown> =>
+  v !== null && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {}

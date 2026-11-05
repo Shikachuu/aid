@@ -73,6 +73,8 @@ aid indexes the title, the text of the body, and the text of every `<h1>` to `<h
 
 aid converts the rewritten body to markdown with `rehype-remark` and `remark-stringify` and writes it to `<route>.md`. The export uses the same rewritten link and image URLs as the page. aid drops the `<head>`, so the export has no title line unless the body has an `<h1>`.
 
+Markdown has no syntax for some HTML, so these elements stay HTML in the export: `<details>`, `<dl>`, and any table with a `colspan` or `rowspan`, or with a line break, list, or other block element inside a cell. Simple tables become markdown tables.
+
 ## Errors
 
 | Condition | Result |

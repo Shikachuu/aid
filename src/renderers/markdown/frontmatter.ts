@@ -42,12 +42,12 @@ export const FrontmatterSchema = z
   })
   .catchall(z.unknown())
 
-/** Page metadata that `route.frontmatter` carries to Layout, llms.txt and search. */
+/** Page metadata that `route.frontmatter` carries to Layout, llms.txt and search; HTML pages fill it from `<head>`. */
 export type Frontmatter = z.infer<typeof FrontmatterSchema>
 
 const FRONTMATTER_RE = /^---\r?\n(?:([\s\S]*?)\r?\n)??---(?:\r?\n|$)/
 
-/** Result of separating the YAML block from the markdown body. */
+/** The frontmatter and the body the markdown parser sees, with the offset that maps body lines back. */
 export type ExtractedFrontmatter = {
   frontmatter: Frontmatter | undefined
   body: string

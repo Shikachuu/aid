@@ -12,9 +12,9 @@ import { splitHref } from "../../core/links"
  */
 export type CopyAsset = (absoluteSource: string) => Promise<string | null>
 
-/** Inputs for {@link colocatedAssetsPlugin}. */
+/** Where relative srcs resolve and what copies them; shared by the HTML and markdown plugins. */
 export type ColocatedAssetsOptions = {
-  /** Absolute directory of the source file. Relative srcs resolve against it. */
+  /** Absolute directory of the source file. */
   sourceDir: string
   copyAsset: CopyAsset
 }
@@ -39,7 +39,7 @@ export function colocatedAssetsPlugin(opts: ColocatedAssetsOptions) {
   }
 }
 
-/** One asset reference found in a tree: its source, position, and a setter for the new href. */
+/** An asset reference in either tree kind, so {@link copyColocated} serves hast and mdast alike. */
 export type AssetRef = { src: string; place?: HastElement["position"]; set: (href: string) => void }
 
 /**
@@ -55,7 +55,7 @@ export async function copyColocated(
 ): Promise<void> {
   await Promise.all(
     refs
-      .filter((ref) => isRelativeSrc(ref.src))
+      .filter((ref) => isRelativeUrl(ref.src))
       .map(async (ref) => {
         const { pathPart, query, fragment } = splitHref(ref.src)
         const href = await opts.copyAsset(path.resolve(opts.sourceDir, safeDecodeUri(pathPart)))
@@ -74,8 +74,9 @@ export async function copyColocated(
 
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i
 
-const isRelativeSrc = (src: string): boolean =>
-  splitHref(src).pathPart.length > 0 && !src.startsWith("/") && !SCHEME_RE.test(src)
+/** A URL that resolves against the page's source folder: no scheme, no leading `/`, not only a fragment. */
+export const isRelativeUrl = (url: string): boolean =>
+  splitHref(url).pathPart.length > 0 && !url.startsWith("/") && !SCHEME_RE.test(url)
 
 function safeDecodeUri(value: string): string {
   try {

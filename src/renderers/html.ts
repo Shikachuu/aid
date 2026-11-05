@@ -14,31 +14,24 @@ import type { AnchorRef, RenderedPage, Route, SearchTokens } from "../core/types
 import { linkRefsFromHast, rewriteLinks } from "./links"
 import { type CopyAsset, colocatedAssetsPlugin } from "./markdown/colocated-assets"
 import type { Frontmatter } from "./markdown/frontmatter"
+import { isMermaidElement } from "./markdown/mermaid"
 import { collectAnchors, hastText, headingTexts, vfileDiagnostics } from "./shared"
 
-/** Arguments for {@link renderHtml}. */
+/** What the pipeline passes to {@link renderHtml}; without the callbacks the render has no side effects. */
 export type RenderHtmlArgs = {
   route: Route
-  /** Absolute path of the source `.html` file on disk. */
   sourcePath: string
-  /**
-   * Optional callback invoked once per relative `<img src>` encountered in the
-   * body subtree. The pipeline supplies one that copies assets into the route's
-   * output dir; omit during unit tests for a pure render with no side effects.
-   */
+  /** Copies each relative `<img src>` in the body next to the page. */
   copyAsset?: CopyAsset
   resolveLink?: ResolveLink
 }
 
 /**
- * Parse a full HTML document into a RenderedPage. Layout owns the document
- * chrome, so `<head>` is dropped. `<title>` and `<meta name="description">`
- * move onto `route.frontmatter`, so Layout, llms.txt and search treat HTML
- * pages like markdown pages. The returned `html` is the body content without
- * any `<html>`, `<head>` or `<body>` wrapper. The `.md` export comes from the
- * same rewritten body tree, so colocated image hrefs match in both outputs.
- *
- * Throws on body fragments: the source must contain `<html>` and `<body>`.
+ * Render a full HTML document as body content. Layout owns the document
+ * chrome, so `<head>` is dropped and its `<title>` and `<meta name="description">`
+ * move onto `route.frontmatter`. The `.md` export comes from the same
+ * rewritten body tree, so colocated image hrefs match in both outputs. Throws
+ * on body fragments.
  */
 export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
   const source = await Bun.file(args.sourcePath).text()
@@ -55,16 +48,11 @@ export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
   const htmlEl = findChildElement(fullTree, "html")
   const headEl = htmlEl ? findChildElement(htmlEl, "head") : null
   const bodyEl = htmlEl ? findChildElement(htmlEl, "body") : null
-  if (!htmlEl || !bodyEl) {
-    throw new Error(
-      `aid: HTML page ${args.sourcePath} parsed without an <html>/<body> tree — this should not happen for a sniffed-valid document.`,
-    )
-  }
 
   const frontmatter = extractHeadMetadata(headEl)
   const title = frontmatter.title ?? path.basename(args.sourcePath, path.extname(args.sourcePath))
 
-  const bodyTree: HastRoot = { type: "root", children: bodyEl.children as RootContent[] }
+  const bodyTree: HastRoot = { type: "root", children: (bodyEl?.children ?? []) as RootContent[] }
 
   if (args.copyAsset) {
     const rewrite = colocatedAssetsPlugin({
@@ -80,9 +68,7 @@ export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
 
   let hasMermaid = false
   visit(bodyTree, "element", (node: HastElement) => {
-    if ((node.tagName === "pre" || node.tagName === "div") && hasClass(node, "mermaid")) {
-      hasMermaid = true
-    }
+    hasMermaid ||= isMermaidElement(node)
   })
 
   const html = unified().use(rehypeStringify).stringify(bodyTree)
@@ -115,9 +101,65 @@ export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
   }
 }
 
+/**
+ * Markdown has no syntax for `<details>`, `<dl>`, merged cells, or line
+ * breaks and lists inside a table cell, so those elements stay HTML in the
+ * export instead of losing their structure.
+ */
 async function toMarkdown(tree: HastRoot): Promise<string> {
-  const processor = unified().use(rehypeRemark).use(remarkGfm).use(remarkStringify)
-  return processor.stringify((await processor.run(tree)) as MdastRoot)
+  const copy = structuredClone(tree)
+  visit(copy, "element", (node: HastElement, index, parent) => {
+    if (parent && index !== undefined && keepsHtml(node)) {
+      parent.children[index] = {
+        type: "raw",
+        value: unified()
+          .use(rehypeStringify)
+          .stringify({ type: "root", children: [node] }),
+      }
+      return SKIP
+    }
+    return undefined
+  })
+  const processor = unified()
+    .use(rehypeRemark, {
+      nodeHandlers: {
+        raw: (_state, node) => ({ type: "html", value: (node as { value: string }).value }),
+      },
+    })
+    .use(remarkGfm)
+    .use(remarkStringify)
+  return processor.stringify((await processor.run(copy)) as MdastRoot)
+}
+
+const HTML_ONLY_TAGS = new Set(["details", "dl"])
+const CELL_BREAKING_TAGS = new Set([
+  "br",
+  "p",
+  "ul",
+  "ol",
+  "dl",
+  "div",
+  "table",
+  "pre",
+  "blockquote",
+  "hr",
+])
+
+function keepsHtml(node: HastElement): boolean {
+  if (HTML_ONLY_TAGS.has(node.tagName)) {
+    return true
+  }
+  if (node.tagName !== "table") {
+    return false
+  }
+  let complex = false
+  visit(node, "element", (el: HastElement) => {
+    complex ||=
+      Number(el.properties.colSpan ?? 1) > 1 ||
+      Number(el.properties.rowSpan ?? 1) > 1 ||
+      (el !== node && CELL_BREAKING_TAGS.has(el.tagName))
+  })
+  return complex
 }
 
 const HTML_TAG_RE = /<html(\s|>)/i
@@ -174,7 +216,3 @@ function searchBodyText(tree: HastRoot): string {
 }
 
 const NON_TEXT_TAGS = new Set(["script", "style", "template"])
-
-function hasClass(node: HastElement, cls: string): boolean {
-  return (node.properties?.className as string[] | undefined)?.includes(cls) ?? false
-}

@@ -58,7 +58,7 @@ aid decides the title and the H1 from the first element of the body. A raw `<h1>
 - When the body starts with an H1, aid keeps that H1. The title is the frontmatter `title` if set, else the H1 text.
 - Otherwise aid inserts an H1 at the top. Its text is the frontmatter `title` if set, else the file name without `.md`, so `intro.md` without a title gets the H1 `intro`.
 
-The inserted H1 exists only in the HTML. The `.md` export does not contain it.
+The inserted H1 exists only in the HTML. The `.md` export does not contain it. It has no `id` and no anchor link, so a later heading with the same text, such as `## FAQ` in `faq.md`, keeps the id `faq`.
 
 > [!TIP]
 > Set `title` in frontmatter and start the body at `##`. markdownlint rule MD025 treats the frontmatter `title` as an H1, so a second H1 in the body is a lint error.
@@ -73,7 +73,7 @@ The inserted H1 exists only in the HTML. The `.md` export does not contain it.
 <h2 id="heading-anchors">Heading anchors<a class="aid-heading-link" aria-hidden="true" tabindex="-1" href="#heading-anchors"><span class="aid-heading-anchor" aria-hidden="true">#</span></a></h2>
 ```
 
-Style the link through the `aid-heading-link` and `aid-heading-anchor` classes. The [link check](./links.md#fragment-check) validates `#fragment` links against these ids.
+Style the link through the `aid-heading-link` and `aid-heading-anchor` classes. The [link check](./links.md#fragment-check) validates `#fragment` links against these ids. The hidden "Footnotes" heading that `remark-gfm` adds gets no anchor link and stays out of the search index.
 
 ## Code blocks
 
@@ -81,13 +81,15 @@ Shiki highlights fenced code at build time with the `github-light` and `github-d
 
 aid loads these grammars: `ts`, `tsx`, `js`, `jsx`, `json`, `json5`, `yaml`, `toml`, `html`, `css`, `md`, `mdx`, `bash`, `sh`, `shell`, `python`, `go`, `rust`, `proto`, `sql`, `docker`, `diff`, `http`. A fence with any other language renders as plain text, and the build does not fail. The list lives in `src/renderers/markdown/shiki.ts`.
 
+A fence longer than 2,000 lines renders as plain text without highlighting. Shiki takes about 0.25 ms per line, so one 50,000-line fence would add 12 seconds to the build.
+
 ```ts
 const greeting: string = "highlighted at build time"
 ```
 
 ## Mermaid diagrams
 
-aid turns a fence with the language `mermaid` into `<pre class="mermaid">` and adds the mermaid browser bundle to that page. Pages without a diagram do not load it. Mermaid renders the diagram in the browser and picks its dark theme from the OS color scheme.
+aid turns a fence with the language `mermaid` into `<pre class="mermaid">` and adds the mermaid browser bundle to that page. A raw `<pre class="mermaid">` or `<div class="mermaid">` HTML block loads the bundle too. Pages without a diagram do not load it. Mermaid renders the diagram in the browser and picks its dark theme from the OS color scheme.
 
 ````md
 ```mermaid
@@ -147,6 +149,12 @@ A blockquote whose first line is a GitHub alert marker becomes a callout. aid su
 aid passes raw HTML in markdown through to the page without sanitizing it. A `<script>` tag in a page runs in the browser.
 
 aid does not rewrite or check links and images written as raw HTML. A raw `<a href="./other.md">` stays as written and breaks once deployed. Use markdown link and image syntax for anything inside the content folder.
+
+aid lists each relative `src` or `href` in raw HTML as an `html/relative-url` warning in the [broken-reference report](./links.md#broken-reference-check). The warning does not fail the build:
+
+```text
+  docs/guide.md:12:1  html/relative-url  relative URL "./x.png" in raw HTML is not copied or rewritten; use markdown image or link syntax
+```
 
 ## The .md export
 

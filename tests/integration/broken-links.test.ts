@@ -100,7 +100,7 @@ test("relative links in JSON Schema descriptions rewrite, and broken ones fail t
   })
   const message = await buildError(ctx)
   expect(message).toContain("aid: 1 broken reference")
-  expect(message).toContain("docs/user.json  link/missing")
+  expect(message).toContain("docs/user.json:1:1  link/missing")
 })
 
 test("a missing colocated image fails the build in markdown and HTML pages", async () => {
@@ -172,11 +172,23 @@ test("an unresolved $ref warns without failing the build", async () => {
   const warn = spyOn(console, "warn").mockImplementation(() => {})
   try {
     await build(ctx)
-    expect(
-      warn.mock.calls.some(([msg]) => String(msg).includes("docs/api.yaml  openapi/ref")),
-    ).toBe(true)
+    const [message] = warn.mock.calls.find(([msg]) => String(msg).startsWith("aid:")) ?? []
+    expect(String(message)).toStartWith("aid: 1 broken reference (1 warning)\n")
+    expect(String(message)).toContain("docs/api.yaml  openapi/ref")
   } finally {
     warn.mockRestore()
   }
   expect(await Bun.file(path.join(ctx.outputDir, "index.html")).exists()).toBe(true)
+})
+
+test("a failed build writes nothing, not even the static and colocated copies", async () => {
+  const ctx = await makeSite(cwd)
+  await Bun.write(path.join(ctx.staticDir, "robots.txt"), "User-agent: *\n")
+  await writeContent(ctx, {
+    "index.md": "# Home\n\n![logo](./logo.svg)\n\n[Gone](./gone.md)\n",
+    "logo.svg": "<svg/>",
+  })
+  expect(await buildError(ctx)).toContain("aid: 1 broken reference")
+  expect(await Bun.file(path.join(ctx.outputDir, "robots.txt")).exists()).toBe(false)
+  expect(await Bun.file(path.join(ctx.outputDir, "logo.svg")).exists()).toBe(false)
 })

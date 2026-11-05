@@ -6,24 +6,19 @@ import { render } from "../../jsx-runtime"
 import { PageProto } from "../../theme/components/PageProto"
 import { firstParagraph, nonEmpty } from "../shared"
 
-/** Arguments for {@link renderProto}. */
+/** What the pipeline passes to {@link renderProto}. */
 export type RenderProtoArgs = {
   route: Route
-  /** Absolute path of the source `.proto` file on disk. */
   sourcePath: string
   /** `config.base_path`, so the browser fetches the `.proto` export by absolute URL. */
   basePath?: string
 }
 
 /**
- * Render a `.proto` source as a hydration shell. The page holds a mount div
- * whose `data-proto-url` holds the absolute URL of the `.proto` export, and
- * `aid-proto.js` fetches that file and renders the UI in the browser. The URL
- * is absolute because page URLs have no trailing slash, so a relative one
- * would resolve one level too high. The build still parses
- * the AST to fill `searchTokens` and the page description.
- *
- * The only export is the `.proto` source itself, which agents read as is.
+ * Render a `.proto` source as a shell that `aid-proto.js` hydrates from the
+ * `.proto` export. The export URL is absolute because page URLs have no
+ * trailing slash, so a relative one would resolve one level too high. The
+ * build still parses the AST for search and the page description.
  */
 export const renderProto = async (args: RenderProtoArgs): Promise<RenderedPage> => {
   const source = await Bun.file(args.sourcePath).text()

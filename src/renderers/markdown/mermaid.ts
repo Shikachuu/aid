@@ -1,24 +1,37 @@
 import type { Element as HastElement, Root as HastRoot } from "hast"
+import type { Preset } from "unified"
 import { SKIP, visit } from "unist-util-visit"
 import type { VFile } from "vfile"
-import { hastText } from "../shared"
+import { hastText, parseHtmlFragment } from "../shared"
+import { highlightCode } from "./shiki"
 
-/** Key set on the rendered file's `data` map when a page contains at least one mermaid diagram. */
+/** `file.data` key the pipeline reads to decide whether the page loads the mermaid bundle. */
 export const HAS_MERMAID_FLAG = "aidHasMermaid"
 
+/** A `pre.mermaid` or `div.mermaid` element, which the mermaid runtime renders in the browser. */
+export function isMermaidElement(node: HastElement): boolean {
+  const classes = node.properties.className
+  return (
+    (node.tagName === "pre" || node.tagName === "div") &&
+    Array.isArray(classes) &&
+    classes.includes("mermaid")
+  )
+}
+
 /**
- * Rehype plugin that rewrites ```mermaid``` fenced code blocks into
- * `<pre class="mermaid">{raw text}</pre>`. It drops the `<code>` child so the
- * client-side mermaid runtime can read `textContent` directly. Must run before
- * the shiki plugin, or shiki highlights the fence as plain text first. Sets
- * {@link HAS_MERMAID_FLAG} on `file.data` when it rewrites any block, so the
- * pipeline knows to inject the mermaid bundle.
+ * Turns mermaid fences into `pre.mermaid` and sets {@link HAS_MERMAID_FLAG}
+ * so the pipeline injects the mermaid bundle. Raw `pre.mermaid` or
+ * `div.mermaid` HTML in the source sets the flag too.
  */
-export function mermaidPlugin() {
+function mermaidPlugin() {
   return (tree: HastRoot, file: VFile): void => {
     let found = false
-    visit(tree, "element", (node, index, parent) => {
-      if (node.tagName !== "pre" || !parent || index == null) {
+    visit(tree, (node, index, parent) => {
+      if (node.type === "raw") {
+        found ||= MERMAID_CLASS_RE.test(node.value) && hasMermaidElement(node.value)
+        return
+      }
+      if (node.type !== "element" || node.tagName !== "pre" || !parent || index == null) {
         return
       }
       const code = node.children.find(isCodeElement)
@@ -42,6 +55,19 @@ export function mermaidPlugin() {
       file.data[HAS_MERMAID_FLAG] = true
     }
   }
+}
+
+/** Mermaid diagrams, then syntax highlighting for every other code block. */
+export const codeBlocks: Preset = { plugins: [mermaidPlugin, highlightCode] }
+
+const MERMAID_CLASS_RE = /mermaid/i
+
+function hasMermaidElement(html: string): boolean {
+  let found = false
+  visit(parseHtmlFragment(html), "element", (node: HastElement) => {
+    found ||= isMermaidElement(node)
+  })
+  return found
 }
 
 function isCodeElement(node: { type: string }): node is HastElement {

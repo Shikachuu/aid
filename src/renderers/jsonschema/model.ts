@@ -53,9 +53,11 @@ export type SchemaDocument = {
   /** Root `examples`, or one synthesized example. Empty when nothing can be built. */
   examples: unknown[]
   warnings: string[]
+  /** Definition anchors on other schema pages that `$ref`s link to, for the build's anchor check. */
+  pageLinks: { file: string; fragment: string; href: string }[]
 }
 
-/** Inputs for {@link buildSchemaDocument}. */
+/** Where the schema lives, so relative `$ref`s resolve, and how to link ones that hit other schema pages. */
 export type BuildSchemaOptions = {
   /** Absolute path of the source file. Relative `$ref`s resolve against it. */
   sourcePath: string
@@ -64,6 +66,7 @@ export type BuildSchemaOptions = {
 }
 
 const MAX_DEPTH = 32
+const DRAFT_04_RE = /json-schema\.org\/draft-0[34]\/schema/
 const MAX_NODES = 2000
 const MAX_EXAMPLE_DEPTH = 8
 
@@ -186,7 +189,9 @@ class Builder {
   private readonly usedIds = new Set<string>()
   private readonly stack = new Set<unknown>()
   private readonly warnings = new Set<string>()
+  private readonly pageLinks: SchemaDocument["pageLinks"] = []
   private readonly fileBase: string
+  private readonly legacyIds: boolean
   private depth = 0
   private nodes = 0
   private exampleNodes = 0
@@ -196,6 +201,8 @@ class Builder {
     private readonly opts: BuildSchemaOptions,
   ) {
     this.fileBase = pathToFileURL(opts.sourcePath).href
+    this.legacyIds =
+      isObject(root) && typeof root.$schema === "string" && DRAFT_04_RE.test(root.$schema)
     this.ids.set(this.fileBase, root)
     this.collect(root, this.fileBase)
   }
@@ -235,6 +242,7 @@ class Builder {
       definitions,
       examples: this.documentExamples(root),
       warnings: [...this.warnings],
+      pageLinks: this.pageLinks,
     }
   }
 
@@ -250,10 +258,11 @@ class Builder {
       return
     }
     let here = base
-    if (typeof schema.$id === "string" && schema.$id.startsWith("#")) {
-      this.anchors.set(`${base}${schema.$id}`, schema)
-    } else if (typeof schema.$id === "string") {
-      const resolved = tryUrl(schema.$id, base)
+    const id = this.idOf(schema)
+    if (id?.startsWith("#")) {
+      this.anchors.set(`${base}${id}`, schema)
+    } else if (id !== undefined) {
+      const resolved = tryUrl(id, base)
       if (resolved) {
         here = stripHash(resolved)
         this.ids.set(here, schema)
@@ -287,6 +296,11 @@ class Builder {
     }
   }
 
+  private idOf(schema: SchemaObject): string | undefined {
+    const id = schema.$id ?? (this.legacyIds ? schema.id : undefined)
+    return typeof id === "string" ? id : undefined
+  }
+
   private resolve(ref: string, base: string): Resolved {
     const url = tryUrl(ref, base)
     const fallbackLabel = refLabel(ref)
@@ -295,7 +309,7 @@ class Builder {
     }
     const hashAt = url.indexOf("#")
     const docUrl = hashAt === -1 ? url : url.slice(0, hashAt)
-    const fragment = hashAt === -1 ? "" : safeDecode(url.slice(hashAt + 1))
+    const fragment = hashAt === -1 ? "" : url.slice(hashAt + 1)
     const doc = this.ids.get(docUrl)
     if (doc === undefined) {
       const file = this.externalFile(ref, docUrl)
@@ -308,7 +322,7 @@ class Builder {
         ? doc
         : fragment.startsWith("/")
           ? pointer(doc, fragment)
-          : this.anchors.get(`${docUrl}#${fragment}`)
+          : this.anchors.get(`${docUrl}#${safeDecode(fragment)}`)
     if (target === undefined) {
       return { kind: "missing", label: fallbackLabel }
     }
@@ -405,7 +419,12 @@ class Builder {
     const page = res.kind === "external" ? this.opts.pageUrlForFile?.(res.file) : undefined
     if (res.kind === "external" && page) {
       const def = /^\/(?:\$defs|definitions)\/([^/]+)$/.exec(res.fragment)?.[1]
-      return def ? `${page}#def-${slug(unescapePointer(def))}` : page
+      if (def === undefined) {
+        return page
+      }
+      const fragment = `def-${slug(pointerSegment(def))}`
+      this.pageLinks.push({ file: res.file, fragment, href: ref })
+      return `${page}#${fragment}`
     }
     this.warnings.add(`unresolved $ref "${ref}"`)
     return /^https?:\/\//i.test(ref) ? ref : undefined
@@ -460,7 +479,7 @@ class Builder {
         node.constraints.push([key, value])
         continue
       }
-      if (CONSUMED.has(key)) {
+      if (CONSUMED.has(key) || (key === "id" && this.legacyIds)) {
         continue
       }
       if ((key === "additionalProperties" || key === "items") && isObject(value)) {
@@ -703,14 +722,10 @@ class Builder {
       case "string":
         return Object.hasOwn(FORMAT_SAMPLES, schema.format as string)
           ? FORMAT_SAMPLES[schema.format as string]
-          : "string"
+          : stringExample(schema)
       case "number":
       case "integer":
-        return typeof schema.minimum === "number"
-          ? schema.minimum
-          : typeof schema.exclusiveMinimum === "number"
-            ? schema.exclusiveMinimum + 1
-            : 0
+        return numberExample(schema, types.includes("integer"))
       case "boolean":
         return true
       case "null":
@@ -812,6 +827,68 @@ function declaredTypes(s: SchemaObject): string[] {
   return [...new Set(values.map(jsonType))]
 }
 
+function stringExample(s: SchemaObject): string {
+  const sample = "string"
+  if (typeof s.minLength === "number" && s.minLength > sample.length) {
+    return sample.padEnd(s.minLength, "x")
+  }
+  return typeof s.maxLength === "number" ? sample.slice(0, Math.max(0, s.maxLength)) : sample
+}
+
+type Bound = { value: number; exclusive: boolean }
+
+/**
+ * The tightest of an inclusive and an exclusive bound. Draft-04 writes an
+ * exclusive bound as `minimum` plus `exclusiveMinimum: true`, later drafts as a
+ * numeric `exclusiveMinimum`.
+ */
+function tightestBound(
+  s: SchemaObject,
+  inclusiveKey: string,
+  exclusiveKey: string,
+  lower: boolean,
+): Bound | undefined {
+  const inclusive = s[inclusiveKey]
+  const exclusive = s[exclusiveKey]
+  const bounds: Bound[] = []
+  if (typeof inclusive === "number") {
+    bounds.push({ value: inclusive, exclusive: exclusive === true })
+  }
+  if (typeof exclusive === "number") {
+    bounds.push({ value: exclusive, exclusive: true })
+  }
+  return bounds.reduce<Bound | undefined>((best, b) => {
+    if (!best) {
+      return b
+    }
+    const tighter = lower ? b.value > best.value : b.value < best.value
+    return tighter || (b.value === best.value && b.exclusive) ? b : best
+  }, undefined)
+}
+
+function numberExample(s: SchemaObject, integer: boolean): number {
+  const lo = tightestBound(s, "minimum", "exclusiveMinimum", true)
+  const hi = tightestBound(s, "maximum", "exclusiveMaximum", false)
+  const low =
+    lo &&
+    (integer
+      ? lo.exclusive
+        ? Math.floor(lo.value) + 1
+        : Math.ceil(lo.value)
+      : lo.value + (lo.exclusive ? 1 : 0))
+  const high =
+    hi &&
+    (integer
+      ? hi.exclusive
+        ? Math.ceil(hi.value) - 1
+        : Math.floor(hi.value)
+      : hi.value - (hi.exclusive ? 1 : 0))
+  if (lo && hi && low !== undefined && high !== undefined && low > high) {
+    return integer ? low : (lo.value + hi.value) / 2
+  }
+  return low ?? (high !== undefined && high < 0 ? high : 0)
+}
+
 function jsonType(v: unknown): string {
   if (v === null) {
     return "null"
@@ -874,7 +951,7 @@ function refLabel(ref: string): string {
 function pointer(doc: unknown, fragment: string): unknown {
   let current = doc
   for (const raw of fragment.slice(1).split("/")) {
-    const key = unescapePointer(raw)
+    const key = pointerSegment(raw)
     if (Array.isArray(current)) {
       if (!/^\d+$/.test(key)) {
         return undefined
@@ -893,6 +970,9 @@ function pointer(doc: unknown, fragment: string): unknown {
 }
 
 const unescapePointer = (s: string): string => s.replaceAll("~1", "/").replaceAll("~0", "~")
+
+/** Decode one segment of a URI-fragment JSON pointer, so `a%2Fb` stays one key. */
+const pointerSegment = (raw: string): string => unescapePointer(safeDecode(raw))
 
 function safeDecode(s: string): string {
   try {

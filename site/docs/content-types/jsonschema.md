@@ -85,12 +85,12 @@ Descriptions render as markdown with GFM. Raw HTML in a description shows as esc
 
 ## $ref resolution
 
-aid resolves `$ref` inside the same file: JSON pointers such as `#/$defs/Address` or `#/definitions/Address`, `#` for the root, `$anchor` names, and embedded `$id` URLs.
+aid resolves `$ref` inside the same file: JSON pointers such as `#/$defs/Address` or `#/definitions/Address`, `#` for the root, `$anchor` names, and embedded `$id` URLs. A draft-04 schema declares ids with `id` instead of `$id`, and aid reads it when the root `$schema` names draft-04. aid percent-decodes each pointer segment after it splits the pointer, so `#/$defs/a%2Fb` targets the definition named `a/b`.
 
 - A resolved `$ref` expands inline under the field and shows the target name as its type. Keywords next to the `$ref` apply on top of the target. A `description` replaces the target's, and `properties` and `required` combine with the target's, so `{"$ref": "#/$defs/Base", "properties": {...}}` extends `Base`. A property declared on both sides keeps both declarations: an override that only adds a `description` keeps the target's type and format.
 - A `$ref` back to a schema that is already open on the current path, such as a tree node that contains itself, does not expand again. Its type links to the definition section when the target is a root `$defs` or `definitions` entry, or to the top of the page for `#`. A cycle through any other pointer, such as `#/properties/node`, shows the type name without a link.
 - Expansion stops 32 levels deep. A field at that depth lists its nested keywords as JSON in its constraints toggle instead of as fields.
-- A relative `$ref` to another schema file, such as `./address.json#/$defs/Street`, links to that file's page when it is a JSON Schema page in the content folder. A `$defs` or `definitions` fragment links to the matching definition section.
+- A relative `$ref` to another schema file, such as `./address.json#/$defs/Street`, links to that file's page when it is a JSON Schema page in the content folder. A `$defs` or `definitions` fragment links to the matching definition section, and the [fragment check](./links.md#fragment-check) reports `link/anchor` when that page has no such section.
 - A remote `http://` or `https://` `$ref` shows its last path segment as the type, links to the URL, and adds a `jsonschema/ref` warning to the [broken-reference report](./links.md#broken-reference-check): `unresolved $ref "<ref>"`. aid does not fetch it.
 - Any other `$ref` that does not resolve shows its last path segment without a link and adds the same warning. The build continues.
 
@@ -103,7 +103,7 @@ When the root has an `examples` array, the page shows each entry. Otherwise aid 
 1. the first entry of `examples`;
 2. `example`, `default`, or `const`;
 3. the first `enum` value;
-4. a value built from the type: an object with an entry per property, an array with one item, `true`, `null`, `minimum` or `0` for numbers, and for strings a sample for the formats `date-time`, `date`, `time`, `email`, `uri`, `url`, `hostname`, `uuid`, `ipv4`, and `ipv6`, or `"string"` otherwise.
+4. a value built from the type: an object with an entry per property, an array with one item, `true`, `null`, the lowest value that `minimum`, `exclusiveMinimum`, `maximum`, and `exclusiveMaximum` allow for numbers (whole for `integer`, and `0` when no bound rules it out), and for strings a sample for the formats `date-time`, `date`, `time`, `email`, `uri`, `url`, `hostname`, `uuid`, `ipv4`, and `ipv6`, or `"string"` padded or cut to fit `minLength` and `maxLength` otherwise.
 
 `oneOf` and `anyOf` use their first option. A recursive `$ref` is left out of the example. aid stops building the example after 2000 values, so a very large schema gets a partial example.
 
@@ -137,11 +137,11 @@ A file that is not valid JSON or YAML fails the build:
 aid: failed to parse JSON Schema at <abs path>/docs/user.json: <parser message>
 ```
 
-A root that is not an object or a boolean fails with `the root is not an object or boolean schema`.
+A root that is not an object or a boolean fails with `the root is not an object or boolean schema`. A YAML alias that refers to its own ancestor, such as `A: &a {properties: {self: *a}}`, fails with `a YAML alias refers to its own ancestor`. Use a `$ref` for a recursive schema.
 
 A schema with the same route as another source, such as `user.json` next to `user.md`, fails the build with a route collision. Rename one, or start the schema's file name with `_` to keep it out of the site. See [content types](./index.md#errors).
 
-A broken relative link in a description fails the build with `link/missing` or `link/anchor`, like a broken link in a markdown page. The report names the schema file without a line number, because the link sits inside a JSON string.
+A broken relative link in a description fails the build with `link/missing` or `link/anchor`, like a broken link in a markdown page. The report gives the line where the description starts. A description whose first line the source writes with escapes or YAML folding gets no line number.
 
 ## Limitations
 
