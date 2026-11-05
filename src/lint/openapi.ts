@@ -9,13 +9,13 @@ import { readSource } from "./source-file"
 
 const OAS = oas as unknown as RulesetDefinition
 
-// The Spectral CLI resolves `extends: spectral:oas` by name; Spectral's core
-// only takes ruleset objects.
 const EXTENDS_MODES = new Set(["all", "recommended", "off"])
 
 const isModeTuple = (entry: unknown[]): boolean =>
   entry.length === 2 && EXTENDS_MODES.has(String(entry[1]))
 
+// The Spectral CLI resolves `extends: spectral:oas` by name; Spectral's core
+// only takes ruleset objects.
 const withBundledOas = (entry: unknown): unknown =>
   entry === "spectral:oas"
     ? OAS

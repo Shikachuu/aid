@@ -110,8 +110,13 @@ export function watchContent(
     if (waiting === undefined) {
       return
     }
-    watchFiles(waiting)
     missingDirs.delete(target)
+    try {
+      watchFiles(waiting)
+    } catch (err) {
+      missingDirs.set(target, waiting)
+      throw err
+    }
     for (const file of waiting) {
       noticeCreated(file)
       if (existsSync(file)) {

@@ -18,11 +18,6 @@ export function isMermaidElement(node: HastElement): boolean {
   )
 }
 
-/**
- * Turns mermaid fences into `pre.mermaid` and sets {@link HAS_MERMAID_FLAG}
- * so the pipeline injects the mermaid bundle. Raw `pre.mermaid` or
- * `div.mermaid` HTML in the source sets the flag too.
- */
 function mermaidPlugin() {
   return (tree: HastRoot, file: VFile): void => {
     let found = false
