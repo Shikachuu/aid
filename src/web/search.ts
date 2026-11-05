@@ -5,12 +5,13 @@ type SearchHit = { type: string; title: string; url: string }
 
 const MAX_RESULTS = 8
 const DEBOUNCE_MS = 80
-const BLUR_CLOSE_DELAY_MS = 150
+const MAX_QUERY_LENGTH = 100
 const IME_KEY_CODE = 229
 
 /**
- * Wire every search input to the prebuilt index. The index and MiniSearch load on the first focus.
- * The input's `data-aid-search-*` attributes, set by the SearchBox component, carry the settings.
+ * Wire every search input to the prebuilt index. The index and MiniSearch load on the first focus,
+ * so a page view that never searches downloads neither. The settings come from the input's
+ * `data-aid-search-*` attributes, which the SearchBox component writes from `aid.yaml`.
  */
 export function attachSearch(): void {
   const inputs = document.querySelectorAll<HTMLInputElement>("[data-aid-search-input]")
@@ -27,7 +28,7 @@ export function attachSearch(): void {
 
 function wireInput(input: HTMLInputElement, results: HTMLElement, indexHref: string): void {
   const typoTolerance = Number(input.dataset.aidSearchTypoTolerance)
-  const weights: Record<string, number> = JSON.parse(input.dataset.aidSearchWeights ?? "{}")
+  const weights = parseWeights(input.dataset.aidSearchWeights)
 
   let ms: MiniSearch | null = null
   let loading = false
@@ -35,10 +36,9 @@ function wireInput(input: HTMLInputElement, results: HTMLElement, indexHref: str
   let items: SearchHit[] = []
   let active = -1
   let debounce: ReturnType<typeof setTimeout> | undefined
-  let blurClose: ReturnType<typeof setTimeout> | undefined
 
   input.addEventListener("focus", () => {
-    clearTimeout(blurClose)
+    render()
     if (!loading) {
       loading = true
       void load()
@@ -77,10 +77,8 @@ function wireInput(input: HTMLInputElement, results: HTMLElement, indexHref: str
     }
   })
 
-  input.addEventListener("blur", () => {
-    // Defer so a click on a result registers before the dropdown hides.
-    blurClose = setTimeout(close, BLUR_CLOSE_DELAY_MS)
-  })
+  results.addEventListener("mousedown", (e) => e.preventDefault())
+  input.addEventListener("blur", close)
 
   async function load(): Promise<void> {
     try {
@@ -110,7 +108,7 @@ function wireInput(input: HTMLInputElement, results: HTMLElement, indexHref: str
       render()
       return
     }
-    const raw = ms.search(q, {
+    const raw = ms.search(q.slice(0, MAX_QUERY_LENGTH), {
       fuzzy: typoTolerance,
       prefix: true,
       boostDocument: (_id, _term, doc) => weights[doc?.type as string] ?? 1,
@@ -136,6 +134,15 @@ function wireInput(input: HTMLInputElement, results: HTMLElement, indexHref: str
   function close(): void {
     results.hidden = true
     input.setAttribute("aria-expanded", "false")
+  }
+}
+
+function parseWeights(raw: string | undefined): Record<string, number> {
+  try {
+    const parsed: unknown = JSON.parse(raw ?? "{}")
+    return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, number>) : {}
+  } catch {
+    return {}
   }
 }
 

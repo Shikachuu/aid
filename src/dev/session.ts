@@ -15,11 +15,11 @@ export type StartDevSessionArgs = {
 }
 
 /**
- * Run the dev server end-to-end: prepare the double-buffered output dirs under
- * `.aid/dev/`, write `.aid/.gitignore`, kick off the initial build, start
- * Bun.serve, and begin watching the filesystem. Returns once the server is
- * listening. The watcher and server keep the process alive until SIGINT,
- * SIGTERM, or a change to the config file.
+ * Run `aid dev`. The server and the watcher start before the initial build,
+ * so a tab opened early gets the waiting page and a save during the build
+ * queues one more build. Returns after the initial build. The watcher and
+ * server keep the process alive until SIGINT, SIGTERM, or a change to the
+ * config file.
  */
 export async function startDevSession(args: StartDevSessionArgs): Promise<void> {
   const { ctx, host, port, configPath } = args
@@ -36,25 +36,22 @@ export async function startDevSession(args: StartDevSessionArgs): Promise<void> 
     sseClients: new Set(),
   }
 
-  const initial = await rebuild(state, ctx)
-  if (initial.ok) {
-    console.log(`[aid] initial build: ${initial.durationMs}ms`)
-  } else {
-    console.error(`[aid] initial build failed (${initial.durationMs}ms): ${initial.error.message}`)
-  }
-
   const server = startDevServer({ state, config: ctx.config, host, port })
   console.log(
-    `[aid] dev server listening at http://${host}:${server.port}${withSlash(ctx.config.base_path)}`,
+    `[aid] dev server listening at http://${urlHost(host)}:${server.port}${withSlash(ctx.config.base_path)}`,
   )
 
+  let initial = true
   const runRebuild = serializeRuns(async () => {
     const result = await rebuild(state, ctx)
+    const ms = result.durationMs
     if (result.ok) {
-      console.log(`[aid] rebuilt in ${result.durationMs}ms`)
+      console.log(initial ? `[aid] initial build: ${ms}ms` : `[aid] rebuilt in ${ms}ms`)
     } else {
-      console.error(`[aid] build failed (${result.durationMs}ms): ${result.error.message}`)
+      const what = initial ? "initial build" : "build"
+      console.error(`[aid] ${what} failed (${ms}ms): ${result.error.message}`)
     }
+    initial = false
     handle.watchFiles(result.stylesheetDependencies)
   })
 
@@ -78,7 +75,6 @@ export async function startDevSession(args: StartDevSessionArgs): Promise<void> 
       void endAndExit(message)
     },
   )
-  handle.watchFiles(initial.stylesheetDependencies)
 
   const shutdown = () => {
     handle.close()
@@ -87,7 +83,12 @@ export async function startDevSession(args: StartDevSessionArgs): Promise<void> 
   }
   process.on("SIGINT", shutdown)
   process.on("SIGTERM", shutdown)
+
+  await runRebuild()
 }
+
+/** Wrap an IPv6 literal in brackets so the printed URL opens in a browser. */
+export const urlHost = (host: string): string => (host.includes(":") ? `[${host}]` : host)
 
 const END_SESSION_TIMEOUT_MS = 1000
 

@@ -13,11 +13,15 @@ afterAll(async () => {
   await GlobalRegistrator.unregister()
 })
 
+let onSchemeChange: () => void = () => {}
+
 const prefersDark = (matches: boolean) => {
   window.matchMedia = ((query: string) => ({
     matches,
     media: query,
-    addEventListener: () => {},
+    addEventListener: (_: string, listener: () => void) => {
+      onSchemeChange = listener
+    },
   })) as unknown as typeof window.matchMedia
 }
 
@@ -49,5 +53,27 @@ describe("attachMermaid", () => {
     document.body.innerHTML = "<p>none</p>"
     await attachMermaid()
     expect(initialize).not.toHaveBeenCalled()
+  })
+
+  test("runs one render at a time when the scheme flips quickly", async () => {
+    const { attachMermaid } = await import("../../src/web/mermaid")
+    prefersDark(false)
+    await attachMermaid()
+    let active = 0
+    let peak = 0
+    const done = Promise.withResolvers<boolean>()
+    run.mockImplementation(async () => {
+      peak = Math.max(peak, ++active)
+      await Bun.sleep(0)
+      active--
+      if (run.mock.calls.length === 3) {
+        done.resolve(true)
+      }
+    })
+    onSchemeChange()
+    onSchemeChange()
+    await done.promise
+    expect(peak).toBe(1)
+    run.mockImplementation(async () => {})
   })
 })

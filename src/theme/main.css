@@ -222,6 +222,10 @@
     @apply overflow-x-auto rounded-lg p-4 font-aid-mono text-sm leading-relaxed;
   }
 
+  .aid-page-html pre {
+    @apply overflow-x-auto;
+  }
+
   .aid-page-markdown :not(pre) > code,
   .aid-schema-description :not(pre) > code {
     @apply rounded bg-aid-muted/12 px-1 py-0.5 font-aid-mono text-[0.875em];

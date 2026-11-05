@@ -33,8 +33,15 @@ describe("serveFile", () => {
     expect(await (await serveFile(dist, "/user.schema")).text()).toBe("schema page")
   })
 
-  test("answers 404 for a missing file and 400 for a path outside dist", async () => {
-    expect((await serveFile(dist, "/nope.css")).status).toBe(404)
+  test("serves an extensionless file that has no route folder", async () => {
+    await Bun.write(path.join(dist, "LICENSE"), "MIT")
+    expect(await (await serveFile(dist, "/LICENSE")).text()).toBe("MIT")
+  })
+
+  test("answers an HTML 404 for a missing file and 400 for a path outside dist", async () => {
+    const missing = await serveFile(dist, "/nope.css")
+    expect(missing.status).toBe(404)
+    expect(missing.headers.get("Content-Type")).toStartWith("text/html")
     expect((await serveFile(dist, "/../etc/passwd")).status).toBe(400)
   })
 })
@@ -90,6 +97,30 @@ describe("startDevServer", () => {
     expect(await (await fetch(url("/body/"))).text()).toBe(`<html><body>b${tag}</body></html>`)
     expect(await (await fetch(url("/html/"))).text()).toBe(`<html>h${tag}</html>`)
     expect(await (await fetch(url("/"))).text()).toBe(`home\n${tag}`)
+  })
+
+  test("injects before the last </body>, past one inside an inline script", async () => {
+    const html = `<html><body><script>let s = "</body>"</script></body></html>`
+    await Bun.write(path.join(dist, "inline", "index.html"), html)
+    start()
+    expect(await (await fetch(url("/inline/"))).text()).toBe(
+      `<html><body><script>let s = "</body>"</script>${tag}</body></html>`,
+    )
+  })
+
+  test("gives a 404 page the reload client so the tab recovers once the page exists", async () => {
+    start()
+    const res = await fetch(url("/missing/"))
+    expect(res.status).toBe(404)
+    expect(await res.text()).toContain(tag)
+  })
+
+  test("answers 403 to a Host header that is not loopback while bound to loopback", async () => {
+    start()
+    const rebound = await fetch(url("/"), { headers: { Host: `evil.example:${server.port}` } })
+    expect(rebound.status).toBe(403)
+    const local = await fetch(url("/"), { headers: { Host: `localhost:${server.port}` } })
+    expect(local.status).toBe(200)
   })
 
   test("serves non-HTML files untouched", async () => {

@@ -14,12 +14,12 @@ aid dev
 ```
 
 ```text
-[aid] initial build: 412ms
 [aid] dev server listening at http://localhost:3000/
+[aid] initial build: 412ms
 [aid] rebuilt in 217ms
 ```
 
-Open the printed URL. Stop the server with Ctrl+C.
+The server and the watcher start before the initial build. A tab opened during the initial build gets a waiting page that loads the site once the build lands, and a save during the initial build queues one more build. With an IPv6 `--host` such as `::1`, the log prints the address in brackets, `http://[::1]:3000/`. Open the printed URL. Stop the server with Ctrl+C.
 
 ## Flags and config
 
@@ -31,7 +31,7 @@ aid dev [dir] [-f aid.yaml] [--port N] [--host H]
 | --- | --- | --- |
 | `[dir]` | current directory | Project directory, the folder that holds `aid.yaml`. |
 | `--file`, `-f` | `aid.yaml` | Config file, relative to the project directory. |
-| `--port` | `dev.port`, 3000 | Port to listen on. aid rejects values outside 0 to 65535. `0` lets the OS pick a free port, and the log prints the port it got. |
+| `--port` | `dev.port`, 3000 | Port to listen on. aid rejects anything but a whole number from 0 to 65535, including an empty value. `0` lets the OS pick a free port, and the log prints the port it got. |
 | `--host` | `dev.host`, `localhost` | Host to listen on. |
 
 `--port` and `--host` override `dev.port` and `dev.host` in `aid.yaml`. See [the `dev` keys](../reference/configuration.md#dev) in the configuration reference.
@@ -52,8 +52,8 @@ sequenceDiagram
   participant S as Server
   participant Br as Browser
   FS->>W: file change event
-  W->>W: drop events under .aid/ and unchanged mtimes
-  W->>W: wait 100 ms for more events
+  W->>W: drop events under .aid/, .git/, node_modules/ and unchanged mtimes
+  W->>W: wait 100 ms for more events, 1 s at most
   W->>B: rebuild (one at a time, one queued)
   B->>B: full build into the inactive buffer
   B->>S: swap to the new buffer
@@ -86,13 +86,13 @@ On start, aid writes `.aid/.gitignore` with `*`, so git ignores the whole folder
 | files the stylesheet `@import`s | their folders, filtered to the files | rebuild |
 | the config file (`aid.yaml` or the `-f` value) | its folder, filtered to the file | session ends |
 
-aid watches a single file through its folder. An editor that saves by writing a temporary file and renaming it over the original keeps triggering rebuilds, and a stylesheet created after `aid dev` starts is picked up. After each build, aid adds every file that the stylesheet `@import`s to the watch list, so editing a partial rebuilds the site. This includes a build that failed on an error in a partial, so saving the fix rebuilds. After a failed build aid also watches every relative `@import` and `@reference` target, so creating a missing partial rebuilds right away, as long as its folder exists. When aid cannot watch a partial's folder, for example without read permission, it prints `[aid] cannot watch <file>` once and keeps watching everything else.
+aid watches a single file through its folder. An editor that saves by writing a temporary file and renaming it over the original keeps triggering rebuilds, and a stylesheet created after `aid dev` starts is picked up. After each build, aid adds every file that the stylesheet `@import`s to the watch list, so editing a partial rebuilds the site. This includes a build that failed on an error in a partial, so saving the fix rebuilds. After a failed build aid also watches every relative `@import` and `@reference` target, so creating a missing partial rebuilds right away, even in a folder that does not exist yet. When aid cannot watch a partial's folder, for example without read permission, it prints `[aid] cannot watch <file>` once and keeps watching everything else.
 
-The watcher ignores every event under `.aid/`, so the dev server's own writes do not trigger rebuilds. It also drops an event when the file's modification time equals the one from its last event, because Bun's recursive watcher on macOS reports reads as well as writes. Any other modification time counts as a change, including an older one, which `mv`, `cp -p`, and `rsync -a` produce. Events within 100 ms of each other collapse into one rebuild.
+A folder that does not exist yet is watched through its nearest existing parent. Creating `static/`, or the folder that holds a partial, during a session rebuilds the site and starts watching the new folder. When `dir.content`, `dir.static`, or `dir.templates` is deleted and created again, for example by a branch switch, aid watches the new folder.
+
+The watcher ignores every event under `.aid/`, so the dev server's own writes do not trigger rebuilds. It also ignores `.git/` and `node_modules/` inside the project, which the recursive watch covers when `dir.content` is `.`. It drops an event when the file's modification time equals the one from its last event. Any other modification time counts as a change, including an older one, which `mv`, `cp -p`, and `rsync -a` produce. Events within 100 ms of each other collapse into one rebuild. A steady stream of events, such as a long copy, still starts a rebuild one second after the first event.
 
 aid runs one rebuild at a time. Changes that arrive during a rebuild queue at most one more rebuild, so five quick saves produce at most two builds.
-
-A folder that does not exist when `aid dev` starts is not watched. If you create `static/`, or the folder that holds the stylesheet, during a session, restart `aid dev`.
 
 ### Config changes end the session
 
@@ -106,7 +106,7 @@ The overlay stays on screen after the server stops. Start `aid dev` again to loa
 
 ## Live reload
 
-The server adds a small script before `</body>` in every HTML response. If a page has no `</body>`, aid inserts the script before `</html>`, or appends it at the end. The script opens a server-sent events (SSE) connection to `/__aid/reload` and handles three events:
+The server adds a small script before the last `</body>` in every HTML response, including the 404 page. If a page has no `</body>`, aid inserts the script before the last `</html>`, or appends it at the end. The script opens a server-sent events (SSE) connection to `/__aid/reload` and handles three events:
 
 | Event | Sent when | Browser effect |
 | --- | --- | --- |
@@ -124,10 +124,11 @@ When the first build fails, there is no good build to serve. Every request then 
 
 ## Routing
 
-- A URL that ends in `/` or has no file extension maps to `index.html` in that folder, so `/guides` serves `guides/index.html`.
+- A URL that ends in `/` or has no file extension maps to `index.html` in that folder, so `/guides` serves `guides/index.html`. When no such folder exists, an extensionless URL serves the file of that name, so a static `CNAME` or `LICENSE` file loads.
 - A URL with a dot in its last segment serves the file of that name. When no such file exists, it serves `index.html` in the folder of that name, so the JSON Schema route `/user.schema` serves `user.schema/index.html`.
 - A path that resolves outside the build folder, such as an encoded `..`, returns 400 Bad Request. So does a path with a malformed `%` escape or an encoded NUL byte.
-- A missing file returns 404 Not Found.
+- A missing file returns a 404 Not Found HTML page with the reload script, so a tab that sits on it reloads once a rebuild creates the page.
+- While the server listens on a loopback address (`localhost`, `127.0.0.1`, or `::1`), a request whose `Host` header names anything else returns 403 Forbidden. This stops a web page that points its own domain at `127.0.0.1` (DNS rebinding) from reading your docs and build errors. With any other `--host`, such as `0.0.0.0`, every `Host` is allowed.
 - An unexpected server error returns a plain 500 Internal Server Error and logs the error to the terminal. The response has no stack trace or file paths.
 
 With a `base_path` such as `/docs`, the server strips the prefix before it looks up the file. Both `/docs` and `/docs/` serve the site root. Any path outside the prefix, including `/`, gets a 302 redirect to `/docs/`. The startup log prints the URL with the prefix. See [paths and URLs](../configuration/paths-and-urls.md) for how `base_path` shapes the built site.

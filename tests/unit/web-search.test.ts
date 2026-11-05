@@ -46,12 +46,22 @@ afterEach(() => {
   delete (window as { __AID_SEARCH__?: unknown }).__AID_SEARCH__
 })
 
-const typeQuery = async (q: string) => {
+const typeQuery = (q: string) => {
   input.focus()
   input.value = q
   input.dispatchEvent(new Event("input"))
-  await Bun.sleep(150)
 }
+
+/** Polls `check` until it holds, so a test waits for the effect rather than a fixed delay. */
+const until = async (check: () => boolean) => {
+  for (let i = 0; i < 400 && !check(); i++) {
+    await Bun.sleep(5)
+  }
+  expect(check()).toBe(true)
+}
+
+const titles = () =>
+  [...results.querySelectorAll(".aid-search-result-title")].map((e) => e.textContent)
 
 const key = (init: KeyboardEventInit) => {
   const event = new KeyboardEvent("keydown", { cancelable: true, ...init })
@@ -64,18 +74,17 @@ const selected = () =>
 
 describe("attachSearch", () => {
   test("lists matching pages and moves the selection with the arrow keys", async () => {
-    await typeQuery("alp")
-    expect(results.hidden).toBe(false)
-    expect(
-      [...results.querySelectorAll(".aid-search-result-title")].map((e) => e.textContent),
-    ).toEqual(["alpha", "alpine"])
+    typeQuery("alp")
+    await until(() => !results.hidden)
+    expect(titles()).toEqual(["alpha", "alpine"])
     expect(selected()).toBe(0)
     expect(key({ key: "ArrowDown" }).defaultPrevented).toBe(true)
     expect(selected()).toBe(1)
   })
 
   test("leaves keys to the IME while it composes text", async () => {
-    await typeQuery("alp")
+    typeQuery("alp")
+    await until(() => !results.hidden)
     expect(key({ key: "ArrowDown", isComposing: true }).defaultPrevented).toBe(false)
     expect(key({ key: "Enter", keyCode: 229 }).defaultPrevented).toBe(false)
     expect(selected()).toBe(0)
@@ -87,20 +96,49 @@ describe("attachSearch", () => {
     try {
       document.head.innerHTML = ""
       indexLoads(false)
-      await typeQuery("alp")
+      typeQuery("alp")
+      await until(() => warn.mock.calls.length === 1)
       expect(results.hidden).toBe(true)
       input.blur()
-      await typeQuery("alp")
-      expect(warn).toHaveBeenCalledTimes(1)
+      typeQuery("alp")
+      await until(() => error.mock.calls.length === 2)
       expect(document.head.querySelectorAll("script")).toHaveLength(0)
 
       indexLoads(true)
-      input.blur()
-      await typeQuery("alp")
-      expect(results.hidden).toBe(false)
+      await until(() => {
+        input.blur()
+        input.focus()
+        return !results.hidden
+      })
+      expect(warn).toHaveBeenCalledTimes(1)
     } finally {
       warn.mockRestore()
       error.mockRestore()
     }
+  })
+
+  test("hides the results on blur, shows them again on focus, and keeps focus on a result click", async () => {
+    typeQuery("alp")
+    await until(() => !results.hidden)
+    input.blur()
+    expect(results.hidden).toBe(true)
+    input.focus()
+    expect(results.hidden).toBe(false)
+    const press = new MouseEvent("mousedown", { bubbles: true, cancelable: true })
+    results.firstElementChild?.dispatchEvent(press)
+    expect(press.defaultPrevented).toBe(true)
+  })
+
+  test("falls back to equal weights when the weights attribute is not JSON", async () => {
+    document.body.innerHTML = document.body.innerHTML.replace(
+      'data-aid-search-weights="{}"',
+      'data-aid-search-weights="{oops"',
+    )
+    input = document.querySelector("input") as HTMLInputElement
+    results = document.querySelector("[data-aid-search-results]") as HTMLElement
+    attachSearch()
+    typeQuery("beta")
+    await until(() => !results.hidden)
+    expect(titles()).toEqual(["beta"])
   })
 })

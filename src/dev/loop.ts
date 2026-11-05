@@ -14,11 +14,10 @@ export type RebuildResult = { durationMs: number; stylesheetDependencies: string
 )
 
 /**
- * Run a full build into the inactive buffer. On success, flip `state.currentDir`
- * to point at the freshly-built directory and broadcast a `reload` SSE event.
- * On failure, leave `currentDir` untouched, store the error in `state.errorState`,
- * and broadcast an `error-detail` SSE event so connected browsers can render the
- * overlay without a page reload.
+ * Build into the buffer that is not being served, so a failed build never
+ * replaces the last good one. Success serves the new buffer and reloads open
+ * tabs. Failure keeps serving the old one and shows the error overlay, also to
+ * tabs that connect later.
  */
 export async function rebuild(state: DevState, ctx: BuildContext): Promise<RebuildResult> {
   const target = state.currentDir === state.buffers.a ? state.buffers.b : state.buffers.a
