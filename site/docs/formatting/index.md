@@ -49,15 +49,10 @@ In JSON output, each tool result has a `wouldChange` array with the files that w
 | Tool | Formatter |
 | --- | --- |
 | `md` | Runs markdownlint with your `.markdownlint.*` config or the bundled default, then applies every fix that markdownlint offers. Rules without a fix leave the file alone. |
-| `openapi` | Parses each spec and writes it back. `.json` files go through `JSON.parse` and `JSON.stringify` with a 2-space indent and a trailing newline. `.yaml` and `.yml` files go through `Bun.YAML.parse` and `Bun.YAML.stringify` in block style with a 2-space indent and a trailing newline. |
+| `openapi` | Reformats `.yaml` and `.yml` specs with a 2-space indent. Comments, anchors, block scalars, quoting and number spellings such as `1.0` stay as written. `.json` specs are formatted by the `bun` tool like any other JSON file. |
 | `bun` | Runs `bun fmt` on JS, TS, JSON, and CSS files, with your `bun fmt` config or the bundled default: a line width of 100 and no semicolons. With `--check`, it lists the files `bun fmt --check` reports. It applies no lint fixes. |
 | `proto` | Runs `buf format -w` on each file. With `--check`, it runs `buf format -d --exit-code` and lists the files with a non-empty diff. |
 
 aid finds buf the same way for `aid fmt` as for `aid lint`. When no buf binary is available, the proto tool is skipped and passes. See [how aid finds buf](../linting/index.md#how-aid-finds-buf).
 
-Spectral has no formatter, so the OpenAPI step is a parse and re-serialize, not a style pass. A spec that fails to parse stays untouched, and aid reports an `openapi/parse` error for it.
-
-## Limitations
-
-> [!WARNING]
-> `aid fmt` re-serializes every YAML OpenAPI file in block style with a two-space indent, so it drops every YAML comment and normalizes quoting and key layout. To keep comments, exclude OpenAPI from formatting with `--filter md,bun,proto`.
+A spec that fails to parse stays untouched, and aid reports an `openapi/parse` error for it. aid also leaves a spec untouched, with a warning, when it holds several YAML documents (`openapi/multi-document`) or when reformatting would change its data (`openapi/lossy`).

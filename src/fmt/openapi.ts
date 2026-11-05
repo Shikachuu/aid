@@ -1,13 +1,14 @@
+import { parse, parseAllDocuments } from "yaml"
 import type { Diagnostic, ToolResult } from "../lint/diagnostics"
 import { applyFormat } from "./apply"
 
+const YAML_OPTIONS = { intAsBigInt: true } as const
+
 /**
- * Canonicalize OpenAPI files: round-trip `.yaml`/`.yml` through `Bun.YAML` and
- * `.json` through `JSON.parse`/`JSON.stringify`. Spectral has no formatter, so
- * this is a structural reformat only. A file that fails to parse stays
- * untouched and fails the run with an `openapi/parse` error.
- *
- * `Bun.YAML` does not keep comments, so formatting a YAML spec drops them.
+ * Reformat YAML OpenAPI specs in place, keeping comments, anchors, block
+ * scalars and number spellings. JSON specs are left to the `bun` tool. A file
+ * that fails to parse fails the run with `openapi/parse`; a file whose data
+ * would change, or that holds several documents, is skipped with a warning.
  */
 export const formatOpenApi = async (
   paths: string[],
@@ -15,22 +16,36 @@ export const formatOpenApi = async (
   opts: { check: boolean },
 ): Promise<ToolResult> => {
   const diagnostics: Diagnostic[] = []
-  const result = await applyFormat("openapi", paths, opts.check, (file, text) => {
-    try {
-      return file.endsWith(".json")
-        ? `${JSON.stringify(JSON.parse(text), null, 2)}\n`
-        : `${Bun.YAML.stringify(Bun.YAML.parse(text), null, 2)
-            .replace(/[ \t]+$/gm, "")
-            .trimEnd()}\n`
-    } catch (err) {
-      diagnostics.push({
-        file,
-        severity: "error",
-        code: "openapi/parse",
-        message: err instanceof Error ? err.message : String(err),
-      })
+  const report = (file: string, severity: Diagnostic["severity"], code: string, message: string) =>
+    diagnostics.push({ file, severity, code, message })
+  const yamlPaths = paths.filter((file) => !file.endsWith(".json"))
+  const result = await applyFormat("openapi", yamlPaths, opts.check, (file, text) => {
+    const docs = parseAllDocuments(text, YAML_OPTIONS)
+    const [doc] = docs
+    if (doc === undefined) {
       return text
     }
+    if (docs.length > 1) {
+      report(
+        file,
+        "warn",
+        "openapi/multi-document",
+        "file holds several YAML documents; left as is",
+      )
+      return text
+    }
+    const [error] = doc.errors
+    if (error !== undefined) {
+      report(file, "error", "openapi/parse", error.message)
+      return text
+    }
+    const formatted = doc.toString({ indent: 2 })
+    if (!Bun.deepEquals(parse(text, YAML_OPTIONS), parse(formatted, YAML_OPTIONS), true)) {
+      report(file, "warn", "openapi/lossy", "reformatting would change the spec's data; left as is")
+      return text
+    }
+    return formatted
   })
-  return { ...result, ok: result.ok && diagnostics.length === 0, diagnostics }
+  const failed = diagnostics.some((d) => d.severity === "error")
+  return { ...result, ok: result.ok && !failed, diagnostics }
 }

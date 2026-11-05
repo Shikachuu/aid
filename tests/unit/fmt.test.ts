@@ -41,41 +41,78 @@ describe("formatMarkdown", () => {
 })
 
 describe("formatOpenApi", () => {
-  test("canonicalizes JSON via JSON.stringify round-trip", async () => {
-    const file = join(dir, "openapi.json")
-    await Bun.write(file, '{"openapi":"3.0.0","info":{"title":"X","version":"1"},"paths":{}}')
-    await formatOpenApi([file], dir, { check: false })
-    const after = await Bun.file(file).text()
-    expect(after).toContain("\n")
-    expect(after.endsWith("\n")).toBe(true)
-  })
+  const SPEC = `# Pet store spec
+openapi: 3.1.0
+info:
+  title: Pets   # shown in the header
+  version: 1.0
+  description: |
+    Line one.
+    Line two.
+x-hex: 0x1F
+x-big: 12345678901234567890
+x-base: &base
+  type: object
+x-pet: *base
+paths:   {}
+`
 
-  test("yaml output stays block style with two-space indent and a trailing newline", async () => {
+  test("keeps comments, block scalars, anchors and number spellings", async () => {
     const file = join(dir, "openapi.yaml")
-    await Bun.write(file, "openapi: 3.0.0\ninfo:\n  title: X\n  version: '1'\npaths: {}\n")
-    await formatOpenApi([file], dir, { check: false })
+    await Bun.write(file, SPEC)
+    const result = await formatOpenApi([file], dir, { check: false })
+    expect(result.ok).toBe(true)
     const out = await Bun.file(file).text()
-    expect(out).toContain("info:\n  title: X\n")
-    expect(out.startsWith("{")).toBe(false)
-    expect(out.endsWith("\n")).toBe(true)
-    expect(out.endsWith("\n\n")).toBe(false)
+    for (const kept of [
+      "# Pet store spec",
+      "# shown in the header",
+      "version: 1.0",
+      "description: |\n    Line one.\n    Line two.",
+      "x-big: 12345678901234567890",
+      "x-base: &base",
+      "x-pet: *base",
+    ]) {
+      expect(out).toContain(kept)
+    }
+    expect(out).toContain("paths: {}")
   })
 
-  test("yaml round-trip is idempotent", async () => {
+  test("is idempotent", async () => {
     const file = join(dir, "openapi.yaml")
-    await Bun.write(file, "openapi: 3.0.0\ninfo:\n  title: X\n  version: '1'\npaths: {}\n")
+    await Bun.write(file, SPEC)
     await formatOpenApi([file], dir, { check: false })
     const first = await Bun.file(file).text()
-    await formatOpenApi([file], dir, { check: false })
-    const second = await Bun.file(file).text()
-    expect(second).toBe(first)
+    const second = await formatOpenApi([file], dir, { check: true })
+    expect(second.wouldChange).toEqual([])
+    expect(await Bun.file(file).text()).toBe(first)
+  })
+
+  test("leaves JSON specs to the bun tool", async () => {
+    const file = join(dir, "openapi.json")
+    const original = '{"openapi":"3.0.0","info":{"title":"X","version":1.0},"paths":{}}'
+    await Bun.write(file, original)
+    const result = await formatOpenApi([file], dir, { check: true })
+    expect(result.ok).toBe(true)
+    expect(await Bun.file(file).text()).toBe(original)
+  })
+
+  test("skips a multi-document file with a warning", async () => {
+    const file = join(dir, "openapi.yaml")
+    const original = "openapi: 3.1.0\n---\nopenapi:    3.1.0\n"
+    await Bun.write(file, original)
+    const result = await formatOpenApi([file], dir, { check: false })
+    expect(result.ok).toBe(true)
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ file, severity: "warn", code: "openapi/multi-document" }),
+    ])
+    expect(await Bun.file(file).text()).toBe(original)
   })
 
   test.each([true, false])(
     "reports an unparseable spec as an error and leaves it untouched (check: %p)",
     async (check) => {
-      const file = join(dir, "openapi.json")
-      const original = '{"openapi": "3.0.0",'
+      const file = join(dir, "openapi.yaml")
+      const original = "openapi: [3.0.0\n"
       await Bun.write(file, original)
       const result = await formatOpenApi([file], dir, { check })
       expect(result.ok).toBe(false)
