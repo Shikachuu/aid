@@ -1,4 +1,5 @@
 import path from "node:path"
+import type { AssetRegistry } from "./assets"
 import {
   aidMermaidJs,
   aidOpenapiCss,
@@ -10,7 +11,8 @@ import {
 import type { BuildContext } from "./types"
 import {
   AID_ROOT,
-  bundleWebEntry,
+  bundleWebOutputs,
+  entryPointOf,
   hasSourceTree,
   requireEmbedded,
   WEB_CSS,
@@ -42,21 +44,24 @@ export type BuildWebBundleResult = {
  * base bundle is always written. Each optional bundle is written only when its
  * `include` flag is set. Output comes from `Bun.build` when the source tree is
  * on disk, and from the bytes embedded in `src/web/_bundled.ts` inside a
- * compiled binary.
+ * compiled binary. Every written file goes through `registry`, so a static
+ * file with the same name is a collision instead of a silent overwrite.
  */
 export async function buildWebBundle(
   ctx: BuildContext,
+  registry: AssetRegistry,
   include: { mermaid: boolean; openapi: boolean; proto: boolean },
 ): Promise<BuildWebBundleResult> {
   const fromSource = await hasSourceTree()
 
   const js = (entry: WebJsEntry, embedded: string) =>
     fromSource
-      ? buildAndWrite(ctx, entry)
-      : writeHashed(ctx, entry.name, "js", requireEmbedded(entry.name, embedded))
+      ? buildAndWrite(ctx, registry, entry)
+      : writeHashed(ctx, registry, entry.name, "js", requireEmbedded(entry.name, embedded))
   const css = async (entry: (typeof WEB_CSS)[keyof typeof WEB_CSS], embedded: string) =>
     writeHashed(
       ctx,
+      registry,
       entry.name,
       "css",
       fromSource
@@ -81,20 +86,26 @@ export async function buildWebBundle(
  */
 export async function writeHashed(
   ctx: BuildContext,
+  registry: AssetRegistry,
   name: string,
   ext: string,
   body: string,
 ): Promise<string> {
   const hash = Bun.hash.xxHash64(body).toString(16).padStart(16, "0").slice(0, 8)
   const filename = `${name}.${hash}.${ext}`
-  await Bun.write(path.join(ctx.outputDir, filename), body)
+  const outputPath = path.join(ctx.outputDir, filename)
+  registry.register(outputPath, `<generated:${name}.${ext}>`)
+  await Bun.write(outputPath, body)
   return path.posix.join(ctx.config.base_path, filename)
 }
 
-async function buildAndWrite(ctx: BuildContext, entry: WebJsEntry): Promise<string> {
+async function buildAndWrite(
+  ctx: BuildContext,
+  registry: AssetRegistry,
+  entry: WebJsEntry,
+): Promise<string> {
   const { name } = entry
-  const output = await bundleWebEntry(entry, {
-    outdir: ctx.outputDir,
+  const outputs = await bundleWebOutputs(entry, {
     splitting: true,
     naming: {
       entry: `${name}.[hash].js`,
@@ -102,5 +113,11 @@ async function buildAndWrite(ctx: BuildContext, entry: WebJsEntry): Promise<stri
       asset: `${name}.[name].[hash][ext]`,
     },
   })
-  return path.posix.join(ctx.config.base_path, path.basename(output.path))
+  const targets = outputs.map((output) => {
+    const outputPath = path.join(ctx.outputDir, output.path)
+    registry.register(outputPath, `<generated:${entry.source}>`)
+    return { outputPath, output }
+  })
+  await Promise.all(targets.map(({ outputPath, output }) => Bun.write(outputPath, output)))
+  return path.posix.join(ctx.config.base_path, path.basename(entryPointOf(entry, outputs).path))
 }

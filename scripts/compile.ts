@@ -1,11 +1,14 @@
 #!/usr/bin/env bun
 import { mkdir, rm } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
+import { checkStaged, collectStaged } from "./check-binaries"
 import { TARGETS, type Target } from "./natives"
 
 const ROOT = resolve(import.meta.dir, "..")
 const DIST = resolve(ROOT, "dist")
 const CLI_ENTRY = resolve(ROOT, "src", "cli", "index.ts")
+/** Where `scripts/bundle-web.ts` writes the browser bundles by default. */
+export const BUNDLED_OUT = resolve(ROOT, ".aid-build", "_bundled.ts")
 
 const BUF_SUBPKGS = TARGETS.map((t) => t.bufSubpkg)
 const LCSS_SUBPKGS = TARGETS.map((t) => t.lcssSubpkg)
@@ -94,12 +97,15 @@ const redirectBundled = (file: string): Bun.BunPlugin => ({
   },
 })
 
-/** Compile the CLI into a standalone binary for one target. */
+/** Release binary for `target`. Throws when `bundled` is missing, so no binary ships empty browser bundles. */
 export const compileTarget = async (
   target: Target,
   outfile: string,
-  opts: { bundled?: string } = {},
+  { bundled = BUNDLED_OUT }: { bundled?: string } = {},
 ): Promise<void> => {
+  if (!(await Bun.file(bundled).exists())) {
+    throw new Error(`[compile] ${bundled} is missing. Run \`bun scripts/bundle-web.ts\` first.`)
+  }
   const started = performance.now()
   await Bun.build({
     entrypoints: [CLI_ENTRY],
@@ -112,11 +118,7 @@ export const compileTarget = async (
       "process.platform": JSON.stringify(target.platform),
       "process.arch": JSON.stringify(target.arch),
     },
-    plugins: [
-      jsoncEsm,
-      nativeStubs(target),
-      ...(opts.bundled === undefined ? [] : [redirectBundled(opts.bundled)]),
-    ],
+    plugins: [jsoncEsm, nativeStubs(target), redirectBundled(bundled)],
   })
   const elapsed = ((performance.now() - started) / 1000).toFixed(2)
   console.log(`[compile] compile ${target.triple} done in ${elapsed}s`)
@@ -135,6 +137,11 @@ if (import.meta.main) {
   await run([process.execPath, "scripts/emit-schema.ts"], "emit-schema")
   await copySchema()
   await run([process.execPath, "scripts/bundle-web.ts"], "bundle-web")
+  const drift = checkStaged(await collectStaged(ROOT))
+  if (drift.length > 0) {
+    console.error(`[compile] vendor/natives is out of sync:\n  - ${drift.join("\n  - ")}`)
+    process.exit(1)
+  }
   for (const target of TARGETS) {
     await compileTarget(target, resolve(DIST, "bin", `aid-${target.outSuffix}`))
   }

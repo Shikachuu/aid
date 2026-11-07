@@ -1,11 +1,23 @@
-import { describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
+import { mkdir, mkdtemp, rm, symlink } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import path from "node:path"
 import {
   checkFamily,
   checkRuntime,
   checkStaged,
+  collectStaged,
+  latestBunKeepingCanaryPin,
+  main,
+  misePin,
+  npmLatest,
+  runningBun,
   updateCommands,
   updateStatus,
 } from "../../scripts/check-binaries"
+import { lcssNodeFile, TARGETS } from "../../scripts/natives"
+
+const CANARY = "1.4.4-canary.20261103.1"
 
 describe("checkFamily", () => {
   test("passes when every member matches the parent", () => {
@@ -198,5 +210,126 @@ describe("updateStatus", () => {
 
   test("reports a failed lookup", () => {
     expect(updateStatus({ family: "x", current: "1.0.0", latest: null })).toBe("lookup failed")
+  })
+})
+
+describe("against a project root", () => {
+  let root: string
+
+  beforeEach(async () => {
+    root = await mkdtemp(path.join(tmpdir(), "aid-check-binaries-"))
+  })
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true })
+  })
+
+  test("misePin reads a string pin and an http:bun table", async () => {
+    await Bun.write(path.join(root, "mise.toml"), '[tools]\nbun = "1.4.2"\n')
+    expect(await misePin(root)).toBe("1.4.2")
+    await Bun.write(path.join(root, "mise.toml"), `[tools."http:bun"]\nversion = "${CANARY}"\n`)
+    expect(await misePin(root)).toBe(CANARY)
+  })
+
+  test("misePin returns null without a pin or without mise.toml", async () => {
+    expect(await misePin(root)).toBeNull()
+    await Bun.write(path.join(root, "mise.toml"), '[tools]\nnode = "24"\n')
+    expect(await misePin(root)).toBeNull()
+  })
+
+  test("runningBun reports Bun.version for a stable pin", async () => {
+    expect(await runningBun("1.4.2", root)).toBe(Bun.version)
+  })
+
+  const host = TARGETS.find((t) => t.platform === process.platform && t.arch === process.arch)
+
+  test.skipIf(host === undefined)(
+    "runningBun reports a canary pin only when the running binary is the pinned one",
+    async () => {
+      expect(await runningBun(CANARY, root)).toBe(`${Bun.version}+${Bun.revision.slice(0, 9)}`)
+      const pinned = path.join(root, "node_modules", host?.bunSubpkg ?? "", "bin", "bun")
+      await mkdir(path.dirname(pinned), { recursive: true })
+      await symlink(process.execPath, pinned)
+      expect(await runningBun(CANARY, root)).toBe(CANARY)
+    },
+  )
+
+  test("collectStaged hashes each binding and its staged copy", async () => {
+    const [same, stale] = TARGETS
+    for (const t of [same, stale]) {
+      const name = t?.lcssSubpkg ?? ""
+      await Bun.write(path.join(root, "node_modules", name, lcssNodeFile(name)), "binding")
+    }
+    await Bun.write(path.join(root, "vendor/natives", `${same?.lcssSubpkg}.bin`), "binding")
+    await Bun.write(path.join(root, "vendor/natives", `${stale?.lcssSubpkg}.bin`), "old")
+    const problems = checkStaged(await collectStaged(root))
+    expect(problems).toContain(
+      `vendor/natives/${stale?.lcssSubpkg}.bin is stale (run \`bun scripts/stage-natives.ts\`)`,
+    )
+    expect(problems.some((p) => p.includes(`${same?.lcssSubpkg}.bin`))).toBe(false)
+    expect(problems).toHaveLength(1 + (TARGETS.length - 2))
+  })
+
+  test("main exits 1 and lists the drift for an uninstalled project", async () => {
+    await Bun.write(path.join(root, "package.json"), JSON.stringify({ engines: { bun: "*" } }))
+    await Bun.write(path.join(root, "mise.toml"), `[tools]\nbun = "${Bun.version}"\n`)
+    const errors: string[] = []
+    const error = spyOn(console, "error").mockImplementation((msg: string) => errors.push(msg))
+    try {
+      expect(await main(["--offline"], root)).toBe(1)
+    } finally {
+      error.mockRestore()
+    }
+    expect(errors).toContain("[check-binaries] drift:")
+    expect(errors).toContain("  - @bufbuild/buf is not installed (run `mise install`)")
+    expect(errors).toContain("  - @types/bun is not installed (run `mise install`)")
+  })
+})
+
+describe("latestBunKeepingCanaryPin", () => {
+  const stable = (v: string) => () => Promise.resolve(v)
+
+  test("keeps a canary pin that no stable release has reached", async () => {
+    expect(await latestBunKeepingCanaryPin(CANARY, stable("1.4.3"))).toBe(CANARY)
+  })
+
+  test("reports the stable release of a canary's base version as an update", async () => {
+    const latest = await latestBunKeepingCanaryPin(CANARY, stable("1.4.4"))
+    expect(latest).toBe("1.4.4")
+    expect(updateStatus({ family: "bun", current: CANARY, latest })).toBe("update available")
+  })
+
+  test("reports a newer stable for a stable pin", async () => {
+    expect(await latestBunKeepingCanaryPin("1.4.2", stable("1.4.4"))).toBe("1.4.4")
+  })
+})
+
+describe("npmLatest", () => {
+  const respond =
+    (body: unknown, status = 200) =>
+    () =>
+      Promise.resolve(Response.json(body, { status }))
+
+  test("returns the registry's version and sends a timeout signal", async () => {
+    let init: RequestInit | undefined
+    const version = await npmLatest("lightningcss", (_url, i) => {
+      init = i
+      return respond({ version: "1.33.0" })()
+    })
+    expect(version).toBe("1.33.0")
+    expect(init?.signal).toBeInstanceOf(AbortSignal)
+  })
+
+  test("throws on a response without a string version", async () => {
+    await expect(npmLatest("x", respond({}))).rejects.toThrow(
+      "npm registry returned no version for x",
+    )
+    await expect(npmLatest("x", respond(null))).rejects.toThrow("no version")
+  })
+
+  test("throws on a non-200 status", async () => {
+    await expect(npmLatest("x", respond({}, 404))).rejects.toThrow(
+      "npm registry returned 404 for x",
+    )
   })
 })

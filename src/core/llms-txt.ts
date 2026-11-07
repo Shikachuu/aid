@@ -114,7 +114,7 @@ function renderBullet(e: Entry): string {
 function renderTemplate(template: string, vars: Record<string, string>): string {
   return template.replace(PLACEHOLDER_RE, (_match, name: string, arg: string | undefined) => {
     const key = arg === undefined ? name : `${name}:${arg}`
-    if (!(key in vars)) {
+    if (!Object.hasOwn(vars, key)) {
       throw new Error(`aid: unknown llms.txt placeholder "{{${key}}}"`)
     }
     return vars[key] as string

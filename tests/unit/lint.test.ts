@@ -56,6 +56,34 @@ describe("lintMarkdown", () => {
     expect(await Bun.file(file).text()).toBe("# Title\n\nline one   \nline   \nline two\n\nend\n")
   })
 
+  test("resolves extends in a user config", async () => {
+    await Bun.write(join(dir, "base.yaml"), "MD012: false\n")
+    await Bun.write(
+      join(dir, ".markdownlint.jsonc"),
+      '{\n  // shared rules\n  "extends": "base.yaml"\n}\n',
+    )
+    const file = join(dir, "doc.md")
+    await Bun.write(file, "# Title\n\n\n\nbody\n")
+    const result = await lintMarkdown([file], dir)
+    expect(result).toEqual({ tool: "md", ok: true, diagnostics: [] })
+  })
+
+  test.each([
+    [".markdownlint.json", '{"MD012": '],
+    [".markdownlint.yaml", "MD012: [\n"],
+    [".markdownlint.json", '{"extends": "missing.json"}'],
+  ])("reports a %s that cannot be read instead of throwing", async (name, text) => {
+    const config = join(dir, name)
+    await Bun.write(config, text)
+    const file = join(dir, "doc.md")
+    await Bun.write(file, "# Title\n")
+    const result = await lintMarkdown([file], dir)
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ file: config, severity: "error", code: "md/config" }),
+    ])
+  })
+
   test("returns ok:true when no files passed", async () => {
     const result = await lintMarkdown([], dir)
     expect(result.ok).toBe(true)
@@ -71,6 +99,36 @@ describe("lintOpenApi", () => {
     expect(result.tool).toBe("openapi")
     const codes = result.diagnostics.map((d) => d.code)
     expect(codes).toContain("info-description")
+  })
+})
+
+describe("lintOpenApi with a $ref", () => {
+  test("attributes a finding in a referenced file to that file and line", async () => {
+    const root = join(dir, "openapi", "api.yaml")
+    const resp = join(dir, "openapi", "resp.yaml")
+    await Bun.write(
+      root,
+      'openapi: 3.1.0\ninfo:\n  title: T\n  version: "1"\npaths:\n  /a:\n    get:\n      responses:\n        "200":\n          $ref: "./resp.yaml"\n',
+    )
+    await Bun.write(
+      resp,
+      "description: ok\ncontent:\n  application/json:\n    schema:\n      type: string\n      enum: [a, a]\n",
+    )
+    const result = await lintOpenApi([root], dir)
+    const finding = result.diagnostics.find((d) => d.code === "duplicated-entry-in-enum")
+    expect(finding).toMatchObject({ file: resp, line: 6 })
+  })
+
+  test("reports a .spectral.yaml that does not parse instead of throwing", async () => {
+    const config = join(dir, ".spectral.yaml")
+    await Bun.write(config, "rules: [\n")
+    const spec = join(dir, "openapi.yaml")
+    await Bun.write(spec, 'openapi: 3.1.0\ninfo:\n  title: T\n  version: "1"\npaths: {}\n')
+    const result = await lintOpenApi([spec], dir)
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ file: config, code: "openapi/config" }),
+    ])
   })
 })
 
@@ -230,6 +288,34 @@ describe("lintProto", () => {
         message: expect.stringContaining("bogus"),
       }),
     ])
+  })
+})
+
+describe("lintProto targets", () => {
+  test("lints only discovered files, so ignored dirs never reach buf", async () => {
+    const bad = 'syntax = "proto3";\npackage Bad_pkg;\nmessage m {}\n'
+    await Bun.write(join(dir, "node_modules", "dep", "dep.proto"), bad)
+    await Bun.write(join(dir, "dist", "out.proto"), bad)
+    await Bun.write(join(dir, "api", "v1", "ok.proto"), 'syntax = "proto3";\npackage api.v1;\n')
+    const report = await lintAll({ dir, fix: false, filter: new Set(["proto"]) })
+    expect(report.results).toEqual([{ tool: "proto", ok: true, diagnostics: [] }])
+  })
+
+  test("passes when the project's buf.yaml excludes every discovered file", async () => {
+    await Bun.write(
+      join(dir, "buf.yaml"),
+      "version: v2\nmodules:\n  - path: .\n    excludes: [gen]\n",
+    )
+    const file = join(dir, "gen", "x.proto")
+    await Bun.write(file, 'syntax = "proto3";\npackage Bad_pkg;\nmessage m {}\n')
+    expect(await lintProto([file], dir)).toEqual({ tool: "proto", ok: true, diagnostics: [] })
+  })
+
+  test("is skipped, not failed, when no buf binary is available", async () => {
+    const file = join(dir, "x.proto")
+    await Bun.write(file, 'syntax = "proto3";\n')
+    const result = await lintProto([file], dir, async () => null)
+    expect(result).toMatchObject({ tool: "proto", ok: true, skipped: true })
   })
 })
 

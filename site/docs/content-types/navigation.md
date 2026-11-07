@@ -87,7 +87,11 @@ aid: invalid <abs path>/docs/_meta.yaml: <validation error>
 
 [llms.txt](../llms-txt/index.md) follows the sidebar. Each top-level group becomes a section with the group's label, in sidebar order.
 
+## Narrow screens
+
+On screens narrower than 48rem, the sidebar sits above the page and collapses behind a "Menu" button. It needs no JavaScript.
+
 ## Limitations
 
 > [!WARNING]
-> Not supported: collapsible groups, hiding a page from the sidebar, external links in the sidebar, a `nav` key in `aid.yaml`, and a mobile sidebar layout.
+> Not supported: collapsible groups, hiding a page from the sidebar, external links in the sidebar, and a `nav` key in `aid.yaml`.

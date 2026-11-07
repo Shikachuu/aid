@@ -39,7 +39,7 @@ message ChargeResponse {
 aid parses the file with `protobufjs` and reads:
 
 - the title, which is the `package` name, or the file name without `.proto` when the file has no package;
-- the description, which is the first paragraph of the `//` comment block directly above `package`, with line breaks joined into one line. An empty `//` line starts a new paragraph. Blank lines between the comment and `package` are allowed, but any other statement in between, such as `syntax` or `option`, ends the block;
+- the description, which is the first paragraph of the comment directly above `package`, with line breaks joined into one line. The comment is either a block of `//` lines or one `/* */` block. In a `//` block, an empty `//` line starts a new paragraph. In a `/* */` block, aid drops the leading `*` of each line when every line has one. Blank lines between the comment and `package` are allowed, but any other statement in between, such as `syntax` or `option`, ends the comment;
 - the search entries listed in [search](#search).
 
 A syntax error that `protobufjs` cannot parse fails the build.
@@ -61,12 +61,9 @@ The reference contains:
 - each `oneof` as its own block under the message, listing its member fields;
 - nested messages and enums below their parent message;
 - one section per enum, with a table of number, name, and comment;
-- a `deprecated` badge on deprecated services, messages, enums, and enum values;
+- a `deprecated` badge on deprecated services, messages, enums, enum values, fields, oneof members, and RPCs;
 - a "view source" toggle on each entity with its declaration, rebuilt without options and reserved ranges;
 - a copy-link button on each entity heading.
-
-> [!WARNING]
-> The reference shows no `deprecated` badge on deprecated fields or RPCs yet.
 
 ## Cross-links
 

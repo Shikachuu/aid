@@ -45,7 +45,7 @@ export function Layout(props: LayoutProps) {
     bodyHtml,
   } = props
   return (
-    <html lang="en">
+    <html lang="en" data-aid-dark-mode={config.theme.dark_mode}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -61,7 +61,10 @@ export function Layout(props: LayoutProps) {
         <Header config={config} search={search} />
         <div class="aid-shell">
           <aside class="aid-sidebar">
-            <Nav tree={nav} currentPath={currentPath} basePath={config.base_path} />
+            <details class="aid-sidebar-disclosure">
+              <summary class="aid-sidebar-toggle">Menu</summary>
+              <Nav tree={nav} currentPath={currentPath} basePath={config.base_path} />
+            </details>
           </aside>
           <main class="aid-main">
             <RawHtml html={bodyHtml} />

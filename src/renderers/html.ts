@@ -7,14 +7,14 @@ import rehypeStringify from "rehype-stringify"
 import remarkGfm from "remark-gfm"
 import remarkStringify from "remark-stringify"
 import { unified } from "unified"
-import { visit } from "unist-util-visit"
+import { SKIP, visit } from "unist-util-visit"
 import { VFile } from "vfile"
 import type { ResolveLink } from "../core/links"
 import type { AnchorRef, RenderedPage, Route, SearchTokens } from "../core/types"
 import { linkRefsFromHast, rewriteLinks } from "./links"
 import { type CopyAsset, colocatedAssetsPlugin } from "./markdown/colocated-assets"
 import type { Frontmatter } from "./markdown/frontmatter"
-import { collectAnchors, hastText, vfileDiagnostics } from "./shared"
+import { collectAnchors, hastText, headingTexts, vfileDiagnostics } from "./shared"
 
 /** Arguments for {@link renderHtml}. */
 export type RenderHtmlArgs = {
@@ -90,8 +90,8 @@ export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
 
   const searchTokens: SearchTokens = {
     title,
-    body: html,
-    headings: [],
+    body: searchBodyText(bodyTree),
+    headings: headingTexts(bodyTree),
     extras: {},
   }
 
@@ -109,7 +109,7 @@ export async function renderHtml(args: RenderHtmlArgs): Promise<RenderedPage> {
     hasOpenApi: false,
     hasProto: false,
     description: frontmatter.description,
-    anchors: collectAnchors(html),
+    anchors: collectAnchors(bodyTree),
     anchorRefs,
     diagnostics: vfileDiagnostics(file, args.sourcePath),
   }
@@ -158,6 +158,22 @@ function extractHeadMetadata(head: HastElement | null): Frontmatter {
   }
   return out
 }
+
+function searchBodyText(tree: HastRoot): string {
+  const parts: string[] = []
+  visit(tree, (node) => {
+    if (node.type === "element" && NON_TEXT_TAGS.has(node.tagName)) {
+      return SKIP
+    }
+    if (node.type === "text") {
+      parts.push(node.value)
+    }
+    return undefined
+  })
+  return parts.join(" ").replace(/\s+/g, " ").trim()
+}
+
+const NON_TEXT_TAGS = new Set(["script", "style", "template"])
 
 function hasClass(node: HastElement, cls: string): boolean {
   return (node.properties?.className as string[] | undefined)?.includes(cls) ?? false

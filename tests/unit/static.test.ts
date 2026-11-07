@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdtemp, rm, symlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { AssetRegistry } from "../../src/core/assets"
@@ -41,6 +41,26 @@ describe("copyStaticAssets", () => {
       "<svg>star</svg>",
     )
     expect(await Bun.file(path.join(ctx.outputDir, "robots.txt")).text()).toBe("User-agent: *")
+  })
+
+  test("copies the target of a symlink inside the static dir", async () => {
+    const ctx = makeCtx(cwd)
+    await Bun.write(path.join(ctx.staticDir, "img", "logo.svg"), "<svg/>")
+    await symlink(path.join(ctx.staticDir, "img"), path.join(ctx.staticDir, "images"))
+
+    await copyStaticAssets(ctx, new AssetRegistry())
+    expect(await Bun.file(path.join(ctx.outputDir, "images/logo.svg")).text()).toBe("<svg/>")
+  })
+
+  test("rejects a symlink whose target is outside the static dir", async () => {
+    const ctx = makeCtx(cwd)
+    await Bun.write(path.join(cwd, "secret.txt"), "secret")
+    await Bun.write(path.join(ctx.staticDir, "keep.txt"), "keep")
+    await symlink(path.join(cwd, "secret.txt"), path.join(ctx.staticDir, "secret.txt"))
+
+    await expect(copyStaticAssets(ctx, new AssetRegistry())).rejects.toThrow(
+      /resolves through a symlink to .*secret\.txt, outside dir\.static/,
+    )
   })
 
   test("overwrites existing destination files", async () => {

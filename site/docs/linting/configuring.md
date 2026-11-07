@@ -13,7 +13,7 @@ For each tool, aid starts in the target directory and checks for that tool's con
 
 The file names per tool, in the order aid checks them, are in [the lint defaults reference](../reference/lint-defaults.md). In short: `.markdownlint.*`, `.spectral.*`, the `bun lint` and `bun fmt` configs below, and `buf.yaml`. The `css` tool reads no config file.
 
-aid parses `.json` and `.jsonc` files as JSON with comments, and `.yaml` and `.yml` files as YAML. The same reference page lists the bundled defaults.
+aid parses `.json` and `.jsonc` files as JSON with comments, and `.yaml` and `.yml` files as YAML. The same reference page lists the bundled defaults. A config file that does not parse fails its tool with one error that names the file, such as `md/config` or `openapi/config`, and the other tools still run.
 
 > [!IMPORTANT]
 > A config file replaces the bundled default for its tool. aid does not merge the two. Repeat any setting from the bundled default that you still want.
@@ -39,6 +39,8 @@ MD009: warning
 ```
 
 aid prints these findings as `warn`, and warnings do not change the exit code. `aid fmt` reads the same file to decide which fixes to apply.
+
+markdownlint reads the file itself, so `extends` works: it names another config file, relative to the one that extends it, and the settings in the extending file win.
 
 ## bun lint and bun fmt
 
@@ -91,8 +93,10 @@ lint:
 
 When aid finds no `buf.yaml`, it passes its bundled default to `buf lint` through `--config`. When it finds one, it passes no `--config` and buf reads the file itself.
 
+aid passes each discovered `.proto` file to buf with `--path`, so buf never lints files under `node_modules`, `dist`, or the other folders discovery skips. The `excludes` in your `buf.yaml` still apply. When they exclude every discovered file, the proto tool passes with no findings.
+
 > [!WARNING]
-> Put `buf.yaml` in the directory you lint. When aid finds a `buf.yaml` in a parent directory, buf refuses to lint the subdirectory as a separate input, and the proto tool fails with no findings.
+> Put `buf.yaml` in the directory you lint. When aid finds a `buf.yaml` in a parent directory, buf refuses to lint the subdirectory as a separate input, and the proto tool fails with buf's error message.
 
 ## Spectral
 

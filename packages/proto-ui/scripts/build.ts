@@ -1,10 +1,13 @@
+import { rm } from "node:fs/promises"
 import path from "node:path"
+import { parseArgs } from "node:util"
 import { compile } from "@tailwindcss/node"
 import { Scanner } from "@tailwindcss/oxide"
 
 const PACKAGE_ROOT = path.resolve(import.meta.dir, "..")
 const SRC = path.join(PACKAGE_ROOT, "src")
-const DIST = path.join(PACKAGE_ROOT, "dist")
+const { values: args } = parseArgs({ options: { outdir: { type: "string" } } })
+const DIST = path.resolve(args.outdir ?? path.join(PACKAGE_ROOT, "dist"))
 const TAILWIND_ENTRY = path.join(SRC, "tailwind-entry.css")
 
 const REACT_EXTERNALS = ["react", "react-dom", "react-dom/client", "react/jsx-runtime"]
@@ -69,11 +72,11 @@ const compileStyles = async (): Promise<void> => {
 }
 
 const emitTypes = async (): Promise<void> => {
-  await Bun.$`bun x tsc --emitDeclarationOnly --outDir dist --project .`.cwd(PACKAGE_ROOT)
+  await Bun.$`bun x tsc --emitDeclarationOnly --outDir ${DIST} --project .`.cwd(PACKAGE_ROOT)
 }
 
 const main = async (): Promise<void> => {
-  await Bun.$`rm -rf ${DIST}`.quiet()
+  await rm(DIST, { recursive: true, force: true })
 
   await run("bundle index.js", () =>
     bundleEntry(path.join(SRC, "index.ts"), path.join(DIST, "index.js"), REACT_EXTERNALS),

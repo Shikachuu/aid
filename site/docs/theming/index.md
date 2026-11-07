@@ -24,10 +24,11 @@ Run `aid build` or `aid dev`. aid compiles the stylesheet, writes it as `main.<h
 
 ## The stylesheet entry
 
-The `stylesheet` key in `aid.yaml` names the entry file, relative to the project directory. It defaults to `main.css`. See [the configuration reference](../reference/configuration.md).
+The `stylesheet` key in `aid.yaml` names the entry file, relative to the project directory or as an absolute path. It defaults to `main.css`. See [the configuration reference](../reference/configuration.md).
 
 - When the file exists, aid compiles it.
-- When the file does not exist, aid compiles its bundled theme, `src/theme/main.css` in the aid repository.
+- When the default `main.css` does not exist, aid compiles its bundled theme, `src/theme/main.css` in the aid repository.
+- When a `stylesheet` you set does not exist, the build stops with an error that names the path.
 
 `@import "tailwindcss";` resolves to the copy of Tailwind inside aid. Your project needs no `package.json` and no `npm install`.
 
@@ -100,16 +101,15 @@ Every element aid renders carries a stable `.aid-*` class. Style these, not the 
 | `aid-search` | search box wrapper |
 | `aid-search-results` | search results dropdown |
 | `aid-search-result`, `aid-search-result-title`, `aid-search-result-url`, `aid-search-badge` | one search result and its parts |
-| `aid-dark-toggle` | dark mode button in the header |
 | `aid-shell` | grid that holds the sidebar and the main column |
 | `aid-sidebar` | sidebar `<aside>` |
+| `aid-sidebar-disclosure`, `aid-sidebar-toggle` | the `<details>` around the nav and its "Menu" `<summary>`; below the `md` breakpoint (48rem) the nav collapses behind the summary, and from `md` up the summary is hidden and the nav always shows |
 | `aid-nav` | sidebar `<nav>` |
 | `aid-nav-list`, `aid-nav-item`, `aid-nav-group` | nav lists and items; `aid-nav-group` marks an item with children |
 | `aid-nav-link`, `aid-nav-label` | a nav link, or a folder label without a page; the current page's link has `aria-current="page"` |
 | `aid-main` | `<main>` |
 | `aid-page` | the `<article>` of every page |
 | `aid-page-markdown`, `aid-page-html`, `aid-page-openapi`, `aid-page-proto`, `aid-page-jsonschema` | the page kind, on the same `<article>` |
-| `aid-page-toolbar` | the toolbar above the page body |
 | `aid-callout`, `aid-callout-note`, `aid-callout-tip`, `aid-callout-important`, `aid-callout-warning`, `aid-callout-caution` | a callout and its type |
 | `aid-callout-title` | the callout title line |
 | `aid-heading-link`, `aid-heading-anchor` | the `#` link appended to each heading |

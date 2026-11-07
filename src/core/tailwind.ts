@@ -1,3 +1,4 @@
+import { realpath } from "node:fs/promises"
 import path from "node:path"
 import tailwindIndexCss from "tailwindcss/index.css" with { type: "file" }
 import tailwindPreflightCss from "tailwindcss/preflight.css" with { type: "file" }
@@ -5,6 +6,7 @@ import tailwindThemeCss from "tailwindcss/theme.css" with { type: "file" }
 import tailwindUtilitiesCss from "tailwindcss/utilities.css" with { type: "file" }
 import bundledMainCss from "../theme/main.css" with { type: "text" }
 import { aidThemeSources } from "../web/_bundled"
+import { AidConfigSchema } from "./config"
 import { deriveDarkPalette } from "./dark-mode"
 import { blankStringsAndComments, findMatchingBrace } from "./internal/css-scan"
 import { installLightningcssShim } from "./internal/lightningcss-native"
@@ -13,17 +15,18 @@ import { AID_ROOT, hasSourceTree, requireEmbedded } from "./web-entries"
 
 const bundledMainCssPath = path.join(AID_ROOT, "src/theme/main.css")
 
+const DEFAULT_STYLESHEET = AidConfigSchema.shape.stylesheet.parse(undefined)
+
 /**
- * Compile the site stylesheet. Uses `config.stylesheet` when it exists and the
- * bundled `src/theme/main.css` otherwise. Tailwind scans the theme components,
- * the templates directory, and `htmlContents` for class candidates. `tailwindcss`
- * resolves to aid's own copy, so the user's project needs no install. An
- * `@import "aid/theme";` pulls in the bundled theme, and `theme.dark_mode` decides
- * whether the dark palette is derived, kept, or stripped.
+ * Compile the site stylesheet: `config.stylesheet`, or the bundled theme when the
+ * default `main.css` is missing. A missing custom `stylesheet` throws.
+ * `onDependency` gets every file the stylesheet `@import`s, so `aid dev` can
+ * watch the partials.
  */
 export async function compileTailwind(
   ctx: BuildContext,
   htmlContents: readonly string[],
+  onDependency: (path: string) => void = () => {},
 ): Promise<string> {
   // lightningcss resolves its native binding when it is first imported, and
   // `@tailwindcss/node` imports it at load time. Install the shim first, then
@@ -38,7 +41,7 @@ export async function compileTailwind(
   const darkApplied = applyDarkModeFlag(inlined, ctx.config.theme.dark_mode)
   const source = buildSourcePrelude(sourceTargets) + darkApplied
 
-  const compiled = await compile(source, compileOptions(entry.base, entry.from))
+  const compiled = await compile(source, compileOptions(entry.base, entry.from, onDependency))
   const scanner = new Scanner({ sources: compiled.sources })
   const themeFiles = fromSource
     ? []
@@ -53,8 +56,9 @@ export async function compileTailwind(
 }
 
 /**
- * Compile `css` the way `aid build` does, with no class candidates, and throw
- * Tailwind's error when the stylesheet is invalid.
+ * Compile `css` with aid's Tailwind copy and `aid/theme` import, with no class
+ * candidates, and throw Tailwind's error when the stylesheet is invalid. It
+ * skips the dark-mode pass and the theme `@source` prelude of `aid build`.
  */
 export async function validateTailwindStylesheet(css: string, from: string): Promise<void> {
   await installLightningcssShim()
@@ -63,13 +67,36 @@ export async function validateTailwindStylesheet(css: string, from: string): Pro
   compiled.build([])
 }
 
-function compileOptions(base: string, from: string) {
+function compileOptions(
+  base: string,
+  from: string,
+  onDependency: (path: string) => void = () => {},
+) {
   return {
     base,
     from,
-    onDependency: () => {},
-    customCssResolver: async (id: string) => TAILWIND_FILES[id],
+    onDependency,
+    customCssResolver: async (id: string, importerDir: string) =>
+      TAILWIND_FILES[id] ?? (await resolveRelativeCss(id, importerDir)),
   }
+}
+
+// Tailwind's own resolver caches a failed lookup for 4 s, so a partial created
+// right after a failed `aid dev` build would still fail the next rebuild.
+async function resolveRelativeCss(id: string, importerDir: string): Promise<string | undefined> {
+  if (!id.startsWith("./") && !id.startsWith("../")) {
+    return undefined
+  }
+  const target = path.resolve(importerDir, id)
+  const directoryIndex = (await Bun.file(path.join(target, "package.json")).exists())
+    ? []
+    : [path.join(target, "index.css")]
+  for (const candidate of [target, `${target}.css`, ...directoryIndex]) {
+    if (await Bun.file(candidate).exists()) {
+      return realpath(candidate)
+    }
+  }
+  return undefined
 }
 
 /**
@@ -96,7 +123,7 @@ type ResolvedEntry = {
 }
 
 async function resolveEntry(ctx: BuildContext): Promise<ResolvedEntry> {
-  const userPath = path.join(ctx.cwd, ctx.config.stylesheet)
+  const userPath = path.resolve(ctx.cwd, ctx.config.stylesheet)
   const userFile = Bun.file(userPath)
   if (await userFile.exists()) {
     return {
@@ -104,6 +131,11 @@ async function resolveEntry(ctx: BuildContext): Promise<ResolvedEntry> {
       base: path.dirname(userPath),
       from: userPath,
     }
+  }
+  if (ctx.config.stylesheet !== DEFAULT_STYLESHEET) {
+    throw new Error(
+      `aid: stylesheet "${ctx.config.stylesheet}" not found at ${userPath}. Create it, or remove the stylesheet key to use the bundled theme.`,
+    )
   }
   return {
     css: bundledMainCss,

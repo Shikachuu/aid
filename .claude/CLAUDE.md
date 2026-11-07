@@ -25,6 +25,7 @@
 | `bun run gen-bunfig` | Generate `bunfig.toml` and `.prettierrc.json` from the bundled defaults plus the repo extras (`--check` fails on drift) |
 | `bun run gen-css-data` | Generate `src/lint/css-data.json` from the webref packages (`--check` fails on drift) |
 | `bun test` | Bun test runner |
+| `bun run test:e2e` | Playwright browser tests and screenshots (`tests/e2e`); optional, not part of `check` |
 | `bun run gen-docs` | Generate `site/docs/reference/**` from the Zod schemas, CLI definitions, and lint tables (`--check` fails on drift) |
 | `bun run docs:dev` | Serve the docs site at `http://localhost:3000/aid/` with live reload |
 | `bun run docs:build` | Build the docs site into `site/dist` |

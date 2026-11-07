@@ -435,6 +435,58 @@ const valueShapeWithoutLiterals = (node: unknown): unknown => {
 const fallbackShape = (d: Declaration): string =>
   JSON.stringify(valueShapeWithoutLiterals("value" in d ? d.value : null))
 
+const IMPORTANT = /!\s*important\s*$/i
+
+// lightningcss lists normal declarations before `!important` ones, so the k-th
+// normal (or important) declaration of a name is its k-th normal (or important)
+// occurrence in the source. Sorting by that offset restores source order.
+const inSourceOrder = (
+  ctx: FileContext,
+  start: number,
+  block: { declarations?: Declaration[]; importantDeclarations?: Declaration[] } | undefined,
+): Declaration[] => {
+  const tagged = [
+    ...(block?.declarations ?? []).map((d) => ({ d, important: false })),
+    ...(block?.importantDeclarations ?? []).map((d) => ({ d, important: true })),
+  ].map(({ d, important }) => {
+    const name = declarationName(d)
+    return { d, name, key: `${important}:${name.toLowerCase()}`, important }
+  })
+  const wanted = new Map<string, number>()
+  for (const { key } of tagged) {
+    wanted.set(key, (wanted.get(key) ?? 0) + 1)
+  }
+  const offsets = new Map<string, number[]>()
+  const occurrencesOf = (name: string, important: boolean, key: string): number[] => {
+    const cached = offsets.get(key)
+    if (cached !== undefined) {
+      return cached
+    }
+    const found: number[] = []
+    const re = new RegExp(declarationPattern(name).source, "gi")
+    re.lastIndex = start
+    const limit = wanted.get(key) ?? 0
+    for (let m = re.exec(ctx.code); m !== null && found.length < limit; m = re.exec(ctx.code)) {
+      const end = ctx.code.slice(re.lastIndex).search(/[;}]/)
+      const value = ctx.code.slice(re.lastIndex, end === -1 ? undefined : re.lastIndex + end)
+      if (IMPORTANT.test(value) === important) {
+        found.push(m.index)
+      }
+    }
+    offsets.set(key, found)
+    return found
+  }
+  const taken = new Map<string, number>()
+  return tagged
+    .map(({ d, name, key, important }) => {
+      const k = taken.get(key) ?? 0
+      taken.set(key, k + 1)
+      return { d, offset: occurrencesOf(name, important, key)[k] ?? Number.POSITIVE_INFINITY }
+    })
+    .sort((a, b) => a.offset - b.offset)
+    .map(({ d }) => d)
+}
+
 const checkDeclarations = (
   ctx: FileContext,
   declarations: Declaration[],
@@ -588,15 +640,7 @@ const checkStyleRule = (
     report(ctx, "block-no-empty", `Selector "${selector}" has an empty block`, pos)
   }
 
-  checkDeclarations(
-    ctx,
-    [
-      ...(rule.declarations?.declarations ?? []),
-      ...(rule.declarations?.importantDeclarations ?? []),
-    ],
-    start,
-    pos,
-  )
+  checkDeclarations(ctx, inSourceOrder(ctx, start, rule.declarations), start, pos)
   walkRules(ctx, rule.rules ?? [])
 }
 
@@ -693,12 +737,8 @@ function walkRules(ctx: FileContext, rules: Rule[]): void {
         break
       case "nested-declarations": {
         const { declarations, loc } = rule.value
-        checkDeclarations(
-          ctx,
-          [...(declarations.declarations ?? []), ...(declarations.importantDeclarations ?? [])],
-          ctx.lineStarts[loc.line] ?? 0,
-          rulePosition(loc),
-        )
+        const from = ctx.lineStarts[loc.line] ?? 0
+        checkDeclarations(ctx, inSourceOrder(ctx, from, declarations), from, rulePosition(loc))
         break
       }
       case "media":

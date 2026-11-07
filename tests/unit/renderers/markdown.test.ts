@@ -54,6 +54,29 @@ describe("renderMarkdown", () => {
     expect(page.searchTokens.title).toBe("getting-started")
   })
 
+  test("a leading raw <h1> with no text falls back to the filename title", async () => {
+    const page = await renderFixture("empty-heading.md", `<h1>\n\nTitle\n\n</h1>\n\nProse.\n`)
+    expect(page.searchTokens.title).toBe("empty-heading")
+  })
+
+  test("a leading raw <h1> holding only an image falls back to the filename title", async () => {
+    const page = await renderFixture(
+      "hero.md",
+      `<h1 align="center">\n  <img src="https://example.com/logo.png" alt="Logo">\n</h1>\n\nProse.\n`,
+    )
+    expect(page.searchTokens.title).toBe("hero")
+  })
+
+  test("a leading raw <h1> spanning lines gives a single-line title", async () => {
+    const page = await renderFixture("page.md", `<h1>\n  My\n  Project\n</h1>\n\nProse.\n`)
+    expect(page.searchTokens.title).toBe("My Project")
+  })
+
+  test("a leading raw <h1> keeps its non-breaking spaces", async () => {
+    const page = await renderFixture("page.md", `<h1>v1.0&nbsp;beta</h1>\n\nProse.\n`)
+    expect(page.searchTokens.title).toBe("v1.0\u00a0beta")
+  })
+
   test("no frontmatter, body has H1: H1 text becomes the title", async () => {
     const page = await renderFixture("page.md", `# Body Wins\n\nProse here.\n`)
     const h1Count = (page.html.match(/<h1\b/g) ?? []).length
@@ -238,5 +261,71 @@ describe("renderMarkdown", () => {
     const page = await renderFixture("page.md", "# T\n\n![alt](./hero.png)\n")
     const [md] = page.exports
     expect(md?.body).toContain("./hero.png")
+  })
+
+  test("an empty frontmatter block is stripped, even with a thematic break later", async () => {
+    const page = await renderFixture("page.md", "---\n---\n# Title\n\nA\n\n---\n\nB\n")
+    expect(page.route.frontmatter).toBeUndefined()
+    expect(page.searchTokens.title).toBe("Title")
+    expect(page.html).toContain("<hr>")
+  })
+
+  test("a frontmatter block at the end of the file needs no trailing newline", async () => {
+    const page = await renderFixture("page.md", "---\ntitle: Only\n---")
+    expect(page.route.frontmatter?.title).toBe("Only")
+  })
+
+  test("a line that only starts with --- does not close the frontmatter", async () => {
+    const page = await renderFixture("page.md", "---\ntitle: A\n----\n# B\n")
+    expect(page.route.frontmatter).toBeUndefined()
+  })
+
+  test("anchors include heading ids and raw HTML ids, but not id= text in prose or code", async () => {
+    const page = await renderFixture(
+      "page.md",
+      '# Title\n\nSet id=prose here.\n\n```html\n<div id="code"></div>\n```\n\n<div ID="Raw"></div>\n',
+    )
+    expect(page.anchors).toContain("title")
+    expect(page.anchors).toContain("Raw")
+    expect(page.anchors).not.toContain("prose")
+    expect(page.anchors).not.toContain("code")
+  })
+
+  test("a leading raw <h1> counts as the page H1", async () => {
+    const page = await renderFixture("page.md", "<h1>Raw Title</h1>\n\nProse.\n")
+    expect((page.html.match(/<h1\b/g) ?? []).length).toBe(1)
+    expect(page.searchTokens.title).toBe("Raw Title")
+  })
+
+  test("raw HTML before a markdown H1 does not add a second H1", async () => {
+    const page = await renderFixture("page.md", '<img src="https://x.test/badge.svg">\n\n# Real\n')
+    expect((page.html.match(/<h1\b/g) ?? []).length).toBe(1)
+    expect(page.searchTokens.title).toBe("Real")
+  })
+
+  test("raw <script> in markdown passes through unchanged (trusted authors)", async () => {
+    const page = await renderFixture("page.md", '# T\n\n<script>window.x = "<b>"</script>\n')
+    expect(page.html).toContain('<script>window.x = "<b>"</script>')
+  })
+
+  test("colocated image srcs are decoded, and keep their query and fragment", async () => {
+    const sourcePath = path.join(dir, "page.md")
+    await Bun.write(
+      sourcePath,
+      "# T\n\n![a](./a%20b.png) ![v](./x.png?v=1) ![i](./icons.svg#star)\n",
+    )
+    const route: Route = { source: sourcePath, path: "/page", kind: "markdown" }
+    const calls: string[] = []
+    const copyAsset = async (absSrc: string) => {
+      calls.push(absSrc)
+      return `/page/${encodeURI(path.basename(absSrc))}`
+    }
+    const page = await renderMarkdown({ route, sourcePath, copyAsset })
+    expect(calls.toSorted()).toEqual(
+      [path.join(dir, "a b.png"), path.join(dir, "icons.svg"), path.join(dir, "x.png")].toSorted(),
+    )
+    expect(page.html).toContain('src="/page/a%20b.png"')
+    expect(page.html).toContain('src="/page/x.png?v=1"')
+    expect(page.html).toContain('src="/page/icons.svg#star"')
   })
 })

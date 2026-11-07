@@ -6,6 +6,7 @@ type SearchHit = { type: string; title: string; url: string }
 const MAX_RESULTS = 8
 const DEBOUNCE_MS = 80
 const BLUR_CLOSE_DELAY_MS = 150
+const IME_KEY_CODE = 229
 
 /**
  * Wire every search input to the prebuilt index. The index and MiniSearch load on the first focus.
@@ -30,11 +31,14 @@ function wireInput(input: HTMLInputElement, results: HTMLElement, indexHref: str
 
   let ms: MiniSearch | null = null
   let loading = false
+  let warnedLoadFailure = false
   let items: SearchHit[] = []
   let active = -1
   let debounce: ReturnType<typeof setTimeout> | undefined
+  let blurClose: ReturnType<typeof setTimeout> | undefined
 
   input.addEventListener("focus", () => {
+    clearTimeout(blurClose)
     if (!loading) {
       loading = true
       void load()
@@ -47,7 +51,7 @@ function wireInput(input: HTMLInputElement, results: HTMLElement, indexHref: str
   })
 
   input.addEventListener("keydown", (e) => {
-    if (results.hidden) {
+    if (results.hidden || e.isComposing || e.keyCode === IME_KEY_CODE) {
       return
     }
     if (e.key === "ArrowDown") {
@@ -75,20 +79,28 @@ function wireInput(input: HTMLInputElement, results: HTMLElement, indexHref: str
 
   input.addEventListener("blur", () => {
     // Defer so a click on a result registers before the dropdown hides.
-    setTimeout(close, BLUR_CLOSE_DELAY_MS)
+    blurClose = setTimeout(close, BLUR_CLOSE_DELAY_MS)
   })
 
   async function load(): Promise<void> {
-    const [{ default: MiniSearchCtor }] = await Promise.all([
-      import("minisearch"),
-      loadIndexScript(indexHref),
-    ])
-    const data = (window as { __AID_SEARCH__?: AsPlainObject }).__AID_SEARCH__
-    if (data === undefined) {
-      return
+    try {
+      const [{ default: MiniSearchCtor }] = await Promise.all([
+        import("minisearch"),
+        loadIndexScript(indexHref),
+      ])
+      const data = (window as { __AID_SEARCH__?: AsPlainObject }).__AID_SEARCH__
+      if (data === undefined) {
+        throw new Error("the index script did not define the index")
+      }
+      ms = MiniSearchCtor.loadJS(data, SEARCH_OPTIONS)
+      runQuery(input.value)
+    } catch (err) {
+      loading = false
+      if (!warnedLoadFailure) {
+        warnedLoadFailure = true
+        console.warn(`aid: search index ${indexHref} failed to load`, err)
+      }
     }
-    ms = MiniSearchCtor.loadJS(data, SEARCH_OPTIONS)
-    runQuery(input.value)
   }
 
   function runQuery(q: string): void {
@@ -151,8 +163,14 @@ function toLink(hit: SearchHit): HTMLAnchorElement {
 
 function loadIndexScript(src: string): Promise<unknown> {
   return new Promise((resolve, reject) => {
-    document.head.append(
-      Object.assign(document.createElement("script"), { src, onload: resolve, onerror: reject }),
-    )
+    const script = Object.assign(document.createElement("script"), {
+      src,
+      onload: resolve,
+      onerror: (err: unknown) => {
+        script.remove()
+        reject(err)
+      },
+    })
+    document.head.append(script)
   })
 }

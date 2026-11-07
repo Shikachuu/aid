@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdir, mkdtemp, realpath, rm, symlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { compileTailwind } from "../../src/core/tailwind"
@@ -63,7 +63,36 @@ describe("compileTailwind", () => {
   test("auto-derives dark tokens from light @theme", async () => {
     const ctx = makeCtx(cwd, { theme: { dark_mode: "auto" } })
     const css = await compileTailwind(ctx, [stubHtml("bg-aid-bg")])
-    expect(css).toContain("oklch(1% 0 0)")
+    expect(css).toContain("oklch(12.88% 0 0)")
+  })
+
+  test("a missing custom stylesheet fails instead of falling back to the bundled theme", async () => {
+    const ctx = makeCtx(cwd, { stylesheet: "styles/site.css" })
+    await expect(compileTailwind(ctx, [])).rejects.toThrow(
+      /^aid: stylesheet "styles\/site\.css" not found at .*styles\/site\.css/,
+    )
+  })
+
+  test("reads an absolute stylesheet path as is", async () => {
+    const outside = await mkdtemp(path.join(tmpdir(), "aid-tailwind-abs-"))
+    try {
+      const stylesheet = path.join(outside, "site.css")
+      await Bun.write(
+        stylesheet,
+        `@import "tailwindcss";\n@theme {\n  --color-abs: oklch(50% 0 0);\n}\n`,
+      )
+      const ctx = makeCtx(cwd, { stylesheet })
+      expect(await compileTailwind(ctx, [stubHtml("bg-abs")])).toContain(".bg-abs")
+    } finally {
+      await rm(outside, { recursive: true, force: true })
+    }
+  })
+
+  test("scans the templates dir for class candidates", async () => {
+    await Bun.write(path.join(cwd, "tpl", "llms.html"), stubHtml("underline-offset-8"))
+    const ctx = makeCtx(cwd, { dir: { templates: "tpl" } })
+    expect(await compileTailwind(ctx, [])).toContain(".underline-offset-8")
+    expect(await compileTailwind(makeCtx(cwd), [])).not.toContain(".underline-offset-8")
   })
 
   test("user main.css replaces bundled when present", async () => {
@@ -117,5 +146,32 @@ describe("compileTailwind", () => {
     const css = await compileTailwind(ctx, [stubHtml("aid-body")])
     expect(css).not.toMatch(/\.aid-body\s*\{/)
     expect(css).toContain("--color-aid-custom")
+  })
+})
+
+describe("relative stylesheet imports", () => {
+  const compileMain = async (main: string) => {
+    await Bun.write(path.join(cwd, "main.css"), `@import "tailwindcss";\n${main}`)
+    const dependencies: string[] = []
+    const css = await compileTailwind(makeCtx(cwd), [], (dep) => dependencies.push(dep))
+    return { css, dependencies }
+  }
+
+  test("a symlinked partial resolves its own imports from its real folder", async () => {
+    await Bun.write(path.join(cwd, "common", "shared.css"), '@import "./vars.css";\n')
+    await Bun.write(path.join(cwd, "common", "vars.css"), ".from-vars { color: red; }\n")
+    await mkdir(path.join(cwd, "theme"))
+    await symlink("../common/shared.css", path.join(cwd, "theme", "shared.css"))
+    const { css, dependencies } = await compileMain('@import "./theme/shared.css";\n')
+    expect(css).toContain(".from-vars")
+    expect(dependencies).toContain(await realpath(path.join(cwd, "common", "shared.css")))
+  })
+
+  test("resolves extensionless and folder imports", async () => {
+    await Bun.write(path.join(cwd, "bare.css"), ".from-bare { color: red; }\n")
+    await Bun.write(path.join(cwd, "folder", "index.css"), ".from-folder { color: red; }\n")
+    const { css } = await compileMain('@import "./bare";\n@import "./folder";\n')
+    expect(css).toContain(".from-bare")
+    expect(css).toContain(".from-folder")
   })
 })

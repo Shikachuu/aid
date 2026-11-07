@@ -8,7 +8,7 @@ aid is a single-binary documentation tool that generates static documentation si
 
 - **Single binary.** One executable contains the Tailwind CSS compiler, the linters and formatters, the API reference renderers, and a dev server. Users install nothing else. Release builds target macOS and Linux on x64 and arm64.
 - **Colocated formats.** Markdown, HTML, OpenAPI (v2 and v3), and `.proto` files can share a directory. aid picks the renderer from the file type, and every page shares one layout.
-- **LLM exports by default.** Markdown and HTML pages are available as markdown (`.md` suffix), OpenAPI pages as JSON (`.json` suffix), and proto pages as their `.proto` source. The build writes a spec-compliant `llms.txt` at the site root. Each page also has an "Open in AI" button, which is not wired up yet.
+- **LLM exports by default.** Markdown and HTML pages are available as markdown (`.md` suffix), OpenAPI pages as JSON (`.json` suffix), and proto pages as their `.proto` source. The build writes a spec-compliant `llms.txt` at the site root. A planned "Open in AI" button is not rendered yet.
 - **Convention over configuration.** A fixed folder layout and one `aid.yaml` are all a project needs, and only `name` is required.
 - **Tailwind 4 theming with dark mode.** One `main.css` sets colors, fonts, and design tokens for every page type, including OpenAPI and proto pages. aid derives the dark palette from the light tokens.
 - **Cross-format search.** Full-text, typo-tolerant search covers markdown, HTML, OpenAPI, and proto pages and ranks them in one list with per-format weights from `aid.yaml`. The build writes a precomputed index (`search-index.<hash>.js`), so the browser does not build one.
@@ -280,7 +280,7 @@ A `llms.txt` file in the templates directory replaces the bundled template. It c
 
 ### 7.3 "Open in AI" button
 
-The "Open in AI" button is a stub. Every page type renders one "Open in AI" button that carries the page's machine-readable URL, but clicking it does nothing. The click handler in `src/web/ai-button.ts` is empty, and nothing reads `ai_targets`.
+The "Open in AI" button is not built. Pages do not render it, and nothing reads `ai_targets`.
 
 The plan is that clicking the button opens the configured chat (ChatGPT, Claude, or Gemini) with a prompt that points at the page's machine-readable version. The `ai_targets` key in `aid.yaml` will choose the targets:
 

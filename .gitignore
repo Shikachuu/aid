@@ -1,9 +1,11 @@
 node_modules/
 dist/
+.aid-build/
 vendor/
 .bun/
 .cache/
 coverage/
+tests/e2e/__screenshots__/
 
 .DS_Store
 *.log

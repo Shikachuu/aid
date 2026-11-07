@@ -7,7 +7,7 @@
 import { resolve } from "node:path"
 import { lcssNodeFile, TARGETS } from "./natives"
 
-const ROOT = resolve(import.meta.dir, "..")
+const REPO_ROOT = resolve(import.meta.dir, "..")
 
 /** One version that must equal its family's expected version. `null` means not installed. */
 export type Member = { name: string; version: string | null }
@@ -146,8 +146,8 @@ const readJson = async <T>(path: string): Promise<T | null> => {
   return (await file.exists()) ? ((await file.json()) as T) : null
 }
 
-const installed = async (pkg: string): Promise<string | null> =>
-  (await readJson<PackageJson>(resolve(ROOT, "node_modules", pkg, "package.json")))?.version ?? null
+const installed = async (root: string, pkg: string): Promise<string | null> =>
+  (await readJson<PackageJson>(resolve(root, "node_modules", pkg, "package.json")))?.version ?? null
 
 const hashFile = async (path: string): Promise<bigint | null> => {
   const file = Bun.file(path)
@@ -155,34 +155,41 @@ const hashFile = async (path: string): Promise<bigint | null> => {
 }
 
 const subpackageFamily = async (
+  root: string,
   parent: string,
   subpkgs: string[],
   pins: Record<string, string>,
 ): Promise<Family> => ({
   name: parent,
-  expected: await installed(parent),
+  expected: await installed(root, parent),
   members: (
     await Promise.all(
       subpkgs.map(async (pkg): Promise<Member[]> => [
         { name: `${pkg} (package.json)`, version: pins[pkg] ?? null },
-        { name: pkg, version: await installed(pkg) },
+        { name: pkg, version: await installed(root, pkg) },
       ]),
     )
   ).flat(),
 })
 
-const collectFamilies = async (pkg: PackageJson, bunPin: string | null): Promise<Family[]> => {
+const collectFamilies = async (
+  root: string,
+  pkg: PackageJson,
+  bunPin: string | null,
+): Promise<Family[]> => {
   const pins = pkg.devDependencies ?? {}
   const twNode = await readJson<PackageJson>(
-    resolve(ROOT, "node_modules", "@tailwindcss/node", "package.json"),
+    resolve(root, "node_modules", "@tailwindcss/node", "package.json"),
   )
   return [
     await subpackageFamily(
+      root,
       "@bufbuild/buf",
       TARGETS.map((t) => t.bufSubpkg),
       pins,
     ),
     await subpackageFamily(
+      root,
       "@tailwindcss/oxide",
       TARGETS.map((t) => t.oxideSubpkg),
       pins,
@@ -194,7 +201,10 @@ const collectFamilies = async (pkg: PackageJson, bunPin: string | null): Promise
         await Promise.all(
           TARGETS.map(async (t) => [
             { name: `${t.bunSubpkg} (package.json)`, version: pins[t.bunSubpkg] ?? null },
-            { name: t.bunSubpkg, version: (await installed(t.bunSubpkg))?.split("+")[0] ?? null },
+            {
+              name: t.bunSubpkg,
+              version: (await installed(root, t.bunSubpkg))?.split("+")[0] ?? null,
+            },
           ]),
         )
       ).flat(),
@@ -207,11 +217,11 @@ const collectFamilies = async (pkg: PackageJson, bunPin: string | null): Promise
           name: "lightningcss (package.json)",
           version: pkg.dependencies?.lightningcss ?? null,
         },
-        { name: "lightningcss", version: await installed("lightningcss") },
+        { name: "lightningcss", version: await installed(root, "lightningcss") },
         ...(await Promise.all(
           TARGETS.map(async (t) => ({
             name: t.lcssSubpkg,
-            version: await installed(t.lcssSubpkg),
+            version: await installed(root, t.lcssSubpkg),
           })),
         )),
       ],
@@ -219,17 +229,23 @@ const collectFamilies = async (pkg: PackageJson, bunPin: string | null): Promise
   ]
 }
 
-const collectStaged = (): Promise<StagedNative[]> =>
+/** Hash every lightningcss binding in `node_modules` and its staged copy in `vendor/natives`. */
+export const collectStaged = (root = REPO_ROOT): Promise<StagedNative[]> =>
   Promise.all(
     TARGETS.map(async ({ lcssSubpkg: name }) => ({
       name,
-      source: await hashFile(resolve(ROOT, "node_modules", name, lcssNodeFile(name))),
-      staged: await hashFile(resolve(ROOT, "vendor", "natives", `${name}.bin`)),
+      source: await hashFile(resolve(root, "node_modules", name, lcssNodeFile(name))),
+      staged: await hashFile(resolve(root, "vendor", "natives", `${name}.bin`)),
     })),
   )
 
-const misePin = async (): Promise<string | null> => {
-  const toml = Bun.TOML.parse(await Bun.file(resolve(ROOT, "mise.toml")).text()) as {
+/** Read the Bun version that `mise.toml` pins, or `null` when it pins none. */
+export const misePin = async (root = REPO_ROOT): Promise<string | null> => {
+  const file = Bun.file(resolve(root, "mise.toml"))
+  if (!(await file.exists())) {
+    return null
+  }
+  const toml = Bun.TOML.parse(await file.text()) as {
     tools?: Record<string, unknown>
   }
   const pin = toml.tools?.bun ?? toml.tools?.["http:bun"]
@@ -240,19 +256,55 @@ const misePin = async (): Promise<string | null> => {
   return typeof version === "string" ? version : null
 }
 
-const npmLatest = async (pkg: string): Promise<string> => {
-  const res = await fetch(`https://registry.npmjs.org/${pkg}/latest`)
+const LOOKUP_TIMEOUT_MS = 10_000
+
+/** Latest published version of `pkg`. Throws after 10 s, on a non-2xx reply, or when the reply has no string `version`. */
+export const npmLatest = async (
+  pkg: string,
+  fetchImpl: (url: string, init: RequestInit) => Promise<Response> = fetch,
+): Promise<string> => {
+  const res = await fetchImpl(`https://registry.npmjs.org/${pkg}/latest`, {
+    signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
+  })
   if (!res.ok) {
     throw new Error(`npm registry returned ${res.status} for ${pkg}`)
   }
-  return ((await res.json()) as { version: string }).version
+  const version = ((await res.json()) as { version?: unknown } | null)?.version
+  if (typeof version !== "string") {
+    throw new Error(`npm registry returned no version for ${pkg}`)
+  }
+  return version
 }
 
-const latestBunKeepingCanaryPin = async (pinned: string | null): Promise<string> => {
-  const stable = (await Bun.$`mise latest bun`.cwd(ROOT).text()).trim()
-  const stableHasNotPassedPin =
-    pinned !== null && Bun.semver.order(stable, baseVersion(pinned)) <= 0
-  return stableHasNotPassedPin ? pinned : stable
+const miseLatestBun = async (): Promise<string> => {
+  const proc = Bun.spawn(["mise", "latest", "bun"], {
+    cwd: REPO_ROOT,
+    stdout: "pipe",
+    stderr: "pipe",
+    timeout: LOOKUP_TIMEOUT_MS,
+  })
+  const [stdout, stderr, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ])
+  const version = stdout.trim()
+  if (code !== 0 || version === "") {
+    throw new Error(`\`mise latest bun\` failed (exit ${code}): ${stderr.trim()}`)
+  }
+  return version
+}
+
+/**
+ * The latest stable Bun, or the pin itself while the pin is a canary that no
+ * stable release has reached yet, so a canary pin is not reported as ahead.
+ */
+export const latestBunKeepingCanaryPin = async (
+  pinned: string | null,
+  stable: () => Promise<string> = miseLatestBun,
+): Promise<string> => {
+  const latest = await stable()
+  return pinned !== null && Bun.semver.order(latest, pinned) <= 0 ? pinned : latest
 }
 
 const fetchLatest = async (family: string, current: string): Promise<string | null> => {
@@ -297,30 +349,34 @@ const printUpdates = (updates: Update[]): void => {
   }
 }
 
-// A canary reports only its base version, such as 1.4.4.
-const runningBun = async (pinned: string | null): Promise<string> => {
+/**
+ * The running Bun version. A canary reports only its base version, such as
+ * 1.4.4, so a canary pin matches when the running binary is the pinned one.
+ */
+export const runningBun = async (pinned: string | null, root = REPO_ROOT): Promise<string> => {
   if (!pinned?.includes("-")) {
     return Bun.version
   }
   const host = TARGETS.find((t) => t.platform === process.platform && t.arch === process.arch)
-  const pinnedBinary = host && resolve(ROOT, "node_modules", host.bunSubpkg, "bin", "bun")
+  const pinnedBinary = host && resolve(root, "node_modules", host.bunSubpkg, "bin", "bun")
   const same =
     pinnedBinary !== undefined &&
     (await hashFile(process.execPath)) === (await hashFile(pinnedBinary))
   return same ? pinned : `${Bun.version}+${Bun.revision.slice(0, 9)}`
 }
 
-const main = async (): Promise<number> => {
-  const pkg = (await readJson<PackageJson>(resolve(ROOT, "package.json"))) ?? {}
-  const pinned = await misePin()
+/** Print drift and, unless `--offline`, upstream updates. Return the exit code. */
+export const main = async (argv = process.argv, root = REPO_ROOT): Promise<number> => {
+  const pkg = (await readJson<PackageJson>(resolve(root, "package.json"))) ?? {}
+  const pinned = await misePin(root)
   const problems = [
-    ...(await collectFamilies(pkg, pinned)).flatMap(checkFamily),
-    ...checkStaged(await collectStaged()),
+    ...(await collectFamilies(root, pkg, pinned)).flatMap(checkFamily),
+    ...checkStaged(await collectStaged(root)),
     ...checkRuntime({
-      running: await runningBun(pinned),
+      running: await runningBun(pinned, root),
       pinned,
       engines: pkg.engines?.bun ?? "*",
-      types: await installed("@types/bun"),
+      types: await installed(root, "@types/bun"),
     }),
   ]
 
@@ -333,12 +389,12 @@ const main = async (): Promise<number> => {
     }
   }
 
-  if (!process.argv.includes("--offline")) {
+  if (!argv.includes("--offline")) {
     printUpdates(
       await collectUpdates({
-        "@bufbuild/buf": await installed("@bufbuild/buf"),
-        "@tailwindcss/oxide": await installed("@tailwindcss/oxide"),
-        lightningcss: await installed("lightningcss"),
+        "@bufbuild/buf": await installed(root, "@bufbuild/buf"),
+        "@tailwindcss/oxide": await installed(root, "@tailwindcss/oxide"),
+        lightningcss: await installed(root, "lightningcss"),
         bun: pinned,
       }),
     )

@@ -15,8 +15,9 @@ sidebar:
 1. `cleanDist` deletes `dist/` and creates `dist/bin/`.
 2. `bun scripts/emit-schema.ts` rewrites `schemas/aid.schema.json` from the Zod schema.
 3. `copySchema` copies the schema to `dist/schemas/aid.schema.json`.
-4. `bun scripts/bundle-web.ts` bundles the browser runtime into `src/web/_bundled.ts`.
-5. `compileTarget` compiles `src/cli/index.ts` once per target, in this order. `scripts/natives.ts` holds this table as `TARGETS`, which `stage-natives.ts` and `check-binaries.ts` also read:
+4. `bun scripts/bundle-web.ts` bundles the browser runtime into `.aid-build/_bundled.ts`, which git ignores.
+5. `checkStaged` from `scripts/check-binaries.ts` compares every `vendor/natives/<pkg>.bin` with its source in `node_modules`. A missing or stale copy stops the build and names the file, so no binary embeds an outdated lightningcss binding. Run `bun scripts/stage-natives.ts` to fix it.
+6. `compileTarget` compiles `src/cli/index.ts` once per target, in this order. `scripts/natives.ts` holds this table as `TARGETS`, which `stage-natives.ts` and `check-binaries.ts` also read:
 
    | Output | Bun target | buf package | lightningcss package |
    | --- | --- | --- | --- |
@@ -25,7 +26,7 @@ sidebar:
    | `aid-linux-arm64` | `bun-linux-arm64` | `@bufbuild/buf-linux-aarch64` | `lightningcss-linux-arm64-gnu` |
    | `aid-linux-x64` | `bun-linux-x64` | `@bufbuild/buf-linux-x64` | `lightningcss-linux-x64-gnu` |
 
-6. `printArtefacts` lists every file under `dist/` with its size.
+7. `printArtefacts` lists every file under `dist/` with its size.
 
 There is no Windows target.
 
@@ -34,7 +35,7 @@ Each compile passes four kinds of options:
 - `compile.executablePath` points at `node_modules/@oven/bun-<platform>/bin/bun`, the pinned Bun runtime for the target. That runtime is the one that ships `bun lint` and `bun fmt`, which `aid lint` and `aid fmt` run with `BUN_BE_BUN=1`.
 - The `nativeStubs` plugin in `scripts/compile.ts` replaces the three other targets' buf binaries (`<pkg>/bin/buf`) and staged lightningcss bindings (`vendor/natives/<pkg>.bin`) with an empty string. Bun does not drop unused `with { type: "file" }` imports, so without it every binary would embed all four buf binaries (about 177 MB) and all four lightningcss bindings (about 36 MB). Do not use `external` for this: an external file import stays a runtime import, and the binary then fails at startup on any machine without aid's `node_modules`. `tests/unit/compile-natives.test.ts` checks that each target keeps exactly one of each, and `tests/integration/compiled-binary.test.ts` runs the binary from a directory with no `node_modules`.
 - `define` sets `process.platform` to `"<os>"` and `process.arch` to `"<arch>"`. The platform checks in `src/lint/proto.ts` and `src/core/internal/lightningcss-native.ts` then pick the target's files at compile time, not the build machine's.
-- `plugins` holds `jsonc-parser-esm`, which [the jsonc-parser section](#jsonc-parser) explains.
+- `plugins` holds `jsonc-parser-esm`, which [the jsonc-parser section](#jsonc-parser) explains, and `aid-redirect-bundled`, which resolves every import of `src/web/_bundled.ts` to the generated `.aid-build/_bundled.ts`.
 
 `compileTarget` is exported, so `tests/integration/compiled-binary.test.ts` can compile the host target alone.
 
@@ -47,18 +48,14 @@ Cross-compiling needs every platform package in `node_modules`. `mise install` p
 - `WEB_JS` holds four entries: `aid-web` (`src/web/index.ts`), `aid-mermaid` (`src/web/mermaid-entry.ts`), `aid-openapi` (`src/web/openapi-entry.ts`), and `aid-proto` (`src/web/proto-entry.ts`).
 - `WEB_CSS` holds two prebuilt stylesheets: `@scalar/api-reference/style.css` and `@aid/proto-ui/styles.css`.
 
-`scripts/bundle-web.ts` bundles each `WEB_JS` entry with `bundleWebEntry` (minified ESM for the browser, no code splitting). It rebuilds `packages/proto-ui`, then reads each `WEB_CSS` file. It writes every result to `dist/web/` and inlines every result as a JSON string export in `src/web/_bundled.ts`, for example `export const aidWebJs = "..."`. It also inlines the theme component sources as `aidThemeSources`, because a compiled binary has no `src/theme/` for Tailwind to scan. `--out <file>` writes the module somewhere else, and `compileTarget(target, outfile, { bundled: <file> })` compiles against that file instead of `src/web/_bundled.ts`. The compiled-binary test uses this, so it never touches the committed placeholders.
+`scripts/bundle-web.ts` bundles each `WEB_JS` entry with `bundleWebEntry` (minified ESM for the browser, no code splitting). It rebuilds `packages/proto-ui`, then reads each `WEB_CSS` file. It writes every result to `dist/web/` and inlines every result as a JSON string export in `.aid-build/_bundled.ts`, for example `export const aidWebJs = "..."`. It also inlines the theme component sources as `aidThemeSources`, because a compiled binary has no `src/theme/` for Tailwind to scan. `--out <file>` writes the module somewhere else, and `compileTarget(target, outfile, { bundled: <file> })` compiles against that file. The compiled-binary test uses this to keep its bundle in a temp dir. `compileTarget` throws when the bundled file does not exist.
 
 aid's own copy of Tailwind's stylesheets (`tailwindcss/index.css`, `theme.css`, `preflight.css`, `utilities.css`) is embedded through `with { type: "file" }` imports in `src/core/tailwind.ts`, and `customCssResolver` maps every `tailwindcss` specifier to them, so `@import "tailwindcss"` resolves inside the binary.
 
 At build time, `buildWebBundle` checks whether `src/web/index.ts` exists under aid's root. `compileTailwind` makes the same check: from source it scans `src/theme/` with `@source`, and in a binary it scans `aidThemeSources`. From a source checkout it does, and aid bundles from source with `Bun.build`. Inside a compiled binary it does not, and aid writes the embedded strings with `writeHashed`. An empty embedded string throws an error that tells you to run `bun scripts/bundle-web.ts`.
 
-> [!WARNING]
-> `src/web/_bundled.ts` is committed with empty-string placeholders. `bun run build` and `bun scripts/manual-test.ts` overwrite it with the full minified bundles. Do not commit that version. Restore it after a local build:
->
-> ```sh
-> git restore src/web/_bundled.ts
-> ```
+> [!NOTE]
+> `src/web/_bundled.ts` holds only empty-string placeholders, and no script writes to it. Source runs and tests import the placeholders and bundle from `src/web/`. When you add a `WEB_JS` or `WEB_CSS` entry, add its empty export here by hand.
 
 ## Embedded buf
 

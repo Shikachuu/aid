@@ -30,12 +30,17 @@ import { type BuildWebBundleResult, buildWebBundle, writeHashed } from "./web-bu
 
 const STYLESHEET_PLACEHOLDER = "__AID_STYLESHEET_HREF__"
 
+/** Hooks for callers that need more than the written output, such as `aid dev`. */
+export type BuildOptions = {
+  onStylesheetDependency?: (path: string) => void
+}
+
 /**
  * Build the whole site from `ctx` into `ctx.outputDir`. Throws when two outputs
  * target the same path, a colocated asset escapes `contentDir`, or a link or
  * image does not resolve (unless `on_broken_links` is `warn`).
  */
-export async function build(ctx: BuildContext): Promise<void> {
+export async function build(ctx: BuildContext, options: BuildOptions = {}): Promise<void> {
   const registry = new AssetRegistry()
 
   const [routes] = await Promise.all([buildRoutes(ctx), copyStaticAssets(ctx, registry)])
@@ -56,7 +61,7 @@ export async function build(ctx: BuildContext): Promise<void> {
     ctx,
   )
 
-  const web = await buildWebBundle(ctx, {
+  const web = await buildWebBundle(ctx, registry, {
     mermaid: rendered.some((p) => p.hasMermaid),
     openapi: rendered.some((p) => p.hasOpenApi),
     proto: rendered.some((p) => p.hasProto),
@@ -84,8 +89,9 @@ export async function build(ctx: BuildContext): Promise<void> {
   const css = await compileTailwind(
     ctx,
     docs.map((d) => d.html),
+    options.onStylesheetDependency,
   )
-  const href = await writeHashed(ctx, "main", "css", css)
+  const href = await writeHashed(ctx, registry, "main", "css", css)
 
   const writes: Promise<unknown>[] = [Bun.write(llmsTxtPath, llmsTxt)]
   if (searchIndex) {
@@ -145,17 +151,24 @@ async function dispatchRenderer(
 function makeCopyAsset(route: Route, ctx: BuildContext, registry: AssetRegistry): CopyAsset {
   const routeOutputDir = path.dirname(outputPathForRoute(route, ctx))
   const routeUrlDir = path.posix.join(ctx.config.base_path, route.path)
+  const sourceDir = path.dirname(route.source)
   return async (absoluteSource) => {
     const realSource = await assertInsideContent(absoluteSource, route, ctx)
     if (realSource === null) {
       return null
     }
-    const filename = path.basename(absoluteSource)
-    const destPath = path.join(routeOutputDir, filename)
+    const subpath = colocatedSubpath(sourceDir, absoluteSource)
+    const destPath = path.join(routeOutputDir, ...subpath)
     registry.register(destPath, absoluteSource)
     await Bun.write(destPath, Bun.file(realSource))
-    return path.posix.join(routeUrlDir, filename)
+    return path.posix.join(routeUrlDir, ...subpath)
   }
+}
+
+function colocatedSubpath(sourceDir: string, absoluteSource: string): string[] {
+  const segments = path.relative(sourceDir, absoluteSource).split(path.sep)
+  const firstKept = segments.findIndex((segment) => segment !== "..")
+  return segments.slice(firstKept)
 }
 
 async function assertInsideContent(
@@ -226,9 +239,9 @@ function renderPageBody(page: RenderedPage): string {
     case "jsonschema":
       return page.html
     case "html":
-      return render(PageHtml({ bodyHtml: page.html, machineUrl: "" }))
+      return render(PageHtml({ bodyHtml: page.html }))
     case "markdown":
-      return render(PageMarkdown({ bodyHtml: page.html, machineUrl: "" }))
+      return render(PageMarkdown({ bodyHtml: page.html }))
   }
 }
 

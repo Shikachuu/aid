@@ -61,3 +61,37 @@ test("colocated image one level up from the route still resolves correctly", asy
   const html = await Bun.file(path.join(ctx.outputDir, "guides", "index.html")).text()
   expect(html).toContain('src="/guides/shared.svg"')
 })
+
+test("same-named images in different subfolders keep their subpaths", async () => {
+  const ctx = await makeSite(cwd)
+  await Bun.write(path.join(ctx.contentDir, "guide", "light", "logo.svg"), "<svg>light</svg>")
+  await Bun.write(path.join(ctx.contentDir, "guide", "dark", "logo.svg"), "<svg>dark</svg>")
+  await Bun.write(
+    path.join(ctx.contentDir, "guide", "index.md"),
+    "# Guide\n\n![](./light/logo.svg)\n![](./dark/logo.svg)\n",
+  )
+  await build(ctx)
+
+  const html = await Bun.file(path.join(ctx.outputDir, "guide", "index.html")).text()
+  expect(html).toContain('src="/guide/light/logo.svg"')
+  expect(html).toContain('src="/guide/dark/logo.svg"')
+  expect(await Bun.file(path.join(ctx.outputDir, "guide", "light", "logo.svg")).text()).toBe(
+    "<svg>light</svg>",
+  )
+  expect(await Bun.file(path.join(ctx.outputDir, "guide", "dark", "logo.svg")).text()).toBe(
+    "<svg>dark</svg>",
+  )
+})
+
+test("a parent-relative image keeps its subpath without the leading ..", async () => {
+  const ctx = await makeSite(cwd)
+  await Bun.write(path.join(ctx.contentDir, "img", "a.svg"), "<svg/>")
+  await Bun.write(path.join(ctx.contentDir, "guides", "intro.md"), "# Intro\n\n![](../img/a.svg)\n")
+  await build(ctx)
+
+  const html = await Bun.file(path.join(ctx.outputDir, "guides", "intro", "index.html")).text()
+  expect(html).toContain('src="/guides/intro/img/a.svg"')
+  expect(await Bun.file(path.join(ctx.outputDir, "guides", "intro", "img", "a.svg")).exists()).toBe(
+    true,
+  )
+})

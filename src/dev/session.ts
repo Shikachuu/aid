@@ -1,8 +1,8 @@
 import path from "node:path"
 import type { BuildContext } from "../core/types"
-import { rebuild } from "./loop"
-import { startDevServer, withSlash } from "./server"
-import { broadcast, type DevState } from "./state"
+import { rebuild, serializeRuns } from "./loop"
+import { type DevServerHandle, startDevServer, withSlash } from "./server"
+import { broadcast, closeClients, type DevState } from "./state"
 import { watchContent } from "./watcher"
 
 /** Inputs for `startDevSession`. */
@@ -48,47 +48,59 @@ export async function startDevSession(args: StartDevSessionArgs): Promise<void> 
     `[aid] dev server listening at http://${host}:${server.port}${withSlash(ctx.config.base_path)}`,
   )
 
-  let running = false
-  let queued = false
-
-  const runRebuild = async () => {
-    if (running) {
-      queued = true
-      return
+  const runRebuild = serializeRuns(async () => {
+    const result = await rebuild(state, ctx)
+    if (result.ok) {
+      console.log(`[aid] rebuilt in ${result.durationMs}ms`)
+    } else {
+      console.error(`[aid] build failed (${result.durationMs}ms): ${result.error.message}`)
     }
-    running = true
-    do {
-      queued = false
-      const result = await rebuild(state, ctx)
-      if (result.ok) {
-        console.log(`[aid] rebuilt in ${result.durationMs}ms`)
-      } else {
-        console.error(`[aid] build failed (${result.durationMs}ms): ${result.error.message}`)
-      }
-    } while (queued)
-    running = false
+    handle.watchFiles(result.stylesheetDependencies)
+  })
+
+  const endAndExit = async (message: string) => {
+    await endSession(state, server, message)
+    process.exit(0)
   }
 
   const handle = watchContent(
     ctx,
     configPath,
-    [path.join(ctx.cwd, ctx.config.stylesheet)],
+    [path.resolve(ctx.cwd, ctx.config.stylesheet)],
     (configChanged) => {
-      if (configChanged) {
-        const message = `${path.basename(configPath)} changed. Restart \`aid dev\` to pick up the new configuration.`
-        console.log(`[aid] ${message}`)
-        broadcast(state, "error-detail", JSON.stringify({ message }))
-        shutdown()
+      if (!configChanged) {
+        void runRebuild()
+        return
       }
-      void runRebuild()
+      const message = `${path.basename(configPath)} changed. Restart \`aid dev\` to pick up the new configuration.`
+      console.log(`[aid] ${message}`)
+      handle.close()
+      void endAndExit(message)
     },
   )
+  handle.watchFiles(initial.stylesheetDependencies)
 
   const shutdown = () => {
     handle.close()
-    server.stop()
+    void server.stop()
     process.exit(0)
   }
   process.on("SIGINT", shutdown)
   process.on("SIGTERM", shutdown)
+}
+
+const END_SESSION_TIMEOUT_MS = 1000
+
+/**
+ * Send `message` to every open tab's overlay, then stop the server once the
+ * frame has gone out, or after a second when a client does not drain.
+ */
+export async function endSession(
+  state: DevState,
+  server: DevServerHandle,
+  message: string,
+): Promise<void> {
+  broadcast(state, "error-detail", JSON.stringify({ message }))
+  closeClients(state)
+  await Promise.race([server.stop(false), Bun.sleep(END_SESSION_TIMEOUT_MS)])
 }

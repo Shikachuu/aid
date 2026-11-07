@@ -231,7 +231,7 @@ export function configReference(): string {
       order: 2,
     },
     [
-      "aid reads `aid.yaml` from the project directory (`--file` picks another name). Only `name` is required. Unknown keys are ignored.",
+      "aid reads `aid.yaml` from the project directory (`--file` picks another name). Only `name` is required. An unknown key is an error.",
       "## Top-level keys",
       keyTable(scalars),
       ...groups,

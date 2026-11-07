@@ -1,4 +1,5 @@
 import type { ProtoService } from "../parser"
+import { DeprecatedBadge } from "./DeprecatedBadge"
 import { DocBlock } from "./DocBlock"
 import { EntityHeader } from "./EntityHeader"
 import { printService } from "./print-proto"
@@ -24,6 +25,12 @@ export const ServiceBlock = ({ service, baseHref }: ServiceBlockProps) => (
       {service.rpcs.map((rpc) => (
         <li key={rpc.name} className="proto-rpc-item" id={`${service.fqn}.${rpc.name}`}>
           <RpcSignature rpc={rpc} baseHref={baseHref} />
+          {rpc.deprecated ? (
+            <>
+              {" "}
+              <DeprecatedBadge />
+            </>
+          ) : null}
           <DocBlock raw={rpc.comment} />
         </li>
       ))}

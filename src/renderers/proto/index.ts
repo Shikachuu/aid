@@ -33,7 +33,7 @@ export const renderProto = async (args: RenderProtoArgs): Promise<RenderedPage> 
   const description = firstParagraph(ast.packageLeadingComment)
   const protoUrl = path.posix.join(args.basePath ?? "/", exportPath(args.route, ".proto"))
 
-  const html = render(PageProto({ title, protoUrl, machineUrl: protoUrl }))
+  const html = render(PageProto({ title, protoUrl }))
 
   return {
     route: args.route,

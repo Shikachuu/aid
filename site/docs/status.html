@@ -25,11 +25,11 @@
       </tr>
       <tr>
         <td>"Open in AI" button</td>
-        <td>Markdown, HTML, OpenAPI, Protobuf and JSON Schema pages render the button. Its click handler in <code>src/web/ai-button.ts</code> is empty, so a click does nothing.</td>
+        <td>Pages do not render the button yet. The <code>ai_targets</code> key is reserved for it.</td>
       </tr>
       <tr>
         <td>Dark-mode toggle button</td>
-        <td>The header renders the button. Its click handler in <code>src/web/dark-mode.ts</code> is empty. The <code>theme.dark_mode</code> key still controls the dark palette; see <a href="./theming/dark-mode.md">dark mode</a>.</td>
+        <td>The header has no toggle. The OS or browser color scheme picks light or dark, and the <code>theme.dark_mode</code> key controls the dark palette; see <a href="./theming/dark-mode.md">dark mode</a>.</td>
       </tr>
       <tr>
         <td>Template and partial overrides</td>
@@ -38,10 +38,6 @@
       <tr>
         <td>HTML body fragments</td>
         <td>An <code>.html</code> page must be a full document with <code>&lt;html&gt;</code> and <code>&lt;body&gt;</code>. A fragment fails the build.</td>
-      </tr>
-      <tr>
-        <td>Mobile sidebar layout</td>
-        <td>The page is a fixed two-column grid with a 16rem sidebar at every screen width. There is no collapsed menu for narrow screens.</td>
       </tr>
       <tr>
         <td><code>sitemap.xml</code>, <code>robots.txt</code>, 404 page, canonical tags</td>
@@ -66,8 +62,8 @@
     <tbody>
       <tr>
         <td>Compiled binaries</td>
-        <td><code>bun run build</code> writes four binaries to <code>dist/bin/</code>, and they build sites when run inside a checkout of the aid repository.</td>
-        <td>A <code>darwin-x64</code> binary cross-compiled on Apple silicon carries an invalid ad-hoc signature, and macOS kills it on start until you re-sign it. Outside the aid repository the <code>darwin-arm64</code> binary fails on start with <code>Cannot find module '@bufbuild/buf-darwin-x64/bin/buf'</code>. Every binary embeds a Bun canary runtime, because no stable Bun ships <code>bun lint</code> yet. See <a href="./getting-started/installation.md">installation</a>.</td>
+        <td><code>bun run build</code> writes four binaries to <code>dist/bin/</code>, and the Linux binaries build sites from any directory.</td>
+        <td>A <code>darwin-x64</code> binary cross-compiled on Apple silicon carries an invalid ad-hoc signature, and macOS kills it on start until you re-sign it. Nothing runs the macOS binaries on macOS yet. Every binary embeds a Bun canary runtime, because no stable Bun ships <code>bun lint</code> yet. See <a href="./getting-started/installation.md">installation</a>.</td>
       </tr>
       <tr>
         <td>Rebuilds</td>

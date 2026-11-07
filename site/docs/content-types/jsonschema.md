@@ -91,8 +91,8 @@ aid resolves `$ref` inside the same file: JSON pointers such as `#/$defs/Address
 - A `$ref` back to a schema that is already open on the current path, such as a tree node that contains itself, does not expand again. Its type links to the definition section when the target is a root `$defs` or `definitions` entry, or to the top of the page for `#`. A cycle through any other pointer, such as `#/properties/node`, shows the type name without a link.
 - Expansion stops 32 levels deep. A field at that depth lists its nested keywords as JSON in its constraints toggle instead of as fields.
 - A relative `$ref` to another schema file, such as `./address.json#/$defs/Street`, links to that file's page when it is a JSON Schema page in the content folder. A `$defs` or `definitions` fragment links to the matching definition section.
-- A remote `http://` or `https://` `$ref` shows its last path segment as the type, links to the URL, and prints a warning: `aid: <file>: unresolved $ref "<ref>"`. aid does not fetch it.
-- Any other `$ref` that does not resolve shows its last path segment without a link and prints the same warning. The build continues.
+- A remote `http://` or `https://` `$ref` shows its last path segment as the type, links to the URL, and adds a `jsonschema/ref` warning to the [broken-reference report](./links.md#broken-reference-check): `unresolved $ref "<ref>"`. aid does not fetch it.
+- Any other `$ref` that does not resolve shows its last path segment without a link and adds the same warning. The build continues.
 
 An `allOf` whose members are objects with compatible keywords merges into one field list, with `properties` and `required` combined. An `allOf` with conflicting keywords, or one whose `$ref`s lead back to itself, shows as an "All of" group of options instead.
 

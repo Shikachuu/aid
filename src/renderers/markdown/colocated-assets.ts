@@ -2,6 +2,7 @@ import path from "node:path"
 import type { Element as HastElement, Root as HastRoot } from "hast"
 import { visit } from "unist-util-visit"
 import type { VFile } from "vfile"
+import { splitHref } from "../../core/links"
 
 /**
  * Callback invoked once per relative `<img src>` discovered in a rendered
@@ -43,8 +44,9 @@ export type AssetRef = { src: string; place?: HastElement["position"]; set: (hre
 
 /**
  * Copy every relative `ref` through `opts.copyAsset` and point it at the
- * returned public href. A missing asset leaves the ref untouched and adds an
- * `image/missing` message to `file`.
+ * returned public href. The path is percent-decoded before the lookup, and a
+ * query or fragment carries over to the new href. A missing asset leaves the
+ * ref untouched and adds an `image/missing` message to `file`.
  */
 export async function copyColocated(
   opts: ColocatedAssetsOptions,
@@ -55,7 +57,8 @@ export async function copyColocated(
     refs
       .filter((ref) => isRelativeSrc(ref.src))
       .map(async (ref) => {
-        const href = await opts.copyAsset(path.resolve(opts.sourceDir, ref.src))
+        const { pathPart, query, fragment } = splitHref(ref.src)
+        const href = await opts.copyAsset(path.resolve(opts.sourceDir, safeDecodeUri(pathPart)))
         if (href == null) {
           file.message(`colocated image not found: ${ref.src}`, {
             place: ref.place,
@@ -63,7 +66,7 @@ export async function copyColocated(
             source: "aid",
           })
         } else {
-          ref.set(href)
+          ref.set(`${href}${query}${fragment === "" ? "" : `#${fragment}`}`)
         }
       }),
   )
@@ -72,4 +75,12 @@ export async function copyColocated(
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i
 
 const isRelativeSrc = (src: string): boolean =>
-  src.length > 0 && !src.startsWith("/") && !src.startsWith("#") && !SCHEME_RE.test(src)
+  splitHref(src).pathPart.length > 0 && !src.startsWith("/") && !SCHEME_RE.test(src)
+
+function safeDecodeUri(value: string): string {
+  try {
+    return decodeURI(value)
+  } catch {
+    return value
+  }
+}

@@ -1,6 +1,6 @@
 ---
 title: Dark mode
-description: How theme.dark_mode derives, keeps, or strips the dark palette, and which parts of a page follow the OS color scheme regardless.
+description: How theme.dark_mode derives, keeps, or strips the dark palette, and how off pins the page, Mermaid, and OpenAPI pages to light.
 sidebar:
   order: 1
 ---
@@ -16,28 +16,34 @@ theme:
 | --- | --- |
 | `auto` (default) | aid derives a dark value for every `oklch()` color token and appends it to your stylesheet. |
 | `manual` | aid leaves your stylesheet as written. You write the dark values. |
-| `off` | aid removes every `prefers-color-scheme: dark` block from your stylesheet. |
+| `off` | aid removes every `prefers-color-scheme: dark` block from your stylesheet and keeps the whole page light. |
 
 See [the `theme` keys](../reference/configuration.md#theme) in the configuration reference.
 
 ## Auto
 
-Before Tailwind compiles the stylesheet, aid reads every `@theme` block in it, including the bundled theme that `@import "aid/theme";` pulls in. For each `--color-*` token whose value is `oklch(L C H)` or `oklch(L C H / A)`, aid inverts the lightness: L becomes 100 - L. Chroma, hue, and alpha stay the same. aid appends the results at the end of the stylesheet:
+Before Tailwind compiles the stylesheet, aid reads every `@theme` block in it, including the bundled theme that `@import "aid/theme";` pulls in. For each `--color-*` token whose value is `oklch(L C H)` or `oklch(L C H / A)`, aid computes a dark lightness. Chroma, hue, and alpha stay the same.
+
+- A neutral token, with chroma below 0.03, inverts into the 12% to 100% band: L becomes 12 + 0.88 * (100 - L). The 99% background becomes 12.88%, not black, and the 90% border becomes 20.8%, so borders stay visible.
+- A saturated token at 80% lightness or less is an accent or text color. aid mirrors it (L becomes 100 - L) and clamps the result to 70% to 85%, so links and callout titles stay readable on the dark background.
+- A saturated token above 80% is a light tint, and it inverts like a neutral token.
+
+aid appends the results at the end of the stylesheet:
 
 ```css
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-aid-bg: oklch(1% 0 0);
-    --color-aid-text: oklch(80% 0 0);
-    --color-aid-muted: oklch(50% 0 0);
-    --color-aid-border: oklch(10% 0 0);
-    --color-aid-accent: oklch(40% 0.15 250);
+    --color-aid-bg: oklch(12.88% 0 0);
+    --color-aid-text: oklch(82.4% 0 0);
+    --color-aid-muted: oklch(56% 0 0);
+    --color-aid-border: oklch(20.8% 0 0);
+    --color-aid-accent: oklch(70% 0.15 250);
     /* ... one line per oklch() color token */
   }
 }
 ```
 
-aid reads lightness as a percentage (`60%`) or a fraction (`0.6`), and always writes a percentage. A mid-range token such as `--color-aid-muted` at 50% keeps the same value in dark mode. Tokens that are not colors, such as `--font-aid-sans`, are skipped.
+aid reads lightness as a percentage (`60%`) or a fraction (`0.6`), and always writes a percentage. Tokens that are not colors, such as `--font-aid-sans`, are skipped.
 
 A `--color-*` token in any other format, such as `#ff0000` or `rgb()`, gets no dark value and keeps its light value in dark mode. aid prints a warning for each one during the build. Convert hex, `rgb()`, and `hsl()` tokens to `oklch()`, or use `manual`.
 
@@ -75,29 +81,21 @@ Use `:root`, not `@theme`, inside the media query. Tailwind 4 moves `@theme` con
 
 ## Off
 
-With `off`, aid deletes every `@media (prefers-color-scheme: dark) { ... }` block from the stylesheet text before Tailwind compiles it. The page keeps the light palette. Some parts still follow the OS color scheme:
+With `off`, aid deletes every `@media (prefers-color-scheme: dark) { ... }` block from the stylesheet text before Tailwind compiles it. Every page carries `data-aid-dark-mode="off"` on its `<html>` element, and the rest of the page follows that attribute:
 
-- Shiki writes each code token color as `light-dark(<light>, <dark>)`, and the bundled theme sets `color-scheme: light dark` on `:root`. On a dark OS, code blocks use the dark colors on your light background.
-- Tailwind `dark:` utilities in your HTML or templates still work. Tailwind generates their `prefers-color-scheme: dark` queries after aid has stripped the stylesheet, so aid does not remove them.
-- Mermaid diagrams use Mermaid's dark theme on a dark OS (see [Mermaid diagrams](#mermaid-diagrams)).
+- The bundled theme sets `color-scheme: light` instead of `light dark`, so the Shiki code colors, which Shiki writes as `light-dark(<light>, <dark>)`, resolve to their light values.
+- Mermaid diagrams use Mermaid's `default` theme on any OS (see [Mermaid diagrams](#mermaid-diagrams)).
+- OpenAPI pages tell Scalar to stay in light mode.
 
-To pin the browser's color scheme to light as well, set it in your stylesheet:
+Tailwind `dark:` utilities in your HTML or templates still work. Tailwind generates their `prefers-color-scheme: dark` queries after aid has stripped the stylesheet, so aid does not remove them.
 
-```css
-@layer base {
-  :root {
-    @apply scheme-light;
-  }
-}
-```
-
-This rule comes after the bundled one in the same layer, so it wins, and the Shiki colors resolve to their light values.
+The attribute holds `auto` or `manual` for the other two values. Target it from your own CSS, for example `:root[data-aid-dark-mode="off"]`.
 
 ## Mermaid diagrams
 
-aid renders Mermaid diagrams in the browser. It picks Mermaid's `dark` theme when the OS prefers dark and the `default` theme otherwise. When the OS color scheme changes, aid renders every diagram on the page again with the matching theme. The `theme.dark_mode` setting does not change this.
+aid renders Mermaid diagrams in the browser. It picks Mermaid's `dark` theme when the OS prefers dark and the `default` theme otherwise. When the OS color scheme changes, aid renders every diagram on the page again with the matching theme. With `theme.dark_mode: off`, aid always picks the `default` theme.
 
 ## Limitations
 
 > [!WARNING]
-> Not implemented yet: the dark mode toggle. The header renders a button with the `aid-dark-toggle` class, but clicking it does nothing. The only switch between light and dark is the OS or browser color scheme.
+> Not implemented yet: a dark mode toggle. The header has no toggle button, and the only switch between light and dark is the OS or browser color scheme.

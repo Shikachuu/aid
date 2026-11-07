@@ -79,7 +79,7 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
     pages: [`${DOCS}/search/index.md`],
   },
   {
-    sources: ["src/core/llms-txt.ts", "src/web/ai-button.ts"],
+    sources: ["src/core/llms-txt.ts"],
     pages: [`${DOCS}/llms-txt/index.md`, `${DOCS}/status.html`],
   },
   {
@@ -99,7 +99,7 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
     pages: [`${DOCS}/theming/index.md`],
   },
   {
-    sources: ["src/core/dark-mode.ts", "src/web/dark-mode.ts"],
+    sources: ["src/core/dark-mode.ts", "src/web/mermaid.ts", "src/web/openapi-entry.ts"],
     pages: [`${DOCS}/theming/dark-mode.md`, `${DOCS}/status.html`],
   },
   {

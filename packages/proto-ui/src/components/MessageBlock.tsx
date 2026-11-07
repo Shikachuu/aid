@@ -1,4 +1,5 @@
 import type { ProtoMessage } from "../parser"
+import { DeprecatedBadge } from "./DeprecatedBadge"
 import { DocBlock } from "./DocBlock"
 import { EntityHeader } from "./EntityHeader"
 import { EnumBlock } from "./EnumBlock"
@@ -37,7 +38,15 @@ export const MessageBlock = ({ message, baseHref }: MessageBlockProps) => {
             {visibleFields.map((f) => (
               <tr key={f.name} className="proto-field-row">
                 <td className="proto-field-number">{f.number}</td>
-                <td className="proto-field-name">{f.name}</td>
+                <td className="proto-field-name">
+                  {f.name}
+                  {f.deprecated ? (
+                    <>
+                      {" "}
+                      <DeprecatedBadge />
+                    </>
+                  ) : null}
+                </td>
                 <td className="proto-field-type">
                   {f.mapKey ? (
                     <>
@@ -72,6 +81,12 @@ export const MessageBlock = ({ message, baseHref }: MessageBlockProps) => {
                   <span className="proto-field-number">{f.number}</span>{" "}
                   <span className="proto-field-name">{f.name}</span>{" "}
                   <TypeRef reference={f.type} baseHref={baseHref} />
+                  {f.deprecated ? (
+                    <>
+                      {" "}
+                      <DeprecatedBadge />
+                    </>
+                  ) : null}
                   <DocBlock raw={f.comment} />
                 </li>
               ))}

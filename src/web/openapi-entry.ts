@@ -10,5 +10,8 @@ if (mount && specEl?.textContent) {
     hideSearch: true,
     showDeveloperTools: "never",
     layout: "modern",
+    ...(document.documentElement.dataset.aidDarkMode === "off"
+      ? { forceDarkModeState: "light" as const }
+      : {}),
   })
 }

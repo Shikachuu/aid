@@ -44,6 +44,7 @@ To add a dependency, run `bun add <pkg>` to update `package.json`, then `mise in
 | `bun run docs:affected` | `scripts/docs-affected.ts`: lists the docs pages that document the files changed since `--base` (default `origin/main`). |
 | `bun run deps:binaries` | `scripts/check-binaries.ts`: checks the platform packages, the staged lightningcss bindings, and the Bun version, then reports newer upstream versions. Add `--offline` to skip the upstream lookup. |
 | `bun test` | The Bun test runner over `tests/`. |
+| `bun run test:e2e` | The Playwright browser tests in `tests/e2e`, with screenshots in `tests/e2e/__screenshots__/`. `bun run check` does not run them. Run them after a change to the theme, the browser runtime, or a renderer. See [testing](./testing.md#browser-tests). |
 | `bun run typecheck` | `tsc --noEmit`. |
 | `bun run lint` | `bun lint` over `src`, `scripts`, `tests`, and `packages`, then `aid lint . --filter css` over every CSS file. |
 | `bun run fmt` | `bun fmt` over the JS, TS, JSON, and CSS files in `src`, `scripts`, `tests`, `packages`, and `site`, and the root `*.json` files. |
@@ -65,7 +66,7 @@ aid embeds native binaries from npm packages, and each platform's package must m
 
 It also compares each `vendor/natives/lightningcss-<platform>.bin` with its source in `node_modules`. Any mismatch prints a `drift:` list and exits with code 1.
 
-Without `--offline`, the script then looks up the latest version of each group on the npm registry, and of Bun with `mise latest bun`. For each outdated group, it prints the `bun add` commands that bump the parent and pin every platform package to the same exact version. The script never edits `package.json`.
+Without `--offline`, the script then looks up the latest version of each group on the npm registry, and of Bun with `mise latest bun`. Each lookup gives up after 10 seconds and prints `lookup failed` for that group. A canary pin counts as outdated once a stable release reaches its base version, so `1.4.4` replaces `1.4.4-canary.20261103.1`. For each outdated group, it prints the `bun add` commands that bump the parent and pin every platform package to the same exact version. The script never edits `package.json`.
 
 ## Run the CLI from source
 
@@ -86,4 +87,4 @@ From a source checkout, aid bundles the browser runtime with `Bun.build` on ever
 bun scripts/manual-test.ts
 ```
 
-It runs `bun run build`, then runs `dist/bin/aid-<os>-<arch>` for the host with `build` inside `tests/fixtures/sample-site`. It serves `tests/fixtures/sample-site/dist` on `http://localhost:3000/` with the dev server's `serveFile`. The build overwrites `src/web/_bundled.ts`, so restore it before you commit (see [single binary](./single-binary.md)).
+It runs `bun run build`, then runs `dist/bin/aid-<os>-<arch>` for the host with `build` inside `tests/fixtures/sample-site`. It serves `tests/fixtures/sample-site/dist` on `http://localhost:3000/` with the dev server's `serveFile`. The build writes its browser bundles to the gitignored `.aid-build/` (see [single binary](./single-binary.md)).

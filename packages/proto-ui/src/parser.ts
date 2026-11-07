@@ -349,7 +349,10 @@ const findPackageLeadingComment = (source: string): string | null => {
     return null
   }
 
-  const before = source.slice(0, pkgIndex)
+  const before = source.slice(0, pkgIndex).trimEnd()
+  if (before.endsWith("*/")) {
+    return blockCommentText(before)
+  }
   const lines = before.split(/\r?\n/)
 
   const collected: string[] = []
@@ -369,4 +372,22 @@ const findPackageLeadingComment = (source: string): string | null => {
   }
 
   return collected.length > 0 ? collected.join("\n") : null
+}
+
+const blockCommentText = (before: string): string | null => {
+  const start = before.lastIndexOf("/*")
+  if (start === -1) {
+    return null
+  }
+  const lines = before
+    .slice(start + 2, -2)
+    .replace(/^\*/, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+  const starred = lines.every((line) => line === "" || line.startsWith("*"))
+  const text = lines
+    .map((line) => (starred ? line.replace(/^\*\s?/, "") : line))
+    .join("\n")
+    .trim()
+  return text === "" ? null : text
 }

@@ -114,7 +114,7 @@ The pipeline then hands `reportBrokenLinks` three lists: the renderer diagnostic
 
 `buildWebBundle` (`src/core/web-bundle.ts`) gets three flags: whether any page has mermaid, an OpenAPI page, or a proto page. It always writes `aid-web`, and writes `aid-mermaid`, `aid-openapi`, and `aid-proto` only when their flag is set. OpenAPI and proto pages also get a stylesheet, copied from `@scalar/api-reference/style.css` and `@aid/proto-ui/styles.css`.
 
-From a source checkout, `bundleWebEntry` runs `Bun.build` with code splitting into `outputDir`. Inside the compiled binary, there is no source tree, so the bundles come from the strings embedded in `src/web/_bundled.ts`. [Single binary](./single-binary.md) explains the embedding.
+From a source checkout, `bundleWebEntry` runs `Bun.build` with code splitting into `outputDir`. Inside the compiled binary, there is no source tree, so the bundles come from the strings that `scripts/bundle-web.ts` generated and the compile step embedded in place of `src/web/_bundled.ts`. [Single binary](./single-binary.md) explains the embedding.
 
 `Layout` links each optional bundle only on the pages that need it.
 

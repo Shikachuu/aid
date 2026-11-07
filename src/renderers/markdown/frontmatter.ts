@@ -45,7 +45,7 @@ export const FrontmatterSchema = z
 /** Page metadata that `route.frontmatter` carries to Layout, llms.txt and search. */
 export type Frontmatter = z.infer<typeof FrontmatterSchema>
 
-const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
+const FRONTMATTER_RE = /^---\r?\n(?:([\s\S]*?)\r?\n)??---(?:\r?\n|$)/
 
 /** Result of separating the YAML block from the markdown body. */
 export type ExtractedFrontmatter = {

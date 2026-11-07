@@ -67,7 +67,7 @@ flowchart LR
 
 ## Search
 
-aid indexes the title and the rendered body HTML as one string, markup included. HTML pages contribute no headings to the search index. See [search](../search/index.md).
+aid indexes the title, the text of the body, and the text of every `<h1>` to `<h6>` heading. The body text leaves out markup and the contents of `<script>`, `<style>`, and `<template>`. See [search](../search/index.md).
 
 ## The .md export
 

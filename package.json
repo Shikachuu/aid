@@ -14,6 +14,7 @@
     "build": "bun run scripts/compile.ts",
     "emit-schema": "bun run scripts/emit-schema.ts",
     "test": "bun test",
+    "test:e2e": "AID_E2E=1 bun test tests/e2e",
     "typecheck": "tsc --noEmit",
     "lint": "bun lint --no-script src scripts tests packages && bun src/cli/index.ts lint . --filter css",
     "fmt": "bun fmt --no-script \"{src,scripts,tests,packages,site}/**/*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,css}\" \"*.json\"",

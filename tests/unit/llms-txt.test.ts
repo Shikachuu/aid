@@ -243,4 +243,13 @@ describe("buildLlmsTxt — template override", () => {
     const ctx = makeCtx(cwd, { dir: { templates: "templates" } })
     await expect(buildLlmsTxt(ctx, [])).rejects.toThrow(/\{\{nope\}\}/)
   })
+
+  test.each(["constructor", "toString", "__proto__"])(
+    "treats the inherited key {{%s}} as an unknown placeholder",
+    async (name) => {
+      await Bun.write(path.join(cwd, "templates", "llms.txt"), `{{${name}}}`)
+      const ctx = makeCtx(cwd, { dir: { templates: "templates" } })
+      await expect(buildLlmsTxt(ctx, [])).rejects.toThrow(/unknown llms.txt placeholder/)
+    },
+  )
 })

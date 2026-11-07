@@ -17,7 +17,7 @@ sidebar:
 | `css` | `**/*.css` | None |
 | `proto` | `**/*.proto` | `buf.yaml` |
 
-Discovery never walks into these directories: `node_modules`, `dist`, `.bun`, `.git`, `.turbo`, `build`, `coverage`, `.next`, `.cache`, `.vercel`.
+Discovery never walks into these directories: `node_modules`, `dist`, `.bun`, `.git`, `.turbo`, `build`, `coverage`, `.next`, `.cache`, `.vercel`, `.aid`.
 
 ## markdownlint default (`md`)
 

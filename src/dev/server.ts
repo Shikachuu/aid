@@ -15,7 +15,8 @@ export type StartDevServerArgs = {
 export type DevServerHandle = {
   /** Bound port, which differs from the requested one when the caller passes 0. */
   port: number
-  stop: () => void
+  /** Stop listening. Without `force`, resolves once open responses have finished sending. */
+  stop: (force?: boolean) => Promise<void>
 }
 
 /**
@@ -37,7 +38,21 @@ export function startDevServer(args: StartDevServerArgs): DevServerHandle {
       // would close them and surface a "network connection was lost" error
       // in the browser.
       idleTimeout: 0,
-      fetch: (req) => handle(req, state, config),
+      // Bun's development error page carries stacks and absolute paths, and
+      // `--host 0.0.0.0` would serve it to the whole network.
+      development: false,
+      // With `development: false` Bun binds with SO_REUSEPORT unless told
+      // otherwise, so a second `aid dev` on the same port would share it
+      // silently instead of failing with EADDRINUSE.
+      reusePort: false,
+      fetch: async (req) => {
+        try {
+          return await handle(req, state, config)
+        } catch (err) {
+          console.error(`[aid] ${req.method} ${req.url} failed:`, err)
+          return new Response("Internal Server Error", { status: 500 })
+        }
+      },
     })
   } catch (err) {
     if (isAddrInUse(err)) {
@@ -50,13 +65,15 @@ export function startDevServer(args: StartDevServerArgs): DevServerHandle {
 
   return {
     port: server.port ?? port,
-    stop: () => server.stop(true),
+    stop: (force = true) => server.stop(force),
   }
 }
 
 async function handle(req: Request, state: DevState, config: AidConfig): Promise<Response> {
-  const url = new URL(req.url)
-  const rawPath = decodeURIComponent(url.pathname)
+  const rawPath = decodePathOrNull(new URL(req.url).pathname)
+  if (rawPath === null) {
+    return new Response("Bad Request", { status: 400 })
+  }
 
   if (rawPath === RELOAD_PATH) {
     return openSseStream(state)
@@ -76,6 +93,15 @@ async function handle(req: Request, state: DevState, config: AidConfig): Promise
     return htmlResponse(injectReloadScript(await res.text()), res.status)
   }
   return res
+}
+
+function decodePathOrNull(pathname: string): string | null {
+  try {
+    const decoded = decodeURIComponent(pathname)
+    return decoded.includes("\0") ? null : decoded
+  } catch {
+    return null
+  }
 }
 
 const BOOTSTRAP_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>aid dev</title></head><body><script>${RELOAD_CLIENT_SCRIPT}</script></body></html>`

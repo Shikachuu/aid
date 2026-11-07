@@ -61,7 +61,7 @@ bun run build
 
 1. deletes `dist/`;
 2. writes the config JSON Schema to `schemas/aid.schema.json` and copies it to `dist/schemas/`;
-3. bundles the browser scripts into `src/web/_bundled.ts`, so each binary embeds them;
+3. bundles the browser scripts into the gitignored `.aid-build/_bundled.ts`, so each binary embeds them;
 4. compiles one binary per target into `dist/bin/`.
 
 | Target | Output |
@@ -71,9 +71,7 @@ bun run build
 | Linux, arm64 | `dist/bin/aid-linux-arm64` |
 | Linux, x64 | `dist/bin/aid-linux-x64` |
 
-There is no Windows target. Each binary is between 199 and 222 MB, because it embeds Bun, the Tailwind compiler, `buf`, and the browser scripts.
-
-Step 3 rewrites `src/web/_bundled.ts`, a tracked file. Restore it with `git checkout -- src/web/_bundled.ts` before you commit; the repository keeps only the empty placeholders.
+There is no Windows target. The Linux binaries need glibc: on a musl system such as Alpine, a binary stops with `aid: unsupported platform` when it first compiles CSS. Each binary is between 199 and 222 MB, because it embeds Bun, the Tailwind compiler, `buf`, and the browser scripts.
 
 > [!WARNING]
-> The compiled binaries do not work as standalone installs yet. A `darwin-x64` binary cross-compiled on Apple silicon carries an invalid ad-hoc signature, and macOS kills it on start. Re-sign a copy with `codesign --force --sign - <file>` to run it. Outside the aid checkout, the `darwin-arm64` binary fails on start with `Cannot find module '@bufbuild/buf-darwin-x64/bin/buf'`. Run aid from source until this is fixed. The [status page](../status.html) tracks it.
+> A `darwin-x64` binary cross-compiled on Apple silicon carries an invalid ad-hoc signature, and macOS kills it on start. Re-sign a copy with `codesign --force --sign - <file>` to run it. The test suite runs the Linux binary outside the checkout, but nothing tests the macOS binaries on macOS yet. The [status page](../status.html) tracks it.

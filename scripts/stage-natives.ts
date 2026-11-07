@@ -17,17 +17,20 @@
 import { resolve } from "node:path"
 import { lcssNodeFile, TARGETS } from "./natives"
 
-const ROOT = resolve(import.meta.dir, "..")
-const VENDOR = resolve(ROOT, "vendor", "natives")
-
-for (const { lcssSubpkg: pkg } of TARGETS) {
-  const src = resolve(ROOT, "node_modules", pkg, lcssNodeFile(pkg))
-  const dst = resolve(VENDOR, `${pkg}.bin`)
-  const srcFile = Bun.file(src)
-  if (!(await srcFile.exists())) {
-    console.warn(`[stage-natives] skip: ${src} not present`)
-    continue
+/** Run after install, so `scripts/compile.ts` can embed every target's lightningcss binding from `vendor/natives/`. */
+export const stageNatives = async (root: string): Promise<void> => {
+  for (const { lcssSubpkg: pkg } of TARGETS) {
+    const src = resolve(root, "node_modules", pkg, lcssNodeFile(pkg))
+    const srcFile = Bun.file(src)
+    if (!(await srcFile.exists())) {
+      console.warn(`[stage-natives] skip: ${src} not present`)
+      continue
+    }
+    await Bun.write(resolve(root, "vendor", "natives", `${pkg}.bin`), srcFile)
+    console.log(`[stage-natives] ${pkg}.bin (${(srcFile.size / 1024 / 1024).toFixed(1)} MB)`)
   }
-  await Bun.write(dst, srcFile)
-  console.log(`[stage-natives] ${pkg}.bin (${(srcFile.size / 1024 / 1024).toFixed(1)} MB)`)
+}
+
+if (import.meta.main) {
+  await stageNatives(resolve(import.meta.dir, ".."))
 }

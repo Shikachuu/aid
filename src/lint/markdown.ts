@@ -1,14 +1,37 @@
 import { applyFixes, type Configuration, type LintError } from "markdownlint"
-import { lint } from "markdownlint/promise"
-import { findUserConfig, parseConfigFile } from "./config-resolve"
+import { lint, readConfig } from "markdownlint/promise"
+import { findUserConfig } from "./config-resolve"
 import { markdownlintDefault } from "./configs/markdownlint.default"
 import type { Diagnostic, ToolResult } from "./diagnostics"
 import { USER_CONFIGS } from "./discovery"
 
-/** Shared by `aid lint` and `aid fmt`, so both apply the same markdown rules. */
-export const resolveMarkdownConfig = async (dir: string): Promise<Configuration> => {
+const CONFIG_PARSERS = [Bun.JSONC.parse, Bun.YAML.parse] as ((text: string) => Configuration)[]
+
+/**
+ * Shared by `aid lint` and `aid fmt`, so both apply the same markdown rules.
+ * markdownlint reads the user's config, so `extends` resolves; a config that
+ * does not parse comes back as an error diagnostic instead of a crash.
+ */
+export const resolveMarkdownConfig = async (
+  dir: string,
+): Promise<{ config: Configuration } | { error: Diagnostic }> => {
   const path = await findUserConfig(dir, USER_CONFIGS.md)
-  return path === null ? markdownlintDefault : ((await parseConfigFile(path)) as Configuration)
+  if (path === null) {
+    return { config: markdownlintDefault }
+  }
+  try {
+    return { config: await readConfig(path, CONFIG_PARSERS) }
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err)
+    return {
+      error: {
+        file: path,
+        severity: "error",
+        code: "md/config",
+        message: `cannot read config: ${detail}`,
+      },
+    }
+  }
 }
 
 const MEANING_CHANGING_RULES = new Set(["MD037", "MD053"])
@@ -76,7 +99,11 @@ export const lintMarkdown = async (
   if (paths.length === 0) {
     return { tool: "md", ok: true, diagnostics: [] }
   }
-  const config = await resolveMarkdownConfig(dir)
+  const resolved = await resolveMarkdownConfig(dir)
+  if ("error" in resolved) {
+    return { tool: "md", ok: false, diagnostics: [resolved.error] }
+  }
+  const { config } = resolved
   const results = await lint({ files: paths, config })
   const diagnostics: Diagnostic[] = []
   for (const [file, errors] of Object.entries(results)) {

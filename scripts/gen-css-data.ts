@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import path from "node:path"
 import webref from "@webref/css/css.json" with { type: "json" }
+import { driftedFiles } from "./generated-files"
 
 const ROOT = path.resolve(import.meta.dir, "..")
 const OUT = "src/lint/css-data.json"
@@ -102,9 +103,8 @@ const render = (data: CssData): string => `${JSON.stringify(data, null, 2)}\n`
 
 if (import.meta.main) {
   const content = render(await generateCssData())
-  const target = Bun.file(path.join(ROOT, OUT))
   if (process.argv.includes("--check")) {
-    if (!(await target.exists()) || (await target.text()) !== content) {
+    if ((await driftedFiles(ROOT, [{ path: OUT, content }])).length > 0) {
       console.error(
         `[gen-css-data] ${OUT} is out of date. Run 'bun run gen-css-data' and commit it.`,
       )
@@ -112,7 +112,7 @@ if (import.meta.main) {
     }
     console.log(`[gen-css-data] ${OUT} is in sync.`)
   } else {
-    await Bun.write(target, content)
+    await Bun.write(path.join(ROOT, OUT), content)
     console.log(`[gen-css-data] wrote ${OUT}.`)
   }
 }

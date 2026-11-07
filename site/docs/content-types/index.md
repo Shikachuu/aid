@@ -24,6 +24,7 @@ Every kind gets the same layout, sidebar, search box, and stylesheet. Colocated 
 aid scans the content folder with the glob `**/*.{md,html,yaml,yml,json,proto}`.
 
 - aid skips every file with a path segment that starts with `_`, such as `_drafts/plan.md` or `guides/_snippet.md`. This rule also keeps `_meta.yaml` files out of the page list. aid has no include mechanism, so an excluded file does not appear anywhere in the output.
+- aid follows symlinked files and folders. A symlink whose real path leaves the content folder, such as `docs/index.md` pointing at `../README.md`, stops the build with an error that names both paths. A missing content folder also stops the build.
 - Files with other extensions never become pages. aid copies them into the output only when a page links to them or when they sit in the static folder.
 - aid reads the first 64 KiB of every `.yaml`, `.yml`, and `.json` file. A YAML file becomes an OpenAPI page when a line starts with `openapi:` or `swagger:` followed by a version number, such as `openapi: 3.1.0` or `swagger: "2.0"`. A JSON file becomes an OpenAPI page when it holds `"openapi": "3...` or `"swagger": "2...` with a string value that starts with a digit. A file that is not OpenAPI becomes a JSON Schema page when its `$schema` value starts with `http://json-schema.org/` or `https://json-schema.org/`. aid skips every other YAML and JSON file without a warning, so data files can live next to pages.
 

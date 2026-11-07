@@ -15,7 +15,7 @@ const OKLCH_RE = /^oklch\(\s*([\d.]+%?)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+%
 /**
  * Walk every `@theme { ... }` block in the input CSS and derive a dark
  * counterpart for every `--color-*` token whose value is `oklch(...)`.
- * Lightness is inverted (L becomes 100 - L); chroma, hue, and alpha pass through.
+ * Chroma, hue, and alpha pass through; only the lightness changes.
  * `--color-*` tokens whose value is not oklch are skipped with a warning.
  * Non-color tokens are silently ignored.
  *
@@ -82,7 +82,21 @@ function invertOklchLightness(value: string): string | null {
   if (!Number.isFinite(lNum)) {
     return null
   }
-  const lOut = `${Math.round((100 - lNum) * 1e4) / 1e4}%`
+  const lOut = `${Math.round(darkLightness(lNum, Number.parseFloat(c)) * 1e4) / 1e4}%`
   const alphaSuffix = alpha !== undefined ? ` / ${alpha}` : ""
   return `oklch(${lOut} ${c} ${h}${alphaSuffix})`
+}
+
+const NEUTRAL_MIN = 12
+const NEUTRAL_MAX = 100
+const ACCENT_CHROMA = 0.03
+const ACCENT_MAX_LIGHTNESS = 80
+const ACCENT_MIN = 70
+const ACCENT_MAX = 85
+
+function darkLightness(l: number, chroma: number): number {
+  if (chroma >= ACCENT_CHROMA && l <= ACCENT_MAX_LIGHTNESS) {
+    return Math.min(Math.max(100 - l, ACCENT_MIN), ACCENT_MAX)
+  }
+  return NEUTRAL_MIN + ((NEUTRAL_MAX - NEUTRAL_MIN) * (100 - l)) / 100
 }

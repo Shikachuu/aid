@@ -54,6 +54,10 @@ aid collects every link and image it cannot resolve across the whole site and re
 | `link/anchor` | The target page exists but has no element with the `#fragment` id. |
 | `image/missing` | A relative image points at a missing file. |
 | `nav/unknown-entry` | A `_meta.yaml` key matches no page or folder. See [navigation](./navigation.md#errors). |
+| `openapi/ref` | A `$ref` in an OpenAPI spec does not resolve. A warning. See [OpenAPI](./openapi.md). |
+| `jsonschema/ref` | A `$ref` in a JSON Schema does not resolve. A warning. See [JSON Schema](./jsonschema.md#ref-resolution). |
+
+The `openapi/ref` and `jsonschema/ref` lines are warnings. They print in the report, but they never fail the build.
 
 A build with two broken links prints:
 
@@ -67,7 +71,7 @@ The file paths are relative to the project folder.
 
 ### Fragment check
 
-aid checks a `#fragment` against every `id` and `name` attribute on the target page, including ids that markdown headings get and ids written in raw HTML. The fragment `#top` always passes.
+aid checks a `#fragment` against every `id` and `name` attribute on the target page, including ids that markdown headings get and ids written in raw HTML. Text that only looks like an attribute, such as `id=x` in prose or in a code block, is not an anchor. The fragment `#top` always passes.
 
 aid skips the check for links into OpenAPI and proto pages, because those pages create their ids in the browser.
 

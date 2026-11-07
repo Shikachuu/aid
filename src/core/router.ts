@@ -1,25 +1,34 @@
+import { realpath } from "node:fs/promises"
 import path from "node:path"
 import { sniffJsonSchema } from "../renderers/jsonschema/sniff"
 import { sniffOpenApi } from "../renderers/openapi/sniff"
+import { assertRealPathInside } from "./internal/paths"
 import type { BuildContext, PageKind, Route } from "./types"
 
 /**
  * Walk `ctx.contentDir` and produce a Route for every supported source file.
  * Segments starting with `_` are excluded (drafts, partials, includes).
  * `.md` is markdown, `.html` is html, and `.proto` is proto. `.yaml`/`.yml`/`.json`
- * are content-sniffed: they become OpenAPI routes if they carry a top-level
- * `openapi:`/`swagger:` key, JSON Schema routes if they carry a `json-schema.org`
- * `$schema` key, and are silently skipped otherwise.
+ * are content-sniffed: they become OpenAPI routes when their first 64 KiB holds
+ * an `openapi`/`swagger` version key, JSON Schema routes when they carry a
+ * `json-schema.org` `$schema` key, and are silently skipped otherwise. Symlinks are followed when
+ * their real path stays inside the content dir; one that leaves it throws.
  */
 export async function buildRoutes(ctx: BuildContext): Promise<Route[]> {
+  const realContentDir = await realContentRoot(ctx.contentDir)
   const glob = new Bun.Glob("**/*.{md,html,yaml,yml,json,proto}")
   const byPath = new Map<string, Route>()
-  for await (const relative of glob.scan({ cwd: ctx.contentDir, onlyFiles: true })) {
+  for await (const relative of glob.scan({
+    cwd: ctx.contentDir,
+    onlyFiles: true,
+    followSymlinks: true,
+  })) {
     const segments = relative.split(path.sep)
     if (segments.some((seg) => seg.startsWith("_"))) {
       continue
     }
     const source = path.join(ctx.contentDir, relative)
+    await assertRealPathInside(source, realContentDir, "dir.content", ctx.contentDir)
     const kind = await classify(source)
     if (kind === null) {
       continue
@@ -36,6 +45,17 @@ export async function buildRoutes(ctx: BuildContext): Promise<Route[]> {
   const routes = [...byPath.values()]
   routes.sort((a, b) => (a.path < b.path ? -1 : 1))
   return routes
+}
+
+async function realContentRoot(contentDir: string): Promise<string> {
+  try {
+    return await realpath(contentDir)
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new Error(`aid: dir.content ${contentDir} does not exist.`, { cause: err })
+    }
+    throw err
+  }
 }
 
 /**
@@ -76,7 +96,7 @@ export function routePathFromStem(stem: string): string {
   return `/${posix.replace(/(^|\/)index$/, "")}`
 }
 
-/** Public URL of a route. The one place that applies `base_path`, for nav, links and search. */
+/** Public URL of a route under `base_path`. The root route maps to `base_path` itself, without a trailing slash. */
 export function routeUrl(routePath: string, basePath: string): string {
   return routePath === "/" ? basePath : path.posix.join(basePath, routePath)
 }

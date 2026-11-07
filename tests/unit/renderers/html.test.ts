@@ -177,4 +177,27 @@ describe("renderHtml", () => {
     expect(md).toContain("| Key |")
     expect(md).toContain("~~old~~")
   })
+
+  test("search indexes visible body text and every heading, not markup or scripts", async () => {
+    const page = await renderFixture(
+      "page.html",
+      doc(
+        `<title>T</title>`,
+        `<h1>Top</h1><p class="lead">Hello <b>world</b></p><h3>Deep</h3><script>var secret = 1</script><style>.x{color:red}</style>`,
+      ),
+    )
+    expect(page.searchTokens.body).toBe("Top Hello world Deep")
+    expect(page.searchTokens.headings).toEqual(["Top", "Deep"])
+  })
+
+  test("anchors come from id and name attributes, not from text that looks like one", async () => {
+    const page = await renderFixture(
+      "page.html",
+      doc(
+        ``,
+        `<h2 ID="Upper">U</h2><a name="old"></a><p>set id=fake here</p><code>name="code"</code>`,
+      ),
+    )
+    expect(page.anchors).toEqual(["Upper", "old"])
+  })
 })

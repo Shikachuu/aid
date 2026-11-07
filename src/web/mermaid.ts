@@ -2,6 +2,7 @@ const MERMAID_SELECTOR = "pre.mermaid, div.mermaid"
 
 /**
  * Render every `pre.mermaid` and `div.mermaid` block, and render again when the OS color scheme changes.
+ * With `theme.dark_mode: off` the diagrams stay on the light theme.
  * The page imports mermaid only when it has a diagram.
  */
 export async function attachMermaid(): Promise<void> {
@@ -19,8 +20,7 @@ export async function attachMermaid(): Promise<void> {
       el.removeAttribute("data-processed")
       el.textContent = sources[i] ?? ""
     })
-    const attr = document.documentElement.dataset.aidTheme
-    const dark = attr === "dark" || (attr !== "light" && media.matches)
+    const dark = document.documentElement.dataset.aidDarkMode !== "off" && media.matches
     mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default" })
     await mermaid.run({ querySelector: MERMAID_SELECTOR, suppressErrors: true })
   }

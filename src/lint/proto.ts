@@ -1,4 +1,4 @@
-import { resolve as resolvePath } from "node:path"
+import { relative, resolve as resolvePath } from "node:path"
 import bufDarwinArm64 from "@bufbuild/buf-darwin-arm64/bin/buf" with { type: "file" }
 import bufDarwinX64 from "@bufbuild/buf-darwin-x64/bin/buf" with { type: "file" }
 import bufLinuxArm64 from "@bufbuild/buf-linux-aarch64/bin/buf" with { type: "file" }
@@ -92,19 +92,30 @@ const tryParseJson = (line: string): BufJsonError | null => {
   }
 }
 
-/** Run `buf lint` over the project. Returns a `skipped` result when no `buf` binary is available. */
-export const lintProto = async (paths: string[], dir: string): Promise<ToolResult> => {
+const NOTHING_TARGETED = "no .proto files were targeted"
+
+/**
+ * Run `buf lint` over the discovered `paths`, so discovery's ignores apply.
+ * Returns a `skipped` result when no `buf` binary is available, and passes
+ * when the project's `buf.yaml` excludes every discovered file.
+ */
+export const lintProto = async (
+  paths: string[],
+  dir: string,
+  findBuf: () => Promise<string | null> = resolveBufBinary,
+): Promise<ToolResult> => {
   if (paths.length === 0) {
     return { tool: "proto", ok: true, diagnostics: [] }
   }
-  const bin = await resolveBufBinary()
+  const bin = await findBuf()
   if (bin === null) {
     return BUF_SKIPPED
   }
   const config =
     (await findUserConfig(dir, USER_CONFIGS.proto)) === null ? ["--config", bufDefault] : []
   const root = resolvePath(dir)
-  const run = await Bun.$`${bin} lint --error-format=json ${config} ${root}`
+  const targets = paths.map((p) => `--path=${relative(root, resolvePath(p))}`)
+  const run = await Bun.$`${bin} lint --error-format=json ${config} ${root} ${targets}`
     .cwd(root)
     .nothrow()
     .quiet()
@@ -114,6 +125,9 @@ export const lintProto = async (paths: string[], dir: string): Promise<ToolResul
     stderr: run.stderr.toString(),
   }
   const diagnostics = parseBufOutput(output.stdout, root)
+  if (diagnostics.length === 0 && output.stderr.includes(NOTHING_TARGETED)) {
+    return { tool: "proto", ok: true, diagnostics: [] }
+  }
   if (output.exitCode !== 0 && diagnostics.length === 0) {
     diagnostics.push(processFailure("buf", output, root, "proto/lint"))
   }
