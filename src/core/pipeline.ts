@@ -11,10 +11,10 @@ import { Layout } from "../theme/components/Layout"
 import { PageHtml } from "../theme/components/PageHtml"
 import { PageMarkdown } from "../theme/components/PageMarkdown"
 import { AssetRegistry } from "./assets"
+import { isLexicallyInside } from "./internal/paths"
 import {
   checkAnchors,
   indexRoutes,
-  isLexicallyInside,
   makeResolveLink,
   type RouteIndex,
   reportBrokenLinks,

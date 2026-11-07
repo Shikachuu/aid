@@ -59,8 +59,47 @@ const jsoncEsm: Bun.BunPlugin = {
   },
 }
 
+/**
+ * Plugin that swaps every other target's native binary import for an empty
+ * string. Bun does not drop unused `with { type: "file" }` imports, so without
+ * it each binary would embed all four buf binaries and all four lightningcss
+ * bindings. Marking them `external` instead keeps a runtime import that fails
+ * on any machine without aid's node_modules.
+ */
+export const nativeStubs = (target: Target): Bun.BunPlugin => {
+  const offTarget = [
+    ...BUF_SUBPKGS.filter((pkg) => pkg !== target.bufSubpkg).map((pkg) => `${pkg}/bin/buf`),
+    ...LCSS_SUBPKGS.filter((pkg) => pkg !== target.lcssSubpkg).map((pkg) => `/${pkg}.bin`),
+  ]
+  return {
+    name: "aid-native-stubs",
+    setup(build) {
+      build.onResolve({ filter: /(\/bin\/buf|\.bin)$/ }, ({ path }) =>
+        offTarget.some((suffix) => path.endsWith(suffix))
+          ? { path, namespace: "aid-native-stub" }
+          : undefined,
+      )
+      build.onLoad({ filter: /.*/, namespace: "aid-native-stub" }, () => ({
+        contents: `export default ""`,
+        loader: "js",
+      }))
+    },
+  }
+}
+
+const redirectBundled = (file: string): Bun.BunPlugin => ({
+  name: "aid-redirect-bundled",
+  setup(build) {
+    build.onResolve({ filter: /\/web\/_bundled(\.ts)?$/ }, () => ({ path: file }))
+  },
+})
+
 /** Compile the CLI into a standalone binary for one target. */
-export const compileTarget = async (target: Target, outfile: string): Promise<void> => {
+export const compileTarget = async (
+  target: Target,
+  outfile: string,
+  opts: { bundled?: string } = {},
+): Promise<void> => {
   const started = performance.now()
   await Bun.build({
     entrypoints: [CLI_ENTRY],
@@ -69,18 +108,15 @@ export const compileTarget = async (target: Target, outfile: string): Promise<vo
       outfile,
       executablePath: resolve(ROOT, "node_modules", target.bunSubpkg, "bin", "bun"),
     },
-    // Bun does not dead-code-eliminate `with { type: "file" }` imports. Without these
-    // externals every binary would embed all four `@bufbuild/buf-*/bin/buf` files
-    // (about 200 MB) and all four lightningcss `.node` bindings (about 24 MB).
-    external: [
-      ...BUF_SUBPKGS.filter((pkg) => pkg !== target.bufSubpkg).map((pkg) => `${pkg}/bin/buf`),
-      ...LCSS_SUBPKGS.filter((pkg) => pkg !== target.lcssSubpkg).map((pkg) => `${pkg}/*`),
-    ],
     define: {
       "process.platform": JSON.stringify(target.platform),
       "process.arch": JSON.stringify(target.arch),
     },
-    plugins: [jsoncEsm],
+    plugins: [
+      jsoncEsm,
+      nativeStubs(target),
+      ...(opts.bundled === undefined ? [] : [redirectBundled(opts.bundled)]),
+    ],
   })
   const elapsed = ((performance.now() - started) / 1000).toFixed(2)
   console.log(`[compile] compile ${target.triple} done in ${elapsed}s`)
@@ -96,9 +132,9 @@ const printArtefacts = async (): Promise<void> => {
 
 if (import.meta.main) {
   await cleanDist()
-  await run(["bun", "scripts/emit-schema.ts"], "emit-schema")
+  await run([process.execPath, "scripts/emit-schema.ts"], "emit-schema")
   await copySchema()
-  await run(["bun", "scripts/bundle-web.ts"], "bundle-web")
+  await run([process.execPath, "scripts/bundle-web.ts"], "bundle-web")
   for (const target of TARGETS) {
     await compileTarget(target, resolve(DIST, "bin", `aid-${target.outSuffix}`))
   }

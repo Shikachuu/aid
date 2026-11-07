@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { AidConfigSchema } from "../../src/core/config"
+import { AidConfigSchema, buildContext } from "../../src/core/config"
 
 describe("AidConfigSchema", () => {
   test("accepts a minimal config and applies defaults", () => {
@@ -64,5 +64,34 @@ describe("published JSON Schema", () => {
     for (const key of ["dir", "theme", "search", "dev"]) {
       expect(schema.properties[key].required).toBeUndefined()
     }
+  })
+})
+
+describe("buildContext output dir", () => {
+  const cwd = "/project"
+  const ctxFor = (dir: Record<string, string>) =>
+    buildContext(AidConfigSchema.parse({ name: "T", dir }), cwd)
+
+  test.each([
+    ["the project dir", { output: "." }],
+    ["an empty path", { output: "" }],
+    ["the parent dir", { output: ".." }],
+    ["an absolute path outside the project", { output: "/" }],
+    ["the content dir", { output: "docs" }],
+    ["a dir inside content", { output: "docs/dist" }],
+    ["a dir that contains content", { content: "site/docs", output: "site" }],
+    ["the static dir", { output: "static" }],
+    ["the templates dir", { templates: "tpl", output: "tpl" }],
+  ])("rejects %s", (_label, dir) => {
+    expect(() => ctxFor(dir)).toThrow(/aid: dir.output/)
+  })
+
+  test("allows a plain build into a sibling directory outside the project", () => {
+    expect(ctxFor({ output: "../public" }).outputDir).toBe("/public")
+  })
+
+  test("accepts a dir of its own and resolves absolute values", () => {
+    expect(ctxFor({ output: "build/site" }).outputDir).toBe("/project/build/site")
+    expect(ctxFor({ output: "/project/out" }).outputDir).toBe("/project/out")
   })
 })

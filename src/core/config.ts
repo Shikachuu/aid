@@ -1,5 +1,7 @@
+import { existsSync, realpathSync } from "node:fs"
 import path from "node:path"
 import { z } from "zod"
+import { isLexicallyInside } from "./internal/paths"
 import type { BuildContext } from "./types"
 
 const AiTarget = z
@@ -158,14 +160,72 @@ export async function loadConfig(file: string): Promise<AidConfig> {
  * `dir.templates` means no override templates.
  */
 export function buildContext(config: AidConfig, cwd: string): BuildContext {
-  return {
+  const ctx: BuildContext = {
     config,
     cwd,
-    contentDir: path.join(cwd, config.dir.content),
-    outputDir: path.join(cwd, config.dir.output),
-    templatesDir: config.dir.templates === "" ? null : path.join(cwd, config.dir.templates),
-    staticDir: path.join(cwd, config.dir.static),
+    contentDir: path.resolve(cwd, config.dir.content),
+    outputDir: path.resolve(cwd, config.dir.output),
+    templatesDir: config.dir.templates === "" ? null : path.resolve(cwd, config.dir.templates),
+    staticDir: path.resolve(cwd, config.dir.static),
   }
+  assertNoInputOverlap(ctx)
+  return ctx
+}
+
+const realPathOfNearestAncestor = (p: string): string => {
+  let existing = p
+  while (!existsSync(existing)) {
+    const parent = path.dirname(existing)
+    if (parent === existing) {
+      return p
+    }
+    existing = parent
+  }
+  try {
+    return path.join(realpathSync(existing), path.relative(existing, p))
+  } catch {
+    return p
+  }
+}
+
+function assertNoInputOverlap(ctx: BuildContext): void {
+  const outputDir = realPathOfNearestAncestor(ctx.outputDir)
+  const inputs = [
+    ["dir.content", ctx.contentDir],
+    ["dir.static", ctx.staticDir],
+    ["dir.templates", ctx.templatesDir],
+  ] as const
+  for (const [key, raw] of inputs) {
+    if (raw === null) {
+      continue
+    }
+    const dir = realPathOfNearestAncestor(raw)
+    if (
+      outputDir === dir ||
+      isLexicallyInside(outputDir, dir) ||
+      isLexicallyInside(dir, outputDir)
+    ) {
+      throw new Error(
+        `aid: dir.output (${ctx.outputDir}, resolved ${outputDir}) overlaps ${key} (${raw}, resolved ${dir}). Point dir.output at a directory of its own.`,
+      )
+    }
+  }
+}
+
+/**
+ * Throw unless deleting `outputDir` recursively, as `aid build --clean` does,
+ * stays inside the project. Symlinks and case-insensitive file systems are
+ * resolved through `realpath`, so they cannot point the delete elsewhere.
+ */
+export function assertSafeToClean(ctx: BuildContext): void {
+  const outputDir = realPathOfNearestAncestor(ctx.outputDir)
+  const cwd = realPathOfNearestAncestor(ctx.cwd)
+  if (!isLexicallyInside(outputDir, cwd)) {
+    throw new Error(
+      `aid: refusing --clean: dir.output "${ctx.config.dir.output}" resolves to ${outputDir}, which must be a subdirectory of the project directory ${cwd}.`,
+    )
+  }
+  assertNoInputOverlap(ctx)
 }
 
 /**

@@ -39,6 +39,17 @@ describe("compileTailwind", () => {
     expect(css).not.toContain("oklch(42% 0 0)")
   })
 
+  test("strips a whole dark block whose strings and comments hold braces", async () => {
+    await Bun.write(
+      path.join(cwd, "main.css"),
+      `@import "tailwindcss";\n@media (prefers-color-scheme: dark) {\n  /* } */\n  .a::after { content: "}"; }\n  :root {\n    --color-test-marker: oklch(42% 0 0);\n  }\n}\n.after-dark { color: red; }\n`,
+    )
+    const ctx = makeCtx(cwd, { theme: { dark_mode: "off" } })
+    const css = await compileTailwind(ctx, [stubHtml("bg-aid-bg")])
+    expect(css).not.toContain("oklch(42% 0 0)")
+    expect(css).toContain(".after-dark")
+  })
+
   test("keeps dark tokens in source when dark_mode is manual", async () => {
     await Bun.write(
       path.join(cwd, "main.css"),

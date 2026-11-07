@@ -101,6 +101,18 @@ describe("lintCss", () => {
     expect(await findings('.a { content: "abc\n}\n')).toEqual(["1:string-no-newline"])
   })
 
+  test("checks declarations that follow a nested rule or sit in nested @media", async () => {
+    expect(await findings(".a {\n  &:hover { color: red; }\n  colr: red;\n}\n")).toEqual([
+      "3:property-no-unknown",
+    ])
+    expect(await findings(".a {\n  @media (width > 1px) {\n    colr: red;\n  }\n}\n")).toEqual([
+      "3:property-no-unknown",
+    ])
+    expect(
+      await findings(".c {\n  .d { margin: 0; }\n  margin: 1px;\n  margin: 1px;\n}\n"),
+    ).toEqual(["4:declaration-block-no-duplicate-properties"])
+  })
+
   test("counts an !important declaration as a duplicate of a normal one", async () => {
     const out = await findings(".a {\n  color: red;\n  width: 1px;\n  color: blue !important;\n}\n")
     expect(out).toEqual(["4:declaration-block-no-duplicate-properties"])
@@ -216,10 +228,17 @@ describe("css in the lint and fmt pipelines", () => {
     expect(renderPretty(report.results)).toContain("(md 0, openapi 0, bun 0, css 1, proto 0)")
   })
 
-  test("fmt drops css from --filter", () => {
-    expect(parseFilter("css", FORMAT_TOOLS)).toBeNull()
-    expect(parseFilter("css,md", FORMAT_TOOLS)).toEqual(new Set(["md"]))
+  test("fmt rejects css and unknown names in --filter instead of running every tool", () => {
+    expect(() => parseFilter("css", FORMAT_TOOLS)).toThrow(/unknown --filter tool css/)
+    expect(() => parseFilter("css,md", FORMAT_TOOLS)).toThrow(
+      /Choose from: md, openapi, bun, proto/,
+    )
+    expect(() => parseFilter("mdd")).toThrow(/unknown --filter tool mdd/)
     expect(parseFilter("css")).toEqual(new Set(["css"]))
+    expect(parseFilter(" md , bun ")).toEqual(new Set(["md", "bun"]))
+    expect(parseFilter(undefined)).toBeNull()
+    expect(() => parseFilter("")).toThrow(/needs at least one tool/)
+    expect(() => parseFilter(",")).toThrow(/needs at least one tool/)
   })
 
   test("fmt has no css tool", async () => {

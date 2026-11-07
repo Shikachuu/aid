@@ -1,9 +1,9 @@
 import { existsSync, realpathSync } from "node:fs"
-import { tmpdir } from "node:os"
 import { dirname, join, relative, resolve } from "node:path"
+import { stableTempFile } from "../core/internal/extract-embedded"
 import { findUserConfig } from "./config-resolve"
 import { formatOptions, LINT_CATEGORIES, type LintRule, lintRules } from "./configs/bun.default"
-import type { Diagnostic, ToolResult } from "./diagnostics"
+import { type Diagnostic, processFailure, type ToolResult } from "./diagnostics"
 
 /** Config files that make `aid lint` use the project's own `bun lint` rules. */
 export const LINT_CONFIGS = [
@@ -107,15 +107,12 @@ const bunfigWith = async (dir: string, section: "lint" | "fmt"): Promise<string 
 
 let defaultBunfig: Promise<string> | null = null
 
-const writeDefaultBunfig = async (): Promise<string> => {
-  const content = renderBunfig({ lint: { rules: lintRules }, fmt: formatOptions })
-  const path = join(tmpdir(), `aid-bunfig-${Bun.hash(content).toString(36)}`, "bunfig.toml")
-  const file = Bun.file(path)
-  if (!(await file.exists()) || (await file.text()) !== content) {
-    await Bun.write(path, content)
-  }
-  return path
-}
+const writeDefaultBunfig = (): Promise<string> =>
+  stableTempFile(
+    "bunfig",
+    "bunfig.toml",
+    renderBunfig({ lint: { rules: lintRules }, fmt: formatOptions }),
+  )
 
 /**
  * Return the global flags that pick the `bunfig.toml` for `bun lint` or `bun fmt`.
@@ -189,17 +186,6 @@ export const stderrDiagnostics = (stderr: string, dir: string, code: string): Di
     })
   }
   return out
-}
-
-/** One error for a `bun` run that failed without a message aid could parse. */
-export const exitFailure = (run: BunRun, dir: string, code: string): Diagnostic => {
-  const detail = (run.stderr.trim() || run.stdout.trim()).split("\n").slice(-5).join(" ")
-  return {
-    file: dir,
-    severity: "error",
-    code,
-    message: `bun exited with code ${run.exitCode}${detail === "" ? "" : `: ${detail}`}`,
-  }
 }
 
 /** `diagnostics` without repeats, which config errors produce once per batch. */
@@ -342,7 +328,7 @@ export const lintWithBun = async (
       }
     }
     if (errors.length === 0 && (report === null || run.exitCode > 1)) {
-      diagnostics.push(exitFailure(run, dir, "bun"))
+      diagnostics.push(processFailure("bun", run, dir, "bun"))
     }
   }
   const unique = dedupe(diagnostics)

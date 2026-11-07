@@ -31,8 +31,17 @@ let installPromise: Promise<void> | null = null
  * Call it before anything imports `lightningcss`. Idempotent.
  */
 export const installLightningcssShim = (): Promise<void> => {
-  installPromise ??= doInstall()
+  installPromise ??= installOnce()
   return installPromise
+}
+
+const installOnce = async (): Promise<void> => {
+  try {
+    await doInstall()
+  } catch (err) {
+    installPromise = null
+    throw err
+  }
 }
 
 type ModuleNs = {
@@ -41,7 +50,7 @@ type ModuleNs = {
 
 const doInstall = async (): Promise<void> => {
   const picked = pickEmbedded()
-  if (picked === null) {
+  if (!picked?.stagedPath.startsWith("/$bunfs/")) {
     return
   }
 

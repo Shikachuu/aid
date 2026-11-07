@@ -58,4 +58,13 @@ describe("jsx-runtime", () => {
     const el = jsx("div", { dangerouslySetInnerHTML: { __html: "<i>x</i>" } })
     expect(render(el)).toBe("<div><i>x</i></div>")
   })
+
+  test("throws on a React element instead of rendering it as nothing", () => {
+    const foreign = { $$typeof: Symbol.for("react.transitional.element"), type: "div", props: {} }
+    expect(() => render(foreign as never)).toThrow(/cannot render a React element/)
+  })
+
+  test("throws on a function child", () => {
+    expect(() => render((() => "x") as never)).toThrow(/cannot render a function/)
+  })
 })

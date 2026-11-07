@@ -1,4 +1,4 @@
-import { findMatchingBrace } from "./internal/css-scan"
+import { blankStringsAndComments, findMatchingBrace } from "./internal/css-scan"
 
 /** Result of deriving a dark palette from light `@theme` tokens. */
 export type DerivedDarkPalette = {
@@ -20,24 +20,26 @@ const OKLCH_RE = /^oklch\(\s*([\d.]+%?)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+%
  * Non-color tokens are silently ignored.
  *
  * Uses `:root` (not `@theme`) inside the @media wrapper because Tailwind 4
- * hoists `@theme` content out of @media wrappers at compile time.
+ * drops `@theme` variables that no utility uses, and the dark values must
+ * always be emitted.
  */
 export function deriveDarkPalette(css: string): DerivedDarkPalette {
   const warnings: string[] = []
   const derivedDecls: string[] = []
 
+  const code = blankStringsAndComments(css).code
   THEME_OPEN_RE.lastIndex = 0
   while (true) {
-    const match = THEME_OPEN_RE.exec(css)
+    const match = THEME_OPEN_RE.exec(code)
     if (!match) {
       break
     }
     const bodyStart = match.index + match[0].length
-    const bodyEnd = findMatchingBrace(css, bodyStart - 1)
+    const bodyEnd = findMatchingBrace(code, bodyStart - 1)
     if (bodyEnd < 0) {
       break
     }
-    const body = css.slice(bodyStart, bodyEnd)
+    const body = code.slice(bodyStart, bodyEnd)
     THEME_OPEN_RE.lastIndex = bodyEnd + 1
 
     for (const [, name, rawValue] of body.matchAll(DECL_RE)) {

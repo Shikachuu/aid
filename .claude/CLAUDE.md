@@ -16,6 +16,7 @@
 
 | Command | Purpose |
 | --- | --- |
+| `bun run check` | Local merge gate: tests, typecheck, lint, every `--check`, `deps:binaries --offline`, and `docs:lint` |
 | `bun run build` | Run `scripts/compile.ts`: emit the schema, bundle the browser runtime, and cross-compile the release binaries |
 | `bun run emit-schema` | Emit `schemas/aid.schema.json` from Zod |
 | `bun run typecheck` | `tsc --noEmit` |
@@ -43,4 +44,4 @@ Style and convention rules are split across `.claude/rules/`. Files without `pat
 
 ## Hooks
 
-A PostToolUse hook formats every edited file (`.claude/hooks/format-on-edit.sh`): `bun fmt` and `bun lint --fix` for code, aid's own markdown formatter for `.md`. Do not format files yourself. The hook formats them.
+A PostToolUse hook formats each edited code, JSON, CSS, and markdown file (`.claude/hooks/format-on-edit.sh`): `bun fmt` plus `bun lint --fix` for code, aid's own markdown formatter for `.md`. It skips generated files and gitignored paths, and reports a formatter failure back to Claude. Do not format files you edited with Edit or Write yourself. Files changed through Bash are not hooked: run `bun fmt --no-script <files>` on them.

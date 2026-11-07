@@ -1,14 +1,6 @@
 import { resolve } from "node:path"
-import {
-  argPath,
-  batches,
-  configArgs,
-  dedupe,
-  exitFailure,
-  runBun,
-  stderrDiagnostics,
-} from "../lint/bun"
-import type { Diagnostic, ToolResult } from "../lint/diagnostics"
+import { argPath, batches, configArgs, dedupe, runBun, stderrDiagnostics } from "../lint/bun"
+import { type Diagnostic, processFailure, type ToolResult } from "../lint/diagnostics"
 
 // `bun fmt --check` lists each file on its own line. With a Prettier config the
 // line goes to stderr and reads `[warn] b.js`; with an oxfmt config it reads `b.js (1ms)`.
@@ -48,7 +40,7 @@ export const formatWithBun = async (
     wouldChange.push(...listed)
     const explained = errors.length > 0 || listed.length > 0
     if (run.exitCode !== 0 && !explained) {
-      diagnostics.push(exitFailure(run, dir, "bun/format"))
+      diagnostics.push(processFailure("bun", run, dir, "bun/format"))
     }
   }
   const unique = dedupe(diagnostics)

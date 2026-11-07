@@ -15,10 +15,18 @@ export type ParsedOpenApi = {
  * broken `$ref` still renders.
  */
 export async function parseOpenApi(source: string, sourcePath: string): Promise<ParsedOpenApi> {
-  const normalized = normalize(source)
+  let normalized: unknown
+  try {
+    normalized = normalize(source)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    throw new Error(`aid: failed to parse OpenAPI source at ${sourcePath}: ${message}`, {
+      cause: err,
+    })
+  }
   if (!normalized || typeof normalized !== "object" || Array.isArray(normalized)) {
     throw new Error(
-      `aid: failed to parse OpenAPI source at ${sourcePath} — not a YAML/JSON mapping`,
+      `aid: failed to parse OpenAPI source at ${sourcePath}: not a YAML or JSON mapping`,
     )
   }
   const upgraded = upgrade(normalized as Record<string, unknown>)
@@ -26,7 +34,7 @@ export async function parseOpenApi(source: string, sourcePath: string): Promise<
   const doc = (dereferenced.specification ?? upgraded.specification) as Record<string, unknown>
   const warnings = (dereferenced.errors ?? []).map((e) => {
     const where = [e.path ?? []].flat().join("/") || "<root>"
-    return `${sourcePath}: ${where} — ${e.message}`
+    return `${sourcePath}: ${where}: ${e.message}`
   })
   return { doc, warnings }
 }

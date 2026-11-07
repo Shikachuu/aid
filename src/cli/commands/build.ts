@@ -1,6 +1,6 @@
 import { rm } from "node:fs/promises"
 import { defineCommand } from "citty"
-import { loadBuildContext } from "../../core/config"
+import { assertSafeToClean, loadBuildContext } from "../../core/config"
 import { build } from "../../core/pipeline"
 
 /** Positional project directory and `--file` config path, shared by `build` and `dev`. */
@@ -34,6 +34,7 @@ export const command = defineCommand({
   async run({ args }) {
     const ctx = await loadBuildContext(args.dir, args.file)
     if (args.clean) {
+      assertSafeToClean(ctx)
       await rm(ctx.outputDir, { recursive: true, force: true })
     }
     await build(ctx)

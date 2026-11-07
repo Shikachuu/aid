@@ -1,6 +1,7 @@
 import path from "node:path"
 import type { Diagnostic } from "../lint/diagnostics"
 import type { CopyAsset } from "../renderers/markdown/colocated-assets"
+import { isLexicallyInside } from "./internal/paths"
 import { routePathFromStem, routeUrl } from "./router"
 import type { AnchorRef, BuildContext, RenderedPage, Route } from "./types"
 
@@ -117,12 +118,6 @@ const hashOf = (fragment: string): string => (fragment === "" ? "" : `#${fragmen
 
 function isFile(p: string): Promise<boolean> {
   return Bun.file(p).exists()
-}
-
-/** True when `child` sits strictly below `parent` without leaving it through `..`. */
-export function isLexicallyInside(child: string, parent: string): boolean {
-  const rel = path.relative(parent, child)
-  return rel !== "" && rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel)
 }
 
 /**

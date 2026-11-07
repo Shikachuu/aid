@@ -8,13 +8,17 @@ backend = "http:bun"
 specifiers = ["1.4.4-canary.20261103.1"]
 
 [tools."http:bun"."platforms.linux-arm64"]
+checksum = "sha256:39a41a72de42db07a41f874ab8f39fc54a9618d2e206dc7c70d71b4bd5abac44"
 url = "https://registry.npmjs.org/@oven/bun-linux-aarch64/-/bun-linux-aarch64-1.4.4-canary.20261103.1.tgz"
 
 [tools."http:bun"."platforms.linux-x64"]
+checksum = "blake3:e50290229721bbbacfc7fd16fe63eed0df040b9b9b139a2701a6a3d6d639e373"
 url = "https://registry.npmjs.org/@oven/bun-linux-x64/-/bun-linux-x64-1.4.4-canary.20261103.1.tgz"
 
 [tools."http:bun"."platforms.macos-arm64"]
+checksum = "sha256:9af1fb82c9284dd1d7b41da21c7e1eef4e6fe744df38425d6684b20b2ae67a91"
 url = "https://registry.npmjs.org/@oven/bun-darwin-aarch64/-/bun-darwin-aarch64-1.4.4-canary.20261103.1.tgz"
 
 [tools."http:bun"."platforms.macos-x64"]
+checksum = "sha256:f076db8d37b6f6badea8c7e059d7080840f43dba415b5c22084c5d5ba726294c"
 url = "https://registry.npmjs.org/@oven/bun-darwin-x64/-/bun-darwin-x64-1.4.4-canary.20261103.1.tgz"

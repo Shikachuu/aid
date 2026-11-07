@@ -1,13 +1,17 @@
 import path from "node:path"
+import tailwindIndexCss from "tailwindcss/index.css" with { type: "file" }
+import tailwindPreflightCss from "tailwindcss/preflight.css" with { type: "file" }
+import tailwindThemeCss from "tailwindcss/theme.css" with { type: "file" }
+import tailwindUtilitiesCss from "tailwindcss/utilities.css" with { type: "file" }
 import bundledMainCss from "../theme/main.css" with { type: "text" }
+import { aidThemeSources } from "../web/_bundled"
 import { deriveDarkPalette } from "./dark-mode"
-import { findMatchingBrace } from "./internal/css-scan"
+import { blankStringsAndComments, findMatchingBrace } from "./internal/css-scan"
 import { installLightningcssShim } from "./internal/lightningcss-native"
 import type { BuildContext } from "./types"
-import { AID_ROOT } from "./web-entries"
+import { AID_ROOT, hasSourceTree, requireEmbedded } from "./web-entries"
 
 const bundledMainCssPath = path.join(AID_ROOT, "src/theme/main.css")
-const bundledTailwindcssEntry = Bun.resolveSync("tailwindcss/index.css", import.meta.dir)
 
 /**
  * Compile the site stylesheet. Uses `config.stylesheet` when it exists and the
@@ -28,16 +32,23 @@ export async function compileTailwind(
   const { compile } = await import("@tailwindcss/node")
   const { Scanner } = await import("@tailwindcss/oxide")
   const entry = await resolveEntry(ctx)
-  const sourceTargets = collectSourceTargets(ctx)
+  const fromSource = await hasSourceTree()
+  const sourceTargets = collectSourceTargets(ctx, fromSource)
   const inlined = inlineAidImports(entry.css)
   const darkApplied = applyDarkModeFlag(inlined, ctx.config.theme.dark_mode)
   const source = buildSourcePrelude(sourceTargets) + darkApplied
 
   const compiled = await compile(source, compileOptions(entry.base, entry.from))
   const scanner = new Scanner({ sources: compiled.sources })
+  const themeFiles = fromSource
+    ? []
+    : [{ content: requireEmbedded("theme sources", aidThemeSources), extension: "tsx" }]
   return compiled.build([
     ...scanner.scan(),
-    ...scanner.scanFiles(htmlContents.map((content) => ({ content, extension: "html" }))),
+    ...scanner.scanFiles([
+      ...themeFiles,
+      ...htmlContents.map((content) => ({ content, extension: "html" })),
+    ]),
   ])
 }
 
@@ -57,16 +68,25 @@ function compileOptions(base: string, from: string) {
     base,
     from,
     onDependency: () => {},
-    customCssResolver: async (id: string) => {
-      if (id === "tailwindcss") {
-        return bundledTailwindcssEntry
-      }
-      if (id.startsWith("tailwindcss/")) {
-        return Bun.resolveSync(id, import.meta.dir)
-      }
-      return undefined
-    },
+    customCssResolver: async (id: string) => TAILWIND_FILES[id],
   }
+}
+
+/**
+ * aid's own copy of Tailwind's stylesheets, keyed by every specifier its
+ * package exports. File imports embed them in the compiled binary, where
+ * nothing can be resolved from `node_modules`.
+ */
+const TAILWIND_FILES: Record<string, string | undefined> = {
+  tailwindcss: tailwindIndexCss,
+  "tailwindcss/index": tailwindIndexCss,
+  "tailwindcss/index.css": tailwindIndexCss,
+  "tailwindcss/preflight": tailwindPreflightCss,
+  "tailwindcss/preflight.css": tailwindPreflightCss,
+  "tailwindcss/theme": tailwindThemeCss,
+  "tailwindcss/theme.css": tailwindThemeCss,
+  "tailwindcss/utilities": tailwindUtilitiesCss,
+  "tailwindcss/utilities.css": tailwindUtilitiesCss,
 }
 
 type ResolvedEntry = {
@@ -97,8 +117,10 @@ type SourceTarget = {
   pattern: string
 }
 
-function collectSourceTargets(ctx: BuildContext): SourceTarget[] {
-  const targets: SourceTarget[] = [{ base: AID_ROOT, pattern: "src/theme/**/*.{tsx,ts}" }]
+function collectSourceTargets(ctx: BuildContext, fromSource: boolean): SourceTarget[] {
+  const targets: SourceTarget[] = fromSource
+    ? [{ base: AID_ROOT, pattern: "src/theme/**/*.{tsx,ts}" }]
+    : []
   if (ctx.templatesDir !== null) {
     targets.push({ base: ctx.templatesDir, pattern: "**/*.{tsx,ts,html}" })
   }
@@ -144,15 +166,16 @@ const PREFERS_DARK_RE = /@media\s*\(\s*prefers-color-scheme\s*:\s*dark\s*\)\s*\{
 function stripPrefersDarkBlocks(css: string): string {
   let out = ""
   let cursor = 0
+  const code = blankStringsAndComments(css).code
   PREFERS_DARK_RE.lastIndex = 0
   while (true) {
-    const match = PREFERS_DARK_RE.exec(css)
+    const match = PREFERS_DARK_RE.exec(code)
     if (!match) {
       break
     }
     const blockStart = match.index
     const bodyStart = match.index + match[0].length
-    const bodyEnd = findMatchingBrace(css, bodyStart - 1)
+    const bodyEnd = findMatchingBrace(code, bodyStart - 1)
     if (bodyEnd < 0) {
       break
     }

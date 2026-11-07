@@ -27,6 +27,14 @@ export function PageOpenAPI({ title, specJson, machineUrl }: PageOpenApiProps) {
   )
 }
 
+/**
+ * A `<` can only occur inside a JSON string, where `\u003c` means the same
+ * thing, so escaping every one keeps `</script>` and `<!--` from ending or
+ * changing the script element.
+ */
 function escapeScriptJson(s: string): string {
-  return s.replace(/<\//g, "<\\/")
+  return s
+    .replace(/</g, "\\u003c")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029")
 }

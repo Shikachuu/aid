@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { lintProto } from "../../src/lint/proto"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, relative } from "node:path"
@@ -37,6 +38,22 @@ describe("lintMarkdown", () => {
     )
     const result = await lintMarkdown([join(fixtureDir, "index.md")], fixtureDir)
     expect(result.diagnostics.find((d) => d.code === "MD012")).toBeUndefined()
+  })
+
+  test("--fix writes safe fixes and reports the meaning-changing ones it skipped", async () => {
+    const file = join(dir, "doc.md")
+    await Bun.write(file, "# Title\n\n\n\nCompute a * b * c now.\n")
+    const result = await lintMarkdown([file], dir, { fix: true })
+    expect(await Bun.file(file).text()).toBe("# Title\n\nCompute a * b * c now.\n")
+    expect(new Set(result.diagnostics.map((d) => d.code))).toEqual(new Set(["MD037"]))
+    expect(result.ok).toBe(false)
+  })
+
+  test("--fix keeps a hard line break but strips spaces on a blank line", async () => {
+    const file = join(dir, "doc.md")
+    await Bun.write(file, "# Title\n\nline one   \nline\t  \nline two\n\t  \nend\n")
+    await lintMarkdown([file], dir, { fix: true })
+    expect(await Bun.file(file).text()).toBe("# Title\n\nline one   \nline   \nline two\n\nend\n")
   })
 
   test("returns ok:true when no files passed", async () => {
@@ -200,6 +217,19 @@ describe("lintProto", () => {
     const proto = report.results.find((r) => r.tool === "proto")
     expect(proto?.ok).toBe(false)
     expect(proto?.diagnostics.map((d) => d.code)).toContain("MESSAGE_PASCAL_CASE")
+  })
+  test("turns a buf failure with no findings into an error that carries buf's message", async () => {
+    await Bun.write(join(dir, "buf.yaml"), "version: bogus\n")
+    await Bun.write(join(dir, "x.proto"), 'syntax = "proto3";\npackage ok.v1;\n')
+    const result = await lintProto([join(dir, "x.proto")], dir)
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        severity: "error",
+        code: "proto/lint",
+        message: expect.stringContaining("bogus"),
+      }),
+    ])
   })
 })
 

@@ -9,7 +9,7 @@ import type {
   TokenOrValue,
   Warning,
 } from "lightningcss"
-import { findMatchingBrace } from "../core/internal/css-scan"
+import { type Blanked, blankStringsAndComments, findMatchingBrace } from "../core/internal/css-scan"
 import { installLightningcssShim } from "../core/internal/lightningcss-native"
 import { validateTailwindStylesheet } from "../core/tailwind"
 import data from "./css-data.json" with { type: "json" }
@@ -691,6 +691,16 @@ function walkRules(ctx: FileContext, rules: Rule[]): void {
       case "nesting":
         checkStyleRule(ctx, rule.value.style, selectorsInScope)
         break
+      case "nested-declarations": {
+        const { declarations, loc } = rule.value
+        checkDeclarations(
+          ctx,
+          [...(declarations.declarations ?? []), ...(declarations.importantDeclarations ?? [])],
+          ctx.lineStarts[loc.line] ?? 0,
+          rulePosition(loc),
+        )
+        break
+      }
       case "media":
         checkMediaQueries(ctx, rule.value.query.mediaQueries, rule.value.loc)
         walkRules(ctx, rule.value.rules)
@@ -788,28 +798,6 @@ const checkTailwind = async (ctx: FileContext): Promise<void> => {
     const offset = needle === undefined ? -1 : tailwindErrorOffset(ctx, needle)
     report(ctx, "tailwind", message, offset === -1 ? undefined : positionAt(ctx, offset))
   }
-}
-
-const STRING_OR_COMMENT =
-  /"(?:\\[\s\S]|[^"\\\n])*"|'(?:\\[\s\S]|[^'\\\n])*'|\/\*([\s\S]*?)\*\/|\/\*[\s\S]*$/g
-
-type Blanked = { code: string; emptyComments: number[]; unterminatedComment?: number }
-
-const blankStringsAndComments = (text: string): Blanked => {
-  let code = ""
-  let cursor = 0
-  const emptyComments: number[] = []
-  let unterminatedComment: number | undefined
-  for (const match of text.matchAll(STRING_OR_COMMENT)) {
-    code += text.slice(cursor, match.index) + " ".repeat(match[0].length)
-    cursor = match.index + match[0].length
-    if (match[1]?.trim() === "") {
-      emptyComments.push(match.index)
-    } else if (match[0].startsWith("/*") && match[1] === undefined) {
-      unterminatedComment = match.index
-    }
-  }
-  return { code: code + text.slice(cursor), emptyComments, unterminatedComment }
 }
 
 const checkText = (ctx: FileContext, blanked: Blanked): void => {

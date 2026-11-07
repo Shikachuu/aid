@@ -24,6 +24,9 @@ Discovery never walks into these directories: `node_modules`, `dist`, `.bun`, `.
 ```json
 {
   "default": true,
+  "MD010": {
+    "code_blocks": false
+  },
   "MD013": false,
   "MD024": {
     "siblings_only": true

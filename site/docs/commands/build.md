@@ -70,6 +70,8 @@ Without `--clean`, aid overwrites the files it writes and deletes nothing. After
 > [!CAUTION]
 > `--clean` deletes everything in `dir.output`, including files that aid did not write. Do not point `dir.output` at a folder that holds anything else.
 
+Every build refuses a `dir.output` that is, contains, or sits inside `dir.content`, `dir.static`, or `dir.templates`. `--clean` also refuses a `dir.output` that is not a subdirectory of the project, and it resolves symlinks first, so a link cannot point the delete at your sources. A plain build may still write to a folder outside the project, such as `../public`.
+
 ## How it works
 
 aid runs the build in this order:

@@ -2,7 +2,7 @@
   "name": "aid",
   "version": "0.0.0",
   "private": true,
-  "description": "Single-binary documentation generator for markdown, HTML, OpenAPI, and Protobuf — with unified Tailwind theming, cross-format search, and LLM-ready exports.",
+  "description": "Single-binary documentation generator for markdown, HTML, OpenAPI, and Protobuf, with unified Tailwind theming, cross-format search, and LLM-ready exports.",
   "type": "module",
   "bin": {
     "aid": "./src/cli/index.ts"
@@ -11,7 +11,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "scripts/compile.ts",
+    "build": "bun run scripts/compile.ts",
     "emit-schema": "bun run scripts/emit-schema.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
@@ -24,10 +24,11 @@
     "docs:dev": "bun src/cli/index.ts dev site",
     "docs:lint": "bun src/cli/index.ts lint site --filter md",
     "docs:affected": "bun run scripts/docs-affected.ts",
-    "deps:binaries": "bun run scripts/check-binaries.ts"
+    "deps:binaries": "bun run scripts/check-binaries.ts",
+    "check": "bun test && bun run typecheck && bun run lint && bun run gen-bunfig --check && bun run gen-css-data --check && bun run gen-docs --check && bun run emit-schema --check && bun run deps:binaries --offline && bun run docs:lint"
   },
   "engines": {
-    "bun": ">=1.3.6"
+    "bun": ">=1.4.4-canary.20261103.1"
   },
   "dependencies": {
     "@aid/proto-ui": "workspace:*",
@@ -60,6 +61,7 @@
     "unified": "^11.0.5",
     "unist-util-visit": "^5.2.0",
     "vfile": "^6.0.3",
+    "yaml": "^2.9.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -67,6 +69,7 @@
     "@bufbuild/buf-darwin-x64": "1.75.0",
     "@bufbuild/buf-linux-aarch64": "1.75.0",
     "@bufbuild/buf-linux-x64": "1.75.0",
+    "@happy-dom/global-registrator": "^21.0.4",
     "@oven/bun-darwin-aarch64": "1.4.4-canary.20261103.1",
     "@oven/bun-darwin-x64": "1.4.4-canary.20261103.1",
     "@oven/bun-linux-aarch64": "1.4.4-canary.20261103.1",
@@ -80,6 +83,7 @@
     "@types/react-dom": "^19.3.0",
     "@webref/css": "^8.7.8",
     "@webref/elements": "^2.9.2",
+    "playwright": "^1.64.1",
     "typescript": "^7.0.2"
   }
 }
