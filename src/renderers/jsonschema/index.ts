@@ -1,10 +1,11 @@
 import path from "node:path"
 import type { ResolveLink, RouteIndex } from "../../core/links"
 import { routeUrl } from "../../core/router"
-import type { RenderedPage, Route, SearchTokens } from "../../core/types"
+import type { AnchorRef, RenderedPage, Route, SearchTokens } from "../../core/types"
 import { render } from "../../jsx-runtime"
 import { PageJsonSchema } from "../../theme/components/PageJsonSchema"
 import {
+  assertAcyclic,
   collectAnchors,
   firstParagraph,
   nonEmpty,
@@ -15,7 +16,7 @@ import {
 import { jsonFence, renderMarkdownFragment } from "./markdown"
 import { buildSchemaDocument, type SchemaDocument, type SchemaNode } from "./model"
 
-/** Arguments for {@link renderJsonSchema}. */
+/** What the pipeline passes to {@link renderJsonSchema}; unit tests omit `index` and `resolveLink`. */
 export type RenderJsonSchemaArgs = {
   route: Route
   sourcePath: string
@@ -53,6 +54,7 @@ export async function renderJsonSchema(args: RenderJsonSchemaArgs): Promise<Rend
   const descriptionHtml = new Map(descriptions.map((d, i) => [d, rendered[i]?.html ?? ""]))
   const exampleHtml = examples.map((e) => e.html)
 
+  const lines = descriptions.map((d) => descriptionLine(source, d, isJsonPath(args.sourcePath)))
   const title = doc.title ?? path.basename(args.sourcePath, path.extname(args.sourcePath))
   const html = render(PageJsonSchema({ title, doc, descriptionHtml, exampleHtml }))
 
@@ -65,16 +67,19 @@ export async function renderJsonSchema(args: RenderJsonSchemaArgs): Promise<Rend
     hasOpenApi: false,
     hasProto: false,
     description: firstParagraph(doc.root.description),
-    anchors: collectAnchors(parseHtmlFragment(html)),
-    anchorRefs: rendered.flatMap((r) =>
-      r.anchorRefs.map((ref) => ({ ...ref, line: undefined, col: undefined })),
-    ),
+    knownAnchorIds: collectAnchors(parseHtmlFragment(html)),
+    anchorRefs: [
+      ...rendered.flatMap((r, i) =>
+        r.anchorRefs.map((ref) => ({ ...ref, line: lines[i], col: undefined })),
+      ),
+      ...pageLinkRefs(doc, args.index),
+    ],
     diagnostics: [
       ...doc.warnings.map((w) => refWarning(args.sourcePath, "jsonschema/ref", w)),
-      ...rendered.flatMap((r) =>
+      ...rendered.flatMap((r, i) =>
         vfileDiagnostics(r.file, args.sourcePath).map((d) => ({
           ...d,
-          line: undefined,
+          line: lines[i],
           col: undefined,
         })),
       ),
@@ -82,12 +87,41 @@ export async function renderJsonSchema(args: RenderJsonSchemaArgs): Promise<Rend
   }
 }
 
+const isJsonPath = (sourcePath: string): boolean => sourcePath.toLowerCase().endsWith(".json")
+
 function parseSource(source: string, sourcePath: string): unknown {
+  let parsed: unknown
   try {
-    return sourcePath.toLowerCase().endsWith(".json") ? JSON.parse(source) : Bun.YAML.parse(source)
+    parsed = isJsonPath(sourcePath) ? JSON.parse(source) : Bun.YAML.parse(source)
   } catch (err) {
     throw new Error(`aid: failed to parse JSON Schema at ${sourcePath}: ${(err as Error).message}`)
   }
+  assertAcyclic(parsed, `JSON Schema at ${sourcePath}`)
+  return parsed
+}
+
+function descriptionLine(source: string, description: string, json: boolean): number | undefined {
+  const first = description.split("\n", 1)[0]?.trim() ?? ""
+  if (first === "") {
+    return undefined
+  }
+  const at = source.indexOf(json ? JSON.stringify(first).slice(1, -1) : first)
+  return at === -1 ? undefined : source.slice(0, at).split("\n").length
+}
+
+function pageLinkRefs(doc: SchemaDocument, index: RouteIndex | undefined): AnchorRef[] {
+  const refs = new Map<string, AnchorRef>()
+  for (const link of doc.crossPageAnchorRefs) {
+    const target = index?.bySource.get(link.file)
+    if (target) {
+      refs.set(`${target.path}#${link.fragment}`, {
+        routePath: target.path,
+        fragment: link.fragment,
+        href: link.href,
+      })
+    }
+  }
+  return [...refs.values()]
 }
 
 function allNodes(doc: SchemaDocument): SchemaNode[] {

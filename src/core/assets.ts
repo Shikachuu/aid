@@ -1,24 +1,42 @@
+type WriteData = string | Blob
+
 /**
- * Tracks every file written into `outputDir` during a build. Two writers (a
- * static-asset copy and a colocated-image copy, for instance) that target the
- * same destination would silently clobber each other, so the registry throws
- * with both source labels the moment a collision is registered.
+ * Collects every file a build writes into `outputDir` and holds the bytes until
+ * {@link AssetRegistry.flush}. Two sources that target one path throw at
+ * registration, and a build that fails before the flush leaves `outputDir`
+ * untouched instead of half-written.
  */
 export class AssetRegistry {
-  private writes = new Map<string, string>()
+  private sources = new Map<string, string>()
+  private pending = new Map<string, WriteData>()
 
-  /**
-   * Register a write at `outputPath` sourced from `sourceLabel`. Re-registering
-   * the *same* (path, source) pair is a no-op (idempotent within one builder),
-   * but a *different* source landing on the same outputPath throws.
-   */
   register(outputPath: string, sourceLabel: string): void {
-    const existing = this.writes.get(outputPath)
+    const existing = this.sources.get(outputPath)
     if (existing && existing !== sourceLabel) {
       throw new Error(
-        `aid: asset collision — both "${existing}" and "${sourceLabel}" target ${outputPath}. Rename one of the sources.`,
+        `aid: asset collision: both "${existing}" and "${sourceLabel}" target ${outputPath}. Rename one of the sources.`,
       )
     }
-    this.writes.set(outputPath, sourceLabel)
+    this.sources.set(outputPath, sourceLabel)
+  }
+
+  write(outputPath: string, sourceLabel: string, data: WriteData): void {
+    this.register(outputPath, sourceLabel)
+    this.pending.set(outputPath, data)
+  }
+
+  async flush(): Promise<void> {
+    const pending = [...this.pending]
+    this.pending.clear()
+    await Promise.all(
+      pending.map(([outputPath, data]) =>
+        Bun.write(outputPath, data).catch((err: Error) => {
+          throw new Error(
+            `aid: cannot write ${outputPath} from ${this.sources.get(outputPath)}: ${err.message}`,
+            { cause: err },
+          )
+        }),
+      ),
+    )
   }
 }

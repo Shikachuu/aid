@@ -5,7 +5,7 @@ import path from "node:path"
 import { AssetRegistry } from "../../src/core/assets"
 import { buildWebBundle } from "../../src/core/web-bundle"
 import {
-  bundleWebEntry,
+  bundleWebFiles,
   entryPointOf,
   hasSourceTree,
   requireEmbedded,
@@ -40,18 +40,27 @@ describe("web entries", () => {
     expect(await hasSourceTree()).toBe(true)
   })
 
-  test("bundleWebEntry fails with the entry source on a build error", async () => {
+  test("bundleWebFiles fails with the entry source on a build error", async () => {
     const entry = { ...WEB_JS.base, source: "src/web/does-not-exist.ts" } as const
     const original = console.error
     console.error = () => {}
     try {
-      await expect(bundleWebEntry(entry as never)).rejects.toThrow(
+      await expect(bundleWebFiles(entry as never)).rejects.toThrow(
         "failed to bundle src/web/does-not-exist.ts",
       )
     } finally {
       console.error = original
     }
   })
+
+  test("bundleWebFiles splits mermaid into a small entry and lazy chunks", async () => {
+    const bundle = await bundleWebFiles(WEB_JS.mermaid)
+    const names = Object.keys(bundle.files)
+    expect(names).toContain(bundle.entry)
+    expect(names.length).toBeGreaterThan(1)
+    expect(names.every((name) => /^aid-mermaid\.[\w.-]+\.js$/.test(name))).toBe(true)
+    expect(bundle.files[bundle.entry]?.length).toBeLessThan(100_000)
+  }, 60_000)
 
   test("entryPointOf throws when no output is an entry point", () => {
     expect(() => entryPointOf(WEB_JS.base, [])).toThrow(
@@ -65,6 +74,7 @@ describe("buildWebBundle", () => {
     const ctx = makeCtx(cwd)
     const registry = new AssetRegistry()
     const web = await buildWebBundle(ctx, registry, { mermaid: true, openapi: false, proto: false })
+    await registry.flush()
     const written = await readdir(ctx.outputDir)
     expect(written.filter((f) => f.startsWith("aid-mermaid.")).length).toBeGreaterThan(1)
     for (const file of written) {

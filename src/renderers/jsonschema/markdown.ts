@@ -1,4 +1,3 @@
-import rehypeShiki from "@shikijs/rehype"
 import type { Definition, Html, Image, Link, Root as MdastRoot } from "mdast"
 import rehypeStringify from "rehype-stringify"
 import remarkGfm from "remark-gfm"
@@ -10,14 +9,10 @@ import { VFile } from "vfile"
 import type { ResolveLink } from "../../core/links"
 import type { AnchorRef } from "../../core/types"
 import { type LinkRef, linkRefsFromMdast, rewriteLinks } from "../links"
-import { SHIKI_OPTIONS } from "../markdown/shiki"
+import { highlightCode } from "../markdown/shiki"
 
 const parser = unified().use(remarkParse).use(remarkGfm).freeze()
-const toHtml = unified()
-  .use(remarkRehype)
-  .use(rehypeShiki, SHIKI_OPTIONS)
-  .use(rehypeStringify)
-  .freeze()
+const toHtml = unified().use(remarkRehype).use(highlightCode).use(rehypeStringify).freeze()
 
 const SAFE_SCHEME_RE = /^(?:https?|mailto):/i
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i

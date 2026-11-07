@@ -2,7 +2,7 @@ import { realpath } from "node:fs/promises"
 import path from "node:path"
 import { sniffJsonSchema } from "../renderers/jsonschema/sniff"
 import { sniffOpenApi } from "../renderers/openapi/sniff"
-import { assertRealPathInside } from "./internal/paths"
+import { assertNoSymlinkLoop, assertRealPathInside } from "./internal/paths"
 import type { BuildContext, PageKind, Route } from "./types"
 
 /**
@@ -12,12 +12,14 @@ import type { BuildContext, PageKind, Route } from "./types"
  * are content-sniffed: they become OpenAPI routes when their first 64 KiB holds
  * an `openapi`/`swagger` version key, JSON Schema routes when they carry a
  * `json-schema.org` `$schema` key, and are silently skipped otherwise. Symlinks are followed when
- * their real path stays inside the content dir; one that leaves it throws.
+ * their real path stays inside the content dir; one that leaves it, or a folder
+ * symlink that loops back to an ancestor, throws.
  */
 export async function buildRoutes(ctx: BuildContext): Promise<Route[]> {
   const realContentDir = await realContentRoot(ctx.contentDir)
   const glob = new Bun.Glob("**/*.{md,html,yaml,yml,json,proto}")
   const byPath = new Map<string, Route>()
+  const realDirs = new Map<string, string>()
   for await (const relative of glob.scan({
     cwd: ctx.contentDir,
     onlyFiles: true,
@@ -28,16 +30,22 @@ export async function buildRoutes(ctx: BuildContext): Promise<Route[]> {
       continue
     }
     const source = path.join(ctx.contentDir, relative)
+    await assertNoSymlinkLoop(relative, ctx.contentDir, realContentDir, "dir.content", realDirs)
     await assertRealPathInside(source, realContentDir, "dir.content", ctx.contentDir)
     const kind = await classify(source)
     if (kind === null) {
       continue
     }
     const routePath = toRoutePath(relative)
+    if (URL_RESERVED_RE.test(routePath)) {
+      throw new Error(
+        `aid: "${source}" maps to route ${routePath}, and "#", "?" and "%" cannot appear in a URL path unescaped. Rename the file or folder.`,
+      )
+    }
     const existing = byPath.get(routePath)
     if (existing) {
       throw new Error(
-        `aid: route collision — both "${existing.source}" and "${source}" resolve to ${routePath}. Rename one (e.g. drop the index.md, or move the bare .md into a subdirectory), or prefix a file that should not be a page with "_".`,
+        `aid: route collision: both "${existing.source}" and "${source}" resolve to ${routePath}. Rename one (e.g. drop the index.md, or move the bare .md into a subdirectory), or prefix a file that should not be a page with "_".`,
       )
     }
     byPath.set(routePath, { source, path: routePath, kind })
@@ -65,6 +73,8 @@ async function realContentRoot(contentDir: string): Promise<string> {
 export function exportPath(route: Route, suffix: string): string {
   return `${route.path === "/" ? "/index" : route.path}${suffix}`
 }
+
+const URL_RESERVED_RE = /[#?%]/
 
 const KIND_BY_EXT: Record<string, PageKind> = {
   ".md": "markdown",

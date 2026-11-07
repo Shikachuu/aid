@@ -67,7 +67,7 @@ const elementNames = async (): Promise<string[]> => {
   return sorted(names)
 }
 
-/** Build the data file from the installed webref packages. */
+/** Read the installed webref packages. A webref bump changes the CSS checks only after `gen-css-data` runs. */
 export const generateCssData = async (): Promise<CssData> => {
   const properties = webref.properties as Named[]
   const types = webref.types as Named[]

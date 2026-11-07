@@ -1,10 +1,10 @@
-/** SSE path the dev server exposes; the client script connects here. */
+/** SSE path of the reload channel. The server matches it before stripping `base_path`, so it works under any base path. */
 export const RELOAD_PATH = "/__aid/reload"
 
 /**
- * Client script injected into every served HTML page. It reloads the page on
- * `reload`, shows a fullscreen overlay on `error-detail`, and removes the
- * overlay on `clear-error`.
+ * Client injected into every HTML page the dev server sends. It is plain ES5
+ * in a string because the server inlines it as is, without the bundler. The
+ * SSE events it handles are `reload`, `error-detail` and `clear-error`.
  */
 export const RELOAD_CLIENT_SCRIPT = `
 (function() {

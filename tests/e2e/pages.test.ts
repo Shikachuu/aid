@@ -126,21 +126,20 @@ describe.skipIf(!E2E)("page kinds in Chromium", () => {
       await input.click()
       await input.pressSequentially("pets")
       await page.locator("[data-aid-search-results] a.aid-search-result").first().waitFor()
-      const start = page.url()
-      await input.evaluate((el) => {
-        for (const init of [{ isComposing: true }, { keyCode: 229 }]) {
-          el.dispatchEvent(
-            new KeyboardEvent("keydown", {
-              key: "Enter",
-              bubbles: true,
-              cancelable: true,
-              ...init,
-            }),
-          )
-        }
-      })
-      await page.waitForTimeout(300)
-      expect(page.url()).toBe(start)
+      const handled = await input.evaluate((el) =>
+        [{ isComposing: true }, { keyCode: 229 }].map(
+          (init) =>
+            !el.dispatchEvent(
+              new KeyboardEvent("keydown", {
+                key: "Enter",
+                bubbles: true,
+                cancelable: true,
+                ...init,
+              }),
+            ),
+        ),
+      )
+      expect(handled).toEqual([false, false])
       await input.press("Enter")
       await page.waitForURL(`**${BASE_PATH}/api`)
     } finally {

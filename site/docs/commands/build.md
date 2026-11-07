@@ -91,12 +91,14 @@ aid registers every page, export, copied file, `llms.txt`, and the search index 
 
 ## Errors
 
-Any error stops the build, and `aid build` exits 1. The output folder may hold a partial build.
+Any error stops the build, and `aid build` exits 1. aid writes the output only after every page, asset, and bundle is ready, so a failed build leaves the output folder as it was. `--clean` runs first, so with it the folder is gone.
 
 | Cause | Message | Fix |
 | --- | --- | --- |
-| Two sources map to the same route, for example `docs/guide.md` and `docs/guide/index.md` | `aid: route collision — both "<a>" and "<b>" resolve to <route>` | Rename or move one source. |
-| Two sources target the same output file, for example `static/logo.svg` and a `docs/logo.svg` linked from `docs/index.md` | `aid: asset collision — both "<a>" and "<b>" target <path>` | Rename one of the files. |
+| Two sources map to the same route, for example `docs/guide.md` and `docs/guide/index.md` | `aid: route collision: both "<a>" and "<b>" resolve to <route>` | Rename or move one source. |
+| A file or folder name in the content folder holds `#`, `?`, or `%` | `aid: "<file>" maps to route <route>, and "#", "?" and "%" cannot appear in a URL path unescaped` | Rename the file or folder. |
+| A folder symlink in the content or static folder points back at that folder or one of its parents | `aid: "<link>" is a symlink to <target>, which contains it` | Remove the symlink. |
+| Two sources target the same output file, for example `static/logo.svg` and a `docs/logo.svg` linked from `docs/index.md` | `aid: asset collision: both "<a>" and "<b>" target <path>` | Rename one of the files. |
 | A page's image path leaves `dir.content`, for example `![x](../../shared/x.png)` | `aid: colocated asset "<file>" referenced from <page> escapes contentDir (<dir>)` | Move the image under `dir.content`, or put it in `dir.static` and link it by absolute URL. |
 | A frontmatter key has the wrong type | `aid: invalid frontmatter in <file>:` followed by the key path and the expected type | Fix the key. See the [frontmatter reference](../reference/frontmatter.md#markdown-frontmatter). |
 | Frontmatter is a YAML list or a single value | `aid: invalid frontmatter in <file>: frontmatter must be a YAML mapping, not a scalar or sequence` | Write the frontmatter as `key: value` lines. |

@@ -1,35 +1,55 @@
 import { describe, expect, test } from "bun:test"
 import { parseProto } from "@aid/proto-ui/parser"
-import { renderDocMarkdown } from "../../packages/proto-ui/src/components/doc-markdown"
+import { renderSafeDocMarkdown } from "../../packages/proto-ui/src/components/doc-markdown"
+import {
+  summarizeEnum,
+  summarizeMessage,
+} from "../../packages/proto-ui/src/components/summarize-proto"
 
-describe("renderDocMarkdown", () => {
+describe("renderSafeDocMarkdown", () => {
   test("escapes a raw script block", () => {
-    const html = renderDocMarkdown("<script>alert(1)</script>")
+    const html = renderSafeDocMarkdown("<script>alert(1)</script>")
     expect(html).not.toContain("<script>")
     expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;")
   })
 
   test("escapes inline html with event handlers", () => {
-    const html = renderDocMarkdown("see <img src=x onerror=alert(1)> here")
+    const html = renderSafeDocMarkdown("see <img src=x onerror=alert(1)> here")
     expect(html).not.toContain("<img")
     expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;")
   })
 
   test("drops javascript: links, including entity-encoded ones", () => {
-    const html = renderDocMarkdown("[a](javascript:alert(1)) [b](java&#115;cript:alert(1))")
+    const html = renderSafeDocMarkdown("[a](javascript:alert(1)) [b](java&#115;cript:alert(1))")
     expect(html).not.toContain("script:")
     expect(html).toContain('<a href="#">a</a>')
     expect(html).toContain('<a href="#">b</a>')
   })
 
   test("drops javascript: image sources", () => {
-    const html = renderDocMarkdown("![x](javascript:alert(1))")
+    const html = renderSafeDocMarkdown("![x](javascript:alert(1))")
     expect(html).not.toContain("script:")
     expect(html).toContain('src="#"')
   })
 
+  test.each([
+    "data:text/html,<b>x</b>",
+    "vbscript:msgbox(1)",
+    "JavaScript:alert(1)",
+    " javascript:alert(1)",
+  ])("drops the unsafe link %s", (href) => {
+    expect(renderSafeDocMarkdown(`[a](<${href}>)`)).toContain('<a href="#">a</a>')
+  })
+
+  test("keeps relative links, including ones with a colon after the path", () => {
+    const html = renderSafeDocMarkdown("[a](./x.md) [b](/p?q=a:b) [c](//cdn.example/x)")
+    expect(html).toContain('href="./x.md"')
+    expect(html).toContain('href="/p?q=a:b"')
+    expect(html).toContain('href="//cdn.example/x"')
+  })
+
   test("keeps markdown formatting and safe links", () => {
-    const html = renderDocMarkdown("**bold** [x](https://example.com) [y](#pkg.Msg)")
+    const html = renderSafeDocMarkdown("**bold** [x](https://example.com) [y](#pkg.Msg)")
     expect(html).toContain("<strong>bold</strong>")
     expect(html).toContain('href="https://example.com"')
     expect(html).toContain('href="#pkg.Msg"')
@@ -181,7 +201,21 @@ service PetSvc {
       "/**\n * Pet store.\n * Second line.\n */\npackage demo;\n",
       "Pet store.\nSecond line.",
     ],
-    ["a one-line block", "/* Pet store. */\n\npackage demo;\n", "Pet store."],
+    ["a one-line block", "/* Pet store. */\npackage demo;\n", "Pet store."],
+    ["a block with a literal /*", "/** Matches a/* glob. */\npackage demo;\n", "Matches a/* glob."],
+    [
+      "a block after a line comment that holds /*",
+      "// see a/*\n/* Pet store. */\npackage demo;\n",
+      "Pet store.",
+    ],
+    ["//! lines", "//! Pet store.\n/// Second line.\npackage demo;\n", "Pet store.\nSecond line."],
+    ["nothing when a blank line detaches the comment", "// License.\n\npackage demo;\n", null],
+    ["nothing when a blank line detaches a block", "/* License. */\n\npackage demo;\n", null],
+    [
+      "the block above the real package line, not a package line inside it",
+      "/*\npackage fake;\n*/\npackage demo;\n",
+      "package fake;",
+    ],
     [
       "a block without stars",
       "/*\n  Pet store.\n  * a bullet\n*/\npackage demo;\n",
@@ -195,5 +229,113 @@ service PetSvc {
   test("a file without a package has no package doc", () => {
     const bare = parseProto('syntax = "proto3";\n// doc\nmessage M {}\n')
     expect([bare.package, bare.packageLeadingComment]).toEqual([null, null])
+  })
+})
+
+describe("parseProto edge cases", () => {
+  test("extension fields stay off the extended message", () => {
+    const ast = parseProto(`syntax = "proto2";
+package p;
+message M { optional int32 a = 1; extensions 100 to 200; }
+extend M { optional int32 e = 100; }
+`)
+    expect(ast.messages[0]?.fields.map((f) => f.name)).toEqual(["a"])
+  })
+
+  test("//! comments lose their bang", () => {
+    const ast = parseProto(
+      'syntax = "proto3";\n//! A message.\nmessage M {\n  //! A field.\n  int32 a = 1;\n}\n',
+    )
+    expect(ast.messages[0]?.comment).toBe("A message.")
+    expect(ast.messages[0]?.fields[0]?.comment).toBe("A field.")
+  })
+
+  test("a comment that starts with an image keeps its bang", () => {
+    const ast = parseProto('syntax = "proto3";\n// ![diagram](d.png)\nmessage M {}\n')
+    expect(ast.messages[0]?.comment).toBe("![diagram](d.png)")
+  })
+
+  test("nesting past the protobufjs limit names the line", () => {
+    const depth = 40
+    const source = `syntax = "proto3";\n${Array.from({ length: depth }, (_, i) => `message M${i} {\n`).join("")}${"}\n".repeat(depth)}`
+    expect(() => parseProto(source)).toThrow(/max depth exceeded: .*\(line 34\)/)
+  })
+})
+
+describe("declaration summaries", () => {
+  const message = (source: string) => {
+    const ast = parseProto(source)
+    const m = ast.messages[0]
+    if (!m) {
+      throw new Error("no message")
+    }
+    return summarizeMessage(m, ast.syntax)
+  }
+
+  test("proto3 keeps labels only where they are valid", () => {
+    expect(
+      message(
+        'syntax = "proto3";\nmessage M { int32 a = 1; optional int32 b = 2; repeated int32 c = 3; map<string, int32> d = 4; oneof o { string e = 5; } }',
+      ),
+    ).toBe(`message M {
+  int32 a = 1;
+  optional int32 b = 2;
+  repeated int32 c = 3;
+  map<string, int32> d = 4;
+  oneof o {
+    string e = 5;
+  }
+}`)
+  })
+
+  test("proto2 oneof members print without a label", () => {
+    expect(
+      message('syntax = "proto2";\nmessage M { required int32 a = 1; oneof o { string e = 2; } }'),
+    ).toBe(`message M {
+  required int32 a = 1;
+  oneof o {
+    string e = 2;
+  }
+}`)
+  })
+
+  test("editions presence prints as a feature, not a label", () => {
+    expect(
+      message(
+        'edition = "2023";\nmessage M { int32 a = 1 [features.field_presence = IMPLICIT]; int32 b = 2; int32 c = 3 [features.field_presence = LEGACY_REQUIRED]; repeated int32 d = 4; }',
+      ),
+    ).toBe(`message M {
+  int32 a = 1 [features.field_presence = IMPLICIT];
+  int32 b = 2;
+  int32 c = 3 [features.field_presence = LEGACY_REQUIRED];
+  repeated int32 d = 4;
+}`)
+  })
+
+  test("an enum with aliases keeps allow_alias", () => {
+    const ast = parseProto(
+      'syntax = "proto3";\nenum E { option allow_alias = true; A = 0; B = 0; C = 1; }',
+    )
+    const e = ast.enums[0]
+    expect(e && summarizeEnum(e)).toBe(`enum E {
+  option allow_alias = true;
+  A = 0;
+  B = 0;
+  C = 1;
+}`)
+  })
+
+  test("summaries parse again", () => {
+    const sources = [
+      'syntax = "proto2";\nmessage M { optional group G = 1 { optional int32 x = 2; } required int32 r = 3; oneof o { string e = 4; } }',
+      'edition = "2023";\nmessage M { int32 a = 1 [features.field_presence = IMPLICIT]; int32 c = 3 [features.field_presence = LEGACY_REQUIRED]; }',
+    ]
+    for (const source of sources) {
+      const ast = parseProto(source)
+      const header = source.slice(0, source.indexOf("\n") + 1)
+      const m = ast.messages[0]
+      expect(m).toBeDefined()
+      expect(() => parseProto(header + summarizeMessage(m as never, ast.syntax))).not.toThrow()
+    }
   })
 })

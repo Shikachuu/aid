@@ -38,16 +38,18 @@ export type BuildOptions = {
 /**
  * Build the whole site from `ctx` into `ctx.outputDir`. Throws when two outputs
  * target the same path, a colocated asset escapes `contentDir`, or a link or
- * image does not resolve (unless `on_broken_links` is `warn`).
+ * image does not resolve (unless `on_broken_links` is `warn`). Every output is
+ * written at the end, so a build that throws leaves `outputDir` as it was.
  */
 export async function build(ctx: BuildContext, options: BuildOptions = {}): Promise<void> {
   const registry = new AssetRegistry()
 
   const [routes] = await Promise.all([buildRoutes(ctx), copyStaticAssets(ctx, registry)])
+  const realContentDir = await realpath(ctx.contentDir)
 
   const index = indexRoutes(routes)
   const rendered = await Promise.all(
-    routes.map((route) => dispatchRenderer(route, ctx, registry, index)),
+    routes.map((route) => dispatchRenderer(route, ctx, registry, index, realContentDir)),
   )
 
   const nav = await buildNav(ctx, rendered)
@@ -83,34 +85,33 @@ export async function build(ctx: BuildContext, options: BuildOptions = {}): Prom
   )
 
   const llmsTxt = await buildLlmsTxt(ctx, rendered, nav.tree)
-  const llmsTxtPath = path.join(ctx.outputDir, "llms.txt")
-  registry.register(llmsTxtPath, "<generated:llms.txt>")
+  registry.write(path.join(ctx.outputDir, "llms.txt"), "<generated:llms.txt>", llmsTxt)
+  if (searchIndex) {
+    registry.write(
+      path.join(ctx.outputDir, searchIndex.filename),
+      "<generated:search-index>",
+      searchIndex.source,
+    )
+  }
 
   const css = await compileTailwind(
     ctx,
     docs.map((d) => d.html),
     options.onStylesheetDependency,
   )
-  const href = await writeHashed(ctx, registry, "main", "css", css)
+  const href = writeHashed(ctx, registry, "main", "css", css)
 
-  const writes: Promise<unknown>[] = [Bun.write(llmsTxtPath, llmsTxt)]
-  if (searchIndex) {
-    const searchIndexPath = path.join(ctx.outputDir, searchIndex.filename)
-    registry.register(searchIndexPath, "<generated:search-index>")
-    writes.push(Bun.write(searchIndexPath, searchIndex.source))
+  for (const doc of docs) {
+    registry.write(
+      doc.fsPath,
+      `<rendered:${doc.fsPath}>`,
+      doc.html.replaceAll(STYLESHEET_PLACEHOLDER, href),
+    )
   }
-
-  await Promise.all([
-    ...docs.map(async (doc) => {
-      registry.register(doc.fsPath, `<rendered:${doc.fsPath}>`)
-      await Bun.write(doc.fsPath, doc.html.replaceAll(STYLESHEET_PLACEHOLDER, href))
-    }),
-    ...sideExports.map(async (exp) => {
-      registry.register(exp.fsPath, `<export:${exp.source}>`)
-      await Bun.write(exp.fsPath, exp.body)
-    }),
-    ...writes,
-  ])
+  for (const exp of sideExports) {
+    registry.write(exp.fsPath, `<export:${exp.source}>`, exp.body)
+  }
+  await registry.flush()
 }
 
 async function dispatchRenderer(
@@ -118,16 +119,18 @@ async function dispatchRenderer(
   ctx: BuildContext,
   registry: AssetRegistry,
   index: RouteIndex,
+  realContentDir: string,
 ): Promise<RenderedPage> {
+  const copyAsset = () => makeCopyAsset(route, ctx, registry, realContentDir)
   switch (route.kind) {
     case "markdown":
     case "html": {
-      const copyAsset = makeCopyAsset(route, ctx, registry)
+      const copy = copyAsset()
       const args = {
         route,
         sourcePath: route.source,
-        copyAsset,
-        resolveLink: makeResolveLink(route, ctx, index, copyAsset),
+        copyAsset: copy,
+        resolveLink: makeResolveLink(route, ctx, index, copy),
       }
       return route.kind === "markdown" ? renderMarkdown(args) : renderHtml(args)
     }
@@ -141,26 +144,29 @@ async function dispatchRenderer(
         sourcePath: route.source,
         index,
         basePath: ctx.config.base_path,
-        resolveLink: makeResolveLink(route, ctx, index, makeCopyAsset(route, ctx, registry)),
+        resolveLink: makeResolveLink(route, ctx, index, copyAsset()),
       })
     default:
       throw new Error(`renderer not implemented: ${route.kind}`)
   }
 }
 
-function makeCopyAsset(route: Route, ctx: BuildContext, registry: AssetRegistry): CopyAsset {
+function makeCopyAsset(
+  route: Route,
+  ctx: BuildContext,
+  registry: AssetRegistry,
+  realContentDir: string,
+): CopyAsset {
   const routeOutputDir = path.dirname(outputPathForRoute(route, ctx))
   const routeUrlDir = path.posix.join(ctx.config.base_path, route.path)
   const sourceDir = path.dirname(route.source)
   return async (absoluteSource) => {
-    const realSource = await assertInsideContent(absoluteSource, route, ctx)
+    const realSource = await assertInsideContent(absoluteSource, route, ctx, realContentDir)
     if (realSource === null) {
       return null
     }
     const subpath = colocatedSubpath(sourceDir, absoluteSource)
-    const destPath = path.join(routeOutputDir, ...subpath)
-    registry.register(destPath, absoluteSource)
-    await Bun.write(destPath, Bun.file(realSource))
+    registry.write(path.join(routeOutputDir, ...subpath), absoluteSource, Bun.file(realSource))
     return path.posix.join(routeUrlDir, ...subpath)
   }
 }
@@ -175,11 +181,12 @@ async function assertInsideContent(
   source: string,
   route: Route,
   ctx: BuildContext,
+  realContentDir: string,
 ): Promise<string | null> {
   const realSource = await realpathOrNull(source)
   const inside =
     isLexicallyInside(source, ctx.contentDir) &&
-    (realSource === null || isLexicallyInside(realSource, await realpath(ctx.contentDir)))
+    (realSource === null || isLexicallyInside(realSource, realContentDir))
   if (!inside) {
     throw new Error(
       `aid: colocated asset "${source}" referenced from ${route.source} escapes contentDir (${ctx.contentDir}). Use a top-level static/ asset or move the file under contentDir.`,

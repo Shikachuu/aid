@@ -10,7 +10,9 @@ const BUNDLED_DEFAULT = `# {{name}}
 This documentation is available in machine-readable form. Append \`.md\` to a markdown route, \`.json\` to an OpenAPI or JSON Schema route, or \`.proto\` to a Proto route to receive the parseable variant.
 
 {{toc}}
+`
 
+const BUNDLED_OPTIONAL_SECTION = `
 ## Optional
 
 {{toc:optional}}
@@ -32,16 +34,16 @@ type Entry = {
  * via `<templatesDir>/llms.txt` with `{{name}}`, `{{description}}`,
  * `{{base_url}}`, `{{toc}}`, and `{{toc:optional}}` placeholders; aid fills in
  * the routing/TOC. A bundled default template is used when no override exists,
- * so the file is emitted zero-config. Sections follow the sidebar: each
- * top-level nav group is one section with the group's label, and top-level
- * pages go under `Docs`, which comes first.
+ * so the file is emitted zero-config; it has an `## Optional` section only when
+ * a page is optional. Sections follow the sidebar: each top-level nav group is
+ * one section with the group's label, and top-level pages go under `Docs`,
+ * which comes first.
  */
 export async function buildLlmsTxt(
   ctx: BuildContext,
   pages: RenderedPage[],
   nav: NavNode[],
 ): Promise<string> {
-  const template = await resolveTemplate(ctx)
   const entryByPath = new Map(pages.map((p) => [p.route.path, buildEntry(p, ctx.config)]))
   const sections = new Map<string, Entry[]>([[ROOT_GROUP, []]])
   for (const node of nav) {
@@ -55,7 +57,7 @@ export async function buildLlmsTxt(
   )
   const optional = all.filter((e) => e.optional)
 
-  return renderTemplate(template, {
+  return renderTemplate(await resolveTemplate(ctx, optional.length > 0), {
     name: ctx.config.name,
     description: ctx.config.description ?? "",
     base_url: ctx.config.base_url ?? "",
@@ -64,15 +66,13 @@ export async function buildLlmsTxt(
   })
 }
 
-async function resolveTemplate(ctx: BuildContext): Promise<string> {
-  if (ctx.templatesDir === null) {
-    return BUNDLED_DEFAULT
+async function resolveTemplate(ctx: BuildContext, hasOptional: boolean): Promise<string> {
+  const file =
+    ctx.templatesDir === null ? null : Bun.file(path.join(ctx.templatesDir, TEMPLATE_FILENAME))
+  if (file !== null && (await file.exists())) {
+    return await file.text()
   }
-  const file = Bun.file(path.join(ctx.templatesDir, TEMPLATE_FILENAME))
-  if (!(await file.exists())) {
-    return BUNDLED_DEFAULT
-  }
-  return await file.text()
+  return hasOptional ? BUNDLED_DEFAULT + BUNDLED_OPTIONAL_SECTION : BUNDLED_DEFAULT
 }
 
 function buildEntry(page: RenderedPage, config: AidConfig): Entry {
@@ -85,9 +85,8 @@ function buildEntry(page: RenderedPage, config: AidConfig): Entry {
 }
 
 function machineUrlFor(page: RenderedPage, config: AidConfig): string {
-  const withBase = path.posix.join(
-    config.base_path,
-    exportPath(page.route, page.exports[0]?.suffix ?? ""),
+  const withBase = encodeURI(
+    path.posix.join(config.base_path, exportPath(page.route, page.exports[0]?.suffix ?? "")),
   )
   return config.base_url ? new URL(withBase, config.base_url).toString() : withBase
 }
@@ -107,8 +106,11 @@ function renderGroupedToc(groups: Map<string, Entry[]>): string {
 }
 
 function renderBullet(e: Entry): string {
-  const base = `- [${e.title}](${e.url})`
-  return e.description ? `${base}: ${e.description}` : base
+  const title = e.title.replace(/[\\[\]]/g, "\\$&")
+  const url = e.url.replaceAll("(", "%28").replaceAll(")", "%29")
+  const base = `- [${title}](${url})`
+  const description = e.description?.replace(/\s*\n\s*/g, " ")
+  return description ? `${base}: ${description}` : base
 }
 
 function renderTemplate(template: string, vars: Record<string, string>): string {

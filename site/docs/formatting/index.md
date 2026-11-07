@@ -55,4 +55,6 @@ In JSON output, each tool result has a `wouldChange` array with the files that w
 
 aid finds buf the same way for `aid fmt` as for `aid lint`. When no buf binary is available, the proto tool is skipped and passes. See [how aid finds buf](../linting/index.md#how-aid-finds-buf).
 
+The `md` and `openapi` tools write each changed file to a temporary file next to it and rename it into place, so an interrupted run never leaves a file half written. The rewrite keeps a UTF-8 byte order mark, the file's permissions, and a symlink: the file the link points to changes. A file that is not UTF-8, or that aid cannot read, stays untouched and prints a `read-error` warning.
+
 A spec that fails to parse stays untouched, and aid reports an `openapi/parse` error for it. aid also leaves a spec untouched, with a warning, when it holds several YAML documents (`openapi/multi-document`) or when reformatting would change its data (`openapi/lossy`).

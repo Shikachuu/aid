@@ -7,27 +7,8 @@ const ROOT = resolve(import.meta.dir, "..")
 const OUTPUT_PATH = resolve(ROOT, "schemas", "aid.schema.json")
 const SCHEMA_ID = "https://aid.tools/schemas/v0/aid.schema.json"
 
-const generated = generateJsonSchema()
-
-const check = process.argv.includes("--check")
-if (check) {
-  const file = Bun.file(OUTPUT_PATH)
-  const existing = (await file.exists()) ? await file.text() : ""
-  if (existing !== generated) {
-    console.error(
-      `[emit-schema] schemas/aid.schema.json is out of date.\n` +
-        `Run 'bun run scripts/emit-schema.ts' and commit the result.`,
-    )
-    process.exit(1)
-  }
-  console.log("[emit-schema] schema is in sync.")
-  process.exit(0)
-}
-
-await Bun.write(OUTPUT_PATH, generated)
-console.log(`[emit-schema] wrote ${OUTPUT_PATH}`)
-
-function generateJsonSchema(): string {
+/** The published `aid.yaml` JSON Schema, built from Zod so `gen-docs` never copies a stale file. */
+export const aidJsonSchema = (): string => {
   const schema = {
     ...z.toJSONSchema(AidConfigSchema, { io: "input" }),
     $id: SCHEMA_ID,
@@ -35,4 +16,23 @@ function generateJsonSchema(): string {
     title: "aid project configuration",
   }
   return `${JSON.stringify(schema, null, 2)}\n`
+}
+
+if (import.meta.main) {
+  const generated = aidJsonSchema()
+  if (process.argv.includes("--check")) {
+    const file = Bun.file(OUTPUT_PATH)
+    const existing = (await file.exists()) ? await file.text() : ""
+    if (existing !== generated) {
+      console.error(
+        `[emit-schema] schemas/aid.schema.json is out of date.\n` +
+          `Run 'bun run scripts/emit-schema.ts' and commit the result.`,
+      )
+      process.exit(1)
+    }
+    console.log("[emit-schema] schema is in sync.")
+  } else {
+    await Bun.write(OUTPUT_PATH, generated)
+    console.log(`[emit-schema] wrote ${OUTPUT_PATH}`)
+  }
 }

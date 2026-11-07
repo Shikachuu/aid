@@ -15,7 +15,7 @@ export type Member = { name: string; version: string | null }
 /** Packages that must all resolve to one version. */
 export type Family = { name: string; expected: string | null; members: Member[] }
 
-/** A staged native copy and the hashes of its source and staged bytes. */
+/** Hashes that show whether `vendor/natives` still holds the installed binding. `null` means the file is missing. */
 export type StagedNative = { name: string; source: bigint | null; staged: bigint | null }
 
 /** The Bun versions that must agree. */
@@ -29,10 +29,10 @@ export type Runtime = {
 /** A package or runtime and its latest upstream version. `null` means the lookup failed. */
 export type Update = { family: string; current: string; latest: string | null }
 
-/** How a family's current version compares with its latest upstream version. */
+/** Printed next to each family. Only `update available` also prints the bump commands. */
 export type UpdateStatus = "up to date" | "update available" | "ahead of upstream" | "lookup failed"
 
-/** Compare a family's current version with upstream. */
+/** Classify by semver order, so `1.10.0` is newer than `1.9.0` and a canary sorts before its release. */
 export const updateStatus = ({ current, latest }: Update): UpdateStatus => {
   if (latest === null) {
     return "lookup failed"
@@ -44,7 +44,7 @@ export const updateStatus = ({ current, latest }: Update): UpdateStatus => {
   return order === 0 ? "up to date" : "ahead of upstream"
 }
 
-/** List the drift problems in one family. */
+/** Drift problems in one family. A missing parent is reported once instead of once per member. */
 export const checkFamily = (family: Family): string[] => {
   if (family.expected === null) {
     return [`${family.name} is not installed (run \`mise install\`)`]
@@ -79,7 +79,7 @@ const majorMinor = (v: string): string => v.split(".").slice(0, 2).join(".")
 
 const baseVersion = (v: string): string => v.split("-")[0] ?? v
 
-/** List where the Bun runtime disagrees with its pins. */
+/** Runtime drift. A canary pin meets `engines.bun` by its base version, and `@types/bun` only has to match major.minor. */
 export const checkRuntime = ({ running, pinned, engines, types }: Runtime): string[] => {
   if (pinned === null) {
     return ["mise.toml does not pin bun"]
@@ -99,7 +99,7 @@ export const checkRuntime = ({ running, pinned, engines, types }: Runtime): stri
   return problems
 }
 
-/** Return the commands that bump one family to its latest version. */
+/** Bump commands printed for a family with an update, covering its platform subpackages and the lockfile. */
 export const updateCommands = ({ family, latest }: Update & { latest: string }): string[] => {
   const exact = (pkgs: string[]): string => pkgs.map((p) => `${p}@${latest}`).join(" ")
   switch (family) {
@@ -172,6 +172,11 @@ const subpackageFamily = async (
   ).flat(),
 })
 
+const withMember = (family: Family, member: Member): Family => ({
+  ...family,
+  members: [...family.members, member],
+})
+
 const collectFamilies = async (
   root: string,
   pkg: PackageJson,
@@ -188,11 +193,14 @@ const collectFamilies = async (
       TARGETS.map((t) => t.bufSubpkg),
       pins,
     ),
-    await subpackageFamily(
-      root,
-      "@tailwindcss/oxide",
-      TARGETS.map((t) => t.oxideSubpkg),
-      pins,
+    await withMember(
+      await subpackageFamily(
+        root,
+        "@tailwindcss/oxide",
+        TARGETS.map((t) => t.oxideSubpkg),
+        pins,
+      ),
+      { name: "@tailwindcss/node", version: twNode?.version ?? null },
     ),
     {
       name: "Bun runtime (pinned by mise.toml)",

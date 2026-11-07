@@ -45,7 +45,12 @@ message Pet {
   }
 }
 
-message Owner { Pet pet = 1; }
+message Owner {
+  Pet pet = 1;
+  google.protobuf.NotAType odd = 2;
+  message Address { string city = 1; }
+  enum Role { ROLE_UNSPECIFIED = 0; }
+}
 
 service PetSvc {
   rpc Get(Pet) returns (Owner);
@@ -88,6 +93,25 @@ describe("ProtoReference server render", () => {
     expect(badgesBetween('class="proto-oneof-field"', "</li>")).toBe(1)
     expect(badgesBetween('id="demo.v1.PetSvc.Get"', "</li>")).toBe(0)
     expect(badgesBetween('id="demo.v1.PetSvc.Watch"', "</li>")).toBe(1)
+  })
+
+  test("only real well-known types link to protobuf.dev", () => {
+    expect(html).toContain('<span class="proto-type-unresolved">google.protobuf.NotAType</span>')
+    expect(html).not.toContain("#notatype")
+  })
+
+  test("the sidebar lists nested messages and enums under their parent", () => {
+    expect(html).toContain(
+      'href="/p#demo.v1.Owner.Address" title="demo.v1.Owner.Address">Owner.Address</a>',
+    )
+    expect(html).toContain('href="/p#demo.v1.Owner.Role" title="demo.v1.Owner.Role">Owner.Role</a>')
+  })
+
+  test("a file with no declarations says so", () => {
+    const empty = renderToString(
+      createElement(ProtoReference, { protoText: 'syntax = "proto3";\npackage demo;\n' }),
+    )
+    expect(empty).toContain('class="proto-empty"')
   })
 
   test("a parse error renders the error state", () => {

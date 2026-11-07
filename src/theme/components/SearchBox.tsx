@@ -9,8 +9,8 @@ export type SearchBoxProps = {
 }
 
 /**
- * Render the search input and results list. `attachSearch` reads the `data-aid-search-*`
- * attributes.
+ * Render the search input and an empty, hidden results list. The `data-aid-search-*`
+ * attributes are the contract with `attachSearch`, which fills the list in the browser.
  */
 export function SearchBox(props: SearchBoxProps) {
   const weightsJson = JSON.stringify(props.weights)
@@ -18,7 +18,7 @@ export function SearchBox(props: SearchBoxProps) {
     <div class="aid-search">
       <input
         type="search"
-        placeholder="Search docs…"
+        placeholder={"Search docs\u2026"}
         aria-label="Search"
         role="combobox"
         aria-autocomplete="list"

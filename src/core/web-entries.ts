@@ -48,17 +48,24 @@ export const WEB_CSS = {
 /** One entry of {@link WEB_JS}. */
 export type WebJsEntry = (typeof WEB_JS)[keyof typeof WEB_JS]
 
-/** For the build pipeline, which writes and registers every chunk and asset. Throws naming the entry when the bundle fails. */
-export async function bundleWebOutputs(
-  entry: WebJsEntry,
-  options: Partial<Bun.BuildConfig> = {},
-): Promise<Bun.BuildArtifact[]> {
+/**
+ * Bundle `entry` with code splitting, so a page loads only the chunks it uses, such as
+ * one mermaid diagram type. Source runs and the compiled binary write the same files.
+ * Throws naming the entry when the bundle fails.
+ */
+export async function bundleWebFiles(entry: WebJsEntry): Promise<EmbeddedBundle> {
+  const { name } = entry
   const result = await Bun.build({
     entrypoints: [path.join(AID_ROOT, entry.source)],
     target: "browser",
     format: "esm",
     minify: true,
-    ...options,
+    splitting: true,
+    naming: {
+      entry: `${name}.[hash].js`,
+      chunk: `${name}.[name].[hash].js`,
+      asset: `${name}.[name].[hash][ext]`,
+    },
     throw: false,
   })
   if (!result.success) {
@@ -67,16 +74,19 @@ export async function bundleWebOutputs(
     }
     throw new Error(`failed to bundle ${entry.source}`)
   }
-  return result.outputs
+  const files = await Promise.all(
+    result.outputs.map(
+      async (output) => [path.basename(output.path), await output.text()] as const,
+    ),
+  )
+  return {
+    entry: path.basename(entryPointOf(entry, result.outputs).path),
+    files: Object.fromEntries(files),
+  }
 }
 
-/** For callers that need only the entry-point file, such as the compiled-binary embedding. */
-export async function bundleWebEntry(
-  entry: WebJsEntry,
-  options: Partial<Bun.BuildConfig> = {},
-): Promise<Bun.BuildArtifact> {
-  return entryPointOf(entry, await bundleWebOutputs(entry, options))
-}
+/** A split browser bundle: the entry-point file name and every output file by name. */
+export type EmbeddedBundle = { entry: string; files: Record<string, string> }
 
 /** The entry-point artifact among `outputs`. Throws when the build produced none. */
 export function entryPointOf(entry: WebJsEntry, outputs: Bun.BuildArtifact[]): Bun.BuildArtifact {

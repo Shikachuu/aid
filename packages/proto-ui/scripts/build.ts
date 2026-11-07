@@ -1,4 +1,4 @@
-import { rm } from "node:fs/promises"
+import { rename, rm } from "node:fs/promises"
 import path from "node:path"
 import { parseArgs } from "node:util"
 import { compile } from "@tailwindcss/node"
@@ -7,14 +7,15 @@ import { Scanner } from "@tailwindcss/oxide"
 const PACKAGE_ROOT = path.resolve(import.meta.dir, "..")
 const SRC = path.join(PACKAGE_ROOT, "src")
 const { values: args } = parseArgs({ options: { outdir: { type: "string" } } })
-const DIST = path.resolve(args.outdir ?? path.join(PACKAGE_ROOT, "dist"))
+const OUT = path.resolve(args.outdir ?? path.join(PACKAGE_ROOT, "dist"))
+const DIST = `${OUT}.tmp-${process.pid}`
 const TAILWIND_ENTRY = path.join(SRC, "tailwind-entry.css")
 
 const REACT_EXTERNALS = ["react", "react-dom", "react-dom/client", "react/jsx-runtime"]
 
 const run = async (label: string, fn: () => Promise<unknown>): Promise<void> => {
   const start = performance.now()
-  process.stdout.write(`[build] ${label}…`)
+  process.stdout.write(`[build] ${label}...`)
   try {
     await fn()
     process.stdout.write(` ${Math.round(performance.now() - start)}ms\n`)
@@ -75,9 +76,29 @@ const emitTypes = async (): Promise<void> => {
   await Bun.$`bun x tsc --emitDeclarationOnly --outDir ${DIST} --project .`.cwd(PACKAGE_ROOT)
 }
 
-const main = async (): Promise<void> => {
-  await rm(DIST, { recursive: true, force: true })
+const swapIntoPlace = async (): Promise<void> => {
+  const old = `${OUT}.old-${process.pid}`
+  let hadOld = true
+  try {
+    await rename(OUT, old)
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw err
+    }
+    hadOld = false
+  }
+  try {
+    await rename(DIST, OUT)
+  } catch (err) {
+    if (hadOld) {
+      await rename(old, OUT)
+    }
+    throw err
+  }
+  await rm(old, { recursive: true, force: true })
+}
 
+const build = async (): Promise<void> => {
   await run("bundle index.js", () =>
     bundleEntry(path.join(SRC, "index.ts"), path.join(DIST, "index.js"), REACT_EXTERNALS),
   )
@@ -89,6 +110,15 @@ const main = async (): Promise<void> => {
   )
   await run("compile styles.css", compileStyles)
   await run("emit .d.ts", emitTypes)
+}
+
+const main = async (): Promise<void> => {
+  try {
+    await build()
+    await swapIntoPlace()
+  } finally {
+    await rm(DIST, { recursive: true, force: true })
+  }
 }
 
 await main()

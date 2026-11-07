@@ -42,14 +42,15 @@ aid skips any other YAML or JSON file without a warning. The file name does not 
 
 aid runs the spec through `@scalar/openapi-parser` at build time, in three steps:
 
-1. `normalize` reads the YAML or JSON text into an object. A source that is not a mapping fails the build.
+1. `normalize` reads the YAML or JSON text into an object. A source that is not a mapping fails the build, and so does a YAML alias that refers to its own ancestor.
 2. `upgrade` converts Swagger 2.0 and OpenAPI 3.0 to OpenAPI 3.1.
 3. `dereference` resolves the `$ref` pointers inside the file.
 
 aid does not load other files. A `$ref` to another file, such as `./schemas/pet.yaml#/Pet`, stays unresolved, and aid lists an `openapi/ref` warning in the [broken-reference report](./links.md#broken-reference-check). The build continues and the page renders with the `$ref` left in place.
 
 ```text
-aid: <abs path>/docs/api.yaml: <root> — Can't resolve external reference: ./schemas/pet.yaml
+aid: 1 broken reference
+  docs/api.yaml  openapi/ref  <root>: Can't resolve external reference: ./schemas/pet.yaml
 ```
 
 ## Title and description
@@ -82,8 +83,9 @@ aid indexes the title and these fields of the spec, so a search for an operation
 - operation ids;
 - path templates, such as `/pets/{id}`;
 - schema names under `components.schemas`;
-- parameter names;
-- operation summaries.
+- webhook names;
+- parameter names, from operations and from path items;
+- operation summaries, from paths and webhooks.
 
 OpenAPI pages rank higher than markdown pages by default through `search.weights.openapi`. See [search](../search/index.md).
 

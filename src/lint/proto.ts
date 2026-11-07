@@ -4,6 +4,7 @@ import bufDarwinX64 from "@bufbuild/buf-darwin-x64/bin/buf" with { type: "file" 
 import bufLinuxArm64 from "@bufbuild/buf-linux-aarch64/bin/buf" with { type: "file" }
 import bufLinuxX64 from "@bufbuild/buf-linux-x64/bin/buf" with { type: "file" }
 import { extractEmbedded } from "../core/internal/extract-embedded"
+import { batches, dedupe } from "./bun"
 import { findUserConfig } from "./config-resolve"
 import { bufDefault } from "./configs/buf.default"
 import { type Diagnostic, processFailure, type ToolResult } from "./diagnostics"
@@ -115,21 +116,27 @@ export const lintProto = async (
     (await findUserConfig(dir, USER_CONFIGS.proto)) === null ? ["--config", bufDefault] : []
   const root = resolvePath(dir)
   const targets = paths.map((p) => `--path=${relative(root, resolvePath(p))}`)
-  const run = await Bun.$`${bin} lint --error-format=json ${config} ${root} ${targets}`
-    .cwd(root)
-    .nothrow()
-    .quiet()
-  const output = {
-    exitCode: run.exitCode,
-    stdout: run.stdout.toString(),
-    stderr: run.stderr.toString(),
+  const diagnostics: Diagnostic[] = []
+  let ok = true
+  for (const batch of batches(targets)) {
+    const run = await Bun.$`${bin} lint --error-format=json ${config} ${root} ${batch}`
+      .cwd(root)
+      .nothrow()
+      .quiet()
+    const output = {
+      exitCode: run.exitCode,
+      stdout: run.stdout.toString(),
+      stderr: run.stderr.toString(),
+    }
+    const found = parseBufOutput(output.stdout, root)
+    if (found.length === 0 && output.stderr.includes(NOTHING_TARGETED)) {
+      continue
+    }
+    if (output.exitCode !== 0 && found.length === 0) {
+      found.push(processFailure("buf", output, root, "proto/lint"))
+    }
+    ok &&= output.exitCode === 0 && found.length === 0
+    diagnostics.push(...found)
   }
-  const diagnostics = parseBufOutput(output.stdout, root)
-  if (diagnostics.length === 0 && output.stderr.includes(NOTHING_TARGETED)) {
-    return { tool: "proto", ok: true, diagnostics: [] }
-  }
-  if (output.exitCode !== 0 && diagnostics.length === 0) {
-    diagnostics.push(processFailure("buf", output, root, "proto/lint"))
-  }
-  return { tool: "proto", ok: output.exitCode === 0 && diagnostics.length === 0, diagnostics }
+  return { tool: "proto", ok, diagnostics: dedupe(diagnostics) }
 }

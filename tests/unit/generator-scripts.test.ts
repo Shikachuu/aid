@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { checkStaged, collectStaged } from "../../scripts/check-binaries"
-import { driftedFiles } from "../../scripts/generated-files"
+import { driftedFiles, orphanedFiles } from "../../scripts/generated-files"
 import { lcssNodeFile, TARGETS } from "../../scripts/natives"
 import { stageNatives } from "../../scripts/stage-natives"
 
@@ -32,11 +32,28 @@ describe("driftedFiles", () => {
   })
 })
 
+describe("orphanedFiles", () => {
+  test("lists files under the owned dir that no generator writes", async () => {
+    await Bun.write(path.join(root, "ref", "kept.md"), "a\n")
+    await Bun.write(path.join(root, "ref", "old", "gone.md"), "b\n")
+    await Bun.write(path.join(root, "other.md"), "c\n")
+    await Bun.write(path.join(root, "ref", ".DS_Store"), "d\n")
+    expect(await orphanedFiles(root, "ref", [{ path: "ref/kept.md", content: "a\n" }])).toEqual([
+      "ref/old/gone.md",
+    ])
+  })
+
+  test("treats a missing dir as having no orphans", async () => {
+    expect(await orphanedFiles(root, "missing", [])).toEqual([])
+  })
+})
+
 describe("--check CLIs", () => {
   test.each([
     ["gen-bunfig", "[gen-bunfig] bunfig.toml and .prettierrc.json are in sync."],
     ["gen-css-data", "[gen-css-data] src/lint/css-data.json is in sync."],
     ["emit-schema", "[emit-schema] schema is in sync."],
+    ["gen-docs", "[gen-docs] reference pages are in sync."],
   ])("%s --check exits 0 on the committed files", (script, message) => {
     const proc = Bun.spawnSync([process.execPath, `scripts/${script}.ts`, "--check"], {
       cwd: ROOT,

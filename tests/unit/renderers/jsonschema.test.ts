@@ -486,6 +486,8 @@ describe("buildSchemaDocument", () => {
   })
 
   test("allOf-wrapped refs fanning out across nested definitions stay within the node budget", () => {
+    const maxBuildMs = 2000
+    const maxNodes = 10_000
     const defs: Record<string, unknown> = {}
     for (let level = 0; level < 6; level++) {
       const properties: Record<string, unknown> = {}
@@ -497,7 +499,7 @@ describe("buildSchemaDocument", () => {
     }
     const started = performance.now()
     const doc = build({ allOf: [{ $ref: "#/definitions/L0" }], definitions: defs })
-    expect(performance.now() - started).toBeLessThan(2000)
+    expect(performance.now() - started).toBeLessThan(maxBuildMs)
     let count = 0
     const walk = (n: SchemaNode): void => {
       count++
@@ -506,7 +508,7 @@ describe("buildSchemaDocument", () => {
       }
     }
     walk(doc.root)
-    expect(count).toBeLessThan(10_000)
+    expect(count).toBeLessThan(maxNodes)
   })
 
   test("non-ASCII definition names keep distinct ids", () => {
@@ -548,6 +550,26 @@ describe("buildSchemaDocument", () => {
 
   test("throws on a root that is not a schema", () => {
     expect(() => build([1, 2])).toThrow(/not an object or boolean schema/)
+  })
+})
+
+describe("buildSchemaDocument pointers and ids", () => {
+  test("a percent-encoded slash in a pointer segment stays part of the key", () => {
+    const doc = build({
+      $defs: { "a/b": { type: "string" } },
+      properties: { x: { $ref: "#/$defs/a%2Fb" } },
+    })
+    expect(field(doc.root, "x").types).toEqual(["string"])
+  })
+
+  test("draft-04 `id` declares a plain-name anchor and is not shown as a constraint", () => {
+    const doc = build({
+      $schema: "http://json-schema.org/draft-04/schema#",
+      definitions: { A: { id: "#a", type: "string" } },
+      properties: { x: { $ref: "#a" } },
+    })
+    expect(field(doc.root, "x").types).toEqual(["string"])
+    expect(doc.definitions[0]?.constraints).toEqual([])
   })
 })
 
@@ -595,6 +617,25 @@ describe("buildSchemaDocument examples", () => {
     expect(build({ type: "integer", exclusiveMinimum: 4 }).examples).toEqual([5])
   })
 
+  test.each([
+    [{ type: "integer", minimum: 4, exclusiveMinimum: true }, 5],
+    [{ type: "integer", minimum: 1.5 }, 2],
+    [{ type: "integer", exclusiveMinimum: 1.5 }, 2],
+    [{ type: "number", maximum: -3 }, -3],
+    [{ type: "integer", maximum: -3, exclusiveMaximum: true }, -4],
+    [{ type: "number", exclusiveMaximum: 0 }, -1],
+    [{ type: "number", exclusiveMinimum: 0, exclusiveMaximum: 0.5 }, 0.25],
+    [{ type: "number", minimum: 2, exclusiveMinimum: 3 }, 4],
+    [{ type: "number", maximum: 10 }, 0],
+  ])("number example for %j is %p", (schema, expected) => {
+    expect(build(schema).examples).toEqual([expected])
+  })
+
+  test("string examples respect minLength and maxLength", () => {
+    expect(build({ type: "string", minLength: 10 }).examples).toEqual(["stringxxxx"])
+    expect(build({ type: "string", maxLength: 3 }).examples).toEqual(["str"])
+  })
+
   test("example synthesis stops after its value budget on wide ref-heavy schemas", () => {
     const defs: Record<string, unknown> = {}
     for (let d = 0; d < 10; d++) {
@@ -604,8 +645,9 @@ describe("buildSchemaDocument examples", () => {
       }
       defs[`D${d}`] = { type: "object", properties }
     }
+    const maxExampleChars = 200_000
     const example = build({ $ref: "#/$defs/D0", $defs: defs }).examples
-    expect(JSON.stringify(example).length).toBeLessThan(200_000)
+    expect(JSON.stringify(example).length).toBeLessThan(maxExampleChars)
   })
 
   test("a __proto__ property keeps its place in the synthesized example", () => {
@@ -704,7 +746,9 @@ describe("renderJsonSchema", () => {
       definitions: ["Address"],
     })
     expect(page.searchTokens.headings).toEqual(["Address"])
-    expect(page.anchors).toEqual(expect.arrayContaining(["prop-id", "prop-name", "def-Address"]))
+    expect(page.knownAnchorIds).toEqual(
+      expect.arrayContaining(["prop-id", "prop-name", "def-Address"]),
+    )
   })
 
   test("a $ref to another schema page links to its definition section", async () => {
@@ -724,6 +768,48 @@ describe("renderJsonSchema", () => {
     )
     expect(page.html).toContain(
       '<a href="/address#def-Street"><code class="aid-schema-type">Street</code></a>',
+    )
+    expect(page.anchorRefs).toEqual([
+      { routePath: "/address", fragment: "def-Street", href: "./address.json#/$defs/Street" },
+    ])
+  })
+
+  test("a broken link in a description points at the description's source line", async () => {
+    const sourcePath = await write(
+      "user.json",
+      JSON.stringify(
+        { $schema: DIALECT, properties: { a: { description: "See [x](./missing.md)." } } },
+        null,
+        2,
+      ),
+    )
+    const route: Route = { source: sourcePath, path: "/user", kind: "jsonschema" }
+    const page = await renderJsonSchema({
+      route,
+      sourcePath,
+      resolveLink: async () => ({ kind: "broken", code: "link/missing", reason: "no page" }),
+    })
+    expect(page.diagnostics).toEqual([expect.objectContaining({ code: "link/missing", line: 5 })])
+  })
+
+  test("a YAML alias reused in two places is not a cycle", async () => {
+    const sourcePath = await write(
+      "shared.yaml",
+      `$schema: "${DIALECT}"\n$defs:\n  A: &a\n    type: string\n  B: *a\n`,
+    )
+    const route: Route = { source: sourcePath, path: "/shared", kind: "jsonschema" }
+    const page = await renderJsonSchema({ route, sourcePath })
+    expect(page.knownAnchorIds).toEqual(expect.arrayContaining(["def-A", "def-B"]))
+  })
+
+  test("names the file when a YAML alias refers to its own ancestor", async () => {
+    const sourcePath = await write(
+      "cyclic.yaml",
+      `$schema: "${DIALECT}"\n$defs:\n  A: &a\n    properties:\n      self: *a\n`,
+    )
+    const route: Route = { source: sourcePath, path: "/cyclic", kind: "jsonschema" }
+    await expect(renderJsonSchema({ route, sourcePath })).rejects.toThrow(
+      /aid: failed to parse JSON Schema at .*cyclic\.yaml: a YAML alias refers to its own ancestor/,
     )
   })
 

@@ -39,7 +39,8 @@ export const formatWithBun = async (
           .filter((file) => wanted.has(file))
       : []
     wouldChange.push(...listed)
-    const explained = errors.length > 0 || listed.length > 0
+    const failed = Number(/Could not check (\d+) files?/.exec(run.stderr)?.[1] ?? 0)
+    const explained = errors.length >= failed && (errors.length > 0 || listed.length > 0)
     if (run.exitCode !== 0 && !explained) {
       diagnostics.push(processFailure("bun", run, dir, "bun/format"))
     }

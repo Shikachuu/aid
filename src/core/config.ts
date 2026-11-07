@@ -59,7 +59,11 @@ const SearchWeights = z
 /** Zod schema for `aid.yaml`. `scripts/emit-schema.ts` derives the published JSON Schema from it. */
 export const AidConfigSchema = z
   .strictObject({
-    name: z.string().min(1).describe("Project display name. Required."),
+    name: z
+      .string()
+      .min(1)
+      .regex(/^[^\r\n]*$/, { message: "name must be a single line" })
+      .describe("Project display name, on one line. Required."),
     description: z
       .string()
       .optional()
@@ -100,7 +104,12 @@ export const AidConfigSchema = z
           .string()
           .default("docs")
           .describe("Content root directory. Files here become routes. Default 'docs'."),
-        output: z.string().default("dist").describe("Build output directory. Default 'dist'."),
+        output: z
+          .string()
+          .default("dist")
+          .describe(
+            "Build output directory. It must not overlap the content, static, or templates directory, and `aid build --clean` deletes it. Default 'dist'.",
+          ),
         templates: z
           .string()
           .default("")

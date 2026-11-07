@@ -4,20 +4,20 @@ import { routeUrl } from "./router"
 import { SEARCH_OPTIONS } from "./search-options"
 import type { BuildContext, RenderedPage } from "./types"
 
-/** Result of {@link buildSearchIndex}. */
+/**
+ * The search index as a script, `source`, that assigns the serialized MiniSearch
+ * index to `window.__AID_SEARCH__`, so pages load it with a plain `<script>`.
+ */
 export type SearchIndexResult = {
-  /** Hashed filename (no directory prefix), e.g. `search-index.a1b2c3d4.js`. */
   filename: string
-  /** Public href joined against `config.base_path`, ready for the Layout. */
   href: string
-  /** JS source bytes. Assigns `window.__AID_SEARCH__` to the serialized MiniSearch index. */
   source: string
 }
 
 /**
  * Build the cross-format MiniSearch index from rendered pages. Returns `null`
- * when `config.search.enabled === false` so the pipeline skips emission and
- * the Layout omits the SearchBox entirely.
+ * when search is disabled, so the pipeline writes no index and the Layout
+ * renders no search box.
  */
 export function buildSearchIndex(
   ctx: BuildContext,

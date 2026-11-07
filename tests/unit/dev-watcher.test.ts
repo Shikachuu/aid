@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
-import { chmodSync, mkdirSync, mkdtempSync, renameSync, rmSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, renameSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { createChangeQueue, type Schedule, watchContent } from "../../src/dev/watcher"
+import { createChangeQueue, ignoredIn, type Schedule, watchContent } from "../../src/dev/watcher"
 import { makeCtx } from "../helpers"
 
 let dir: string
@@ -52,7 +52,7 @@ describe("createChangeQueue", () => {
     const reports: boolean[] = []
     let pending: (() => void) | null = null
     const queue = createChangeQueue({
-      devOutputDir: "/site/.aid",
+      isIgnored: (p) => p.startsWith("/site/.aid"),
       configPath: "/site/aid.yaml",
       onChange: (configChanged) => reports.push(configChanged),
       schedule: (fn) => {
@@ -110,12 +110,47 @@ describe("createChangeQueue", () => {
     expect(reports).toEqual([false, false, false])
   })
 
+  test("stops pushing the report back once the window is a second old", async () => {
+    const clock = { now: 0 }
+    let mtime = 0
+    let cancels = 0
+    const queue = createChangeQueue({
+      isIgnored: () => false,
+      configPath: "/site/aid.yaml",
+      onChange: () => {},
+      schedule: () => () => cancels++,
+      statMtime: async () => ++mtime,
+      now: () => clock.now,
+    })
+    for (const time of [0, 500, 999, 1000, 1500]) {
+      clock.now = time
+      await queue.enqueue("/site/docs/a.md")
+    }
+    expect(cancels).toBe(2)
+  })
+
   test("cancel drops the pending report", async () => {
     const { queue, reports, flush } = setup({ "/site/docs/a.md": 1 })
     await queue.enqueue("/site/docs/a.md")
     queue.cancel()
     flush()
     expect(reports).toEqual([])
+  })
+})
+
+describe("ignoredIn", () => {
+  test("ignores .aid, .git and node_modules inside the project only", () => {
+    const ignored = ignoredIn(makeCtx(dir))
+    expect(ignored(join(dir, ".aid", "dev", "index.html"))).toBe(true)
+    expect(ignored(join(dir, ".git", "index"))).toBe(true)
+    expect(ignored(join(dir, "pkg", "node_modules", "x.md"))).toBe(true)
+    expect(ignored(join(dir, "guide", "index.md"))).toBe(false)
+    expect(ignored(join(dir, ".aidrc.md"))).toBe(false)
+    expect(
+      ignoredIn(makeCtx(join(dir, "node_modules", "site")))(
+        join(dir, "node_modules", "site", "docs", "a.md"),
+      ),
+    ).toBe(false)
   })
 })
 
@@ -192,6 +227,40 @@ describe("watchContent", () => {
     }
   })
 
+  test("watches a partial whose folder is created after start", async () => {
+    const partial = join(dir, "new", "deep", "brand.css")
+    const r = reporter()
+    const handle = watchContent(ctx(), join(dir, "aid.yaml"), [], r.onChange, immediate)
+    try {
+      handle.watchFiles([partial])
+      await r.until(async (i) => {
+        mkdirSync(join(dir, "new", "deep"), { recursive: true })
+        await Bun.write(partial, `b{--i:${i}}`)
+      })
+      const before = (await r.until((i) => Bun.write(partial, `b{--j:${i}}`))).length
+      expect((await r.until((i) => Bun.write(partial, `b{--k:${i}}`))).length).toBeGreaterThan(
+        before,
+      )
+    } finally {
+      handle.close()
+    }
+  })
+
+  test("watches a content dir that is created or recreated after start", async () => {
+    const docs = join(dir, "docs")
+    const r = reporter()
+    const handle = watchContent(ctx(), join(dir, "aid.yaml"), [], r.onChange, immediate)
+    try {
+      await r.until(async () => mkdirSync(docs, { recursive: true }))
+      await r.until((i) => Bun.write(join(docs, "guide", "a.md"), `# ${i}\n`))
+      rmSync(docs, { recursive: true })
+      await r.until(async () => mkdirSync(docs, { recursive: true }))
+      await r.until((i) => Bun.write(join(docs, "guide", "b.md"), `# ${i}\n`))
+    } finally {
+      handle.close()
+    }
+  })
+
   test.skipIf(process.getuid?.() === 0)(
     "keeps watching when a partial's folder cannot be watched, and logs each folder once",
     async () => {
@@ -212,6 +281,35 @@ describe("watchContent", () => {
       } finally {
         error.mockRestore()
         chmodSync(locked, 0o700)
+        handle.close()
+      }
+    },
+  )
+
+  test.skipIf(process.getuid?.() === 0)(
+    "logs instead of crashing when a missing partial's folder appears unreadable",
+    async () => {
+      const css = join(dir, "main.css")
+      const later = join(dir, "later")
+      const error = spyOn(console, "error").mockImplementation(() => {})
+      const r = reporter()
+      const handle = watchContent(ctx(), join(dir, "aid.yaml"), [css], r.onChange, immediate)
+      try {
+        handle.watchFiles([join(later, "a.css")])
+        mkdirSync(later, { mode: 0o000 })
+        for (let i = 0; i < 250 && error.mock.calls.length === 0; i++) {
+          await Bun.sleep(20)
+        }
+        if (error.mock.calls.length === 0) {
+          throw new Error(`no "cannot watch" report within 5 s of creating ${later}`)
+        }
+        expect(String(error.mock.calls[0]?.[0])).toContain(`cannot watch ${later}:`)
+        await r.until((i) => Bun.write(css, `a{--i:${i}}`))
+      } finally {
+        error.mockRestore()
+        if (existsSync(later)) {
+          chmodSync(later, 0o700)
+        }
         handle.close()
       }
     },

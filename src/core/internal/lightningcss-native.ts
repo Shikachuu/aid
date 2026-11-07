@@ -85,7 +85,6 @@ const doInstall = async (): Promise<void> => {
   const cjsRequire = createRequire(import.meta.url)
   const bindings = cjsRequire(nodeFile) as unknown
 
-  // Bun's compiled binary skips `Module._resolveFilename`, so patch `require` itself.
   const moduleNs = cjsRequire("node:module") as ModuleNs
   const original = moduleNs.prototype.require
   moduleNs.prototype.require = function (this: unknown, id: string): unknown {

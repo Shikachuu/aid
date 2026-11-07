@@ -13,7 +13,13 @@ export async function attachMermaid(): Promise<void> {
   const sources = elements.map((el) => el.textContent)
   const media = window.matchMedia("(prefers-color-scheme: dark)")
 
-  const { default: mermaid } = await import("mermaid")
+  let mermaid: typeof import("mermaid").default
+  try {
+    mermaid = (await import("mermaid")).default
+  } catch (err) {
+    console.warn("aid: mermaid failed to load, so diagrams show as source", err)
+    return
+  }
   const render = async () => {
     elements.forEach((el, i) => {
       // mermaid skips nodes that carry data-processed.
@@ -25,8 +31,17 @@ export async function attachMermaid(): Promise<void> {
     await mermaid.run({ querySelector: MERMAID_SELECTOR, suppressErrors: true })
   }
 
-  await render()
+  const renderAfter = async (previous: Promise<void>) => {
+    try {
+      await previous
+    } finally {
+      await render()
+    }
+  }
+
+  let rendering = render()
+  await rendering
   media.addEventListener("change", () => {
-    void render()
+    rendering = renderAfter(rendering)
   })
 }

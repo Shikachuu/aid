@@ -3,7 +3,7 @@ import type { AidConfig } from "../core/config"
 import { RELOAD_CLIENT_SCRIPT, RELOAD_PATH } from "./reload"
 import { type DevState, sseFrame } from "./state"
 
-/** Inputs for {@link startDevServer}. */
+/** Inputs for {@link startDevServer}. `host` and `port` come from the CLI flags; port 0 picks a free port. */
 export type StartDevServerArgs = {
   state: DevState
   config: AidConfig
@@ -47,6 +47,9 @@ export function startDevServer(args: StartDevServerArgs): DevServerHandle {
       reusePort: false,
       fetch: async (req) => {
         try {
+          if (!isAllowedHost(req, host)) {
+            return new Response("Forbidden", { status: 403 })
+          }
           return await handle(req, state, config)
         } catch (err) {
           console.error(`[aid] ${req.method} ${req.url} failed:`, err)
@@ -142,7 +145,9 @@ function openSseStream(state: DevState): Response {
  * `distDir`, and maps directory-style URLs (`/`, `/api/`, `/api`) to their
  * `index.html`. A URL whose last segment has a dot, such as the route of
  * `user.schema.json`, falls back to its folder's `index.html` when no file
- * has that name.
+ * has that name, and an extensionless URL with no folder, such as `/LICENSE`,
+ * falls back to the bare file. A miss gets an HTML 404 page, so the reload
+ * client can reach a tab that sits on it.
  */
 export async function serveFile(distDir: string, pathname: string): Promise<Response> {
   const candidate = resolve(distDir, `.${pathname}`)
@@ -157,22 +162,48 @@ export async function serveFile(distDir: string, pathname: string): Promise<Resp
   if (await file.exists()) {
     return new Response(file)
   }
-  const routeIndex = Bun.file(resolve(candidate, "index.html"))
-  if (target === candidate && (await routeIndex.exists())) {
-    return new Response(routeIndex)
+  const fallback = Bun.file(target === candidate ? resolve(candidate, "index.html") : candidate)
+  if (await fallback.exists()) {
+    return new Response(fallback)
   }
-  return new Response("Not Found", { status: 404 })
+  return htmlResponse(NOT_FOUND_PAGE, 404)
 }
+
+const NOT_FOUND_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>Not found</title></head><body><h1>Not found</h1></body></html>`
 
 function injectReloadScript(html: string): string {
   const tag = `<script>${RELOAD_CLIENT_SCRIPT}</script>`
-  if (/<\/body>/i.test(html)) {
-    return html.replace(/<\/body>/i, `${tag}</body>`)
-  }
-  if (/<\/html>/i.test(html)) {
-    return html.replace(/<\/html>/i, `${tag}</html>`)
+  const lower = html.toLowerCase()
+  for (const close of ["</body>", "</html>"]) {
+    const at = lower.lastIndexOf(close)
+    if (at !== -1) {
+      return `${html.slice(0, at)}${tag}${html.slice(at)}`
+    }
   }
   return `${html}\n${tag}`
+}
+
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"])
+
+/**
+ * Bound to a loopback address, the server answers only requests whose Host
+ * header names loopback. Another site's page that rebinds its own DNS name to
+ * 127.0.0.1 then cannot read the docs or the build errors. Bound to any other
+ * address, such as 0.0.0.0, every Host is allowed.
+ */
+function isAllowedHost(req: Request, host: string): boolean {
+  if (!LOOPBACK_HOSTS.has(host.includes(":") ? `[${host}]` : host)) {
+    return true
+  }
+  const header = req.headers.get("host")
+  if (header === null) {
+    return false
+  }
+  try {
+    return LOOPBACK_HOSTS.has(new URL(`http://${header}`).hostname.replace(/\.$/, ""))
+  } catch {
+    return false
+  }
 }
 
 /** Normalize `basePath` to the trailing-slash form that the server redirects to and the session prints. */

@@ -14,6 +14,8 @@ Search is on by default. Type in the header's search box:
 - results update 80 ms after the last keystroke;
 - the list shows at most 8 results, each with a page-kind badge, the title, and the URL;
 - the arrow keys move the selection, Enter opens the selected result, and Esc clears the box while the list is open. While an input method editor (IME) composes text, these keys go to the IME.
+- the list hides when the box loses focus and shows the same results again when it regains focus;
+- aid searches only the first 100 characters of a query.
 
 ## Configure it
 

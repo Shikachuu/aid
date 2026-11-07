@@ -23,7 +23,7 @@ aid resolves the path against the folder of the source file, copies the file int
 - In HTML pages, aid rewrites the `src` attribute of `<img>`. It does not rewrite `srcset`, `<source>`, `<video>`, or CSS `url()`.
 - aid leaves absolute paths (`/img/x.png`), `#fragment` sources, and URLs with a scheme (`https:`, `data:`) unchanged.
 - aid percent-decodes the path before it looks for the file, so `./a%20b.png` finds `a b.png`. A query string or `#fragment`, as in `./icons.svg#star`, stays on the rewritten URL.
-- aid does not rewrite raw `<img>` tags inside markdown. Use markdown image syntax.
+- aid does not rewrite raw `<img>` tags inside markdown, and lists each relative one as an `html/relative-url` warning. Use markdown image syntax.
 
 The copy keeps the path relative to the source file's folder, minus any leading `../`. For a page at `guide/index.md`, `./light/logo.png` lands at `guide/light/logo.png` in the output, so it does not clash with `./dark/logo.png`. Two references that still map to one output path, such as `./icon.png` and `../icon.png`, fail the build with an asset collision. An image used by two pages is copied once into each page's folder.
 
@@ -35,7 +35,7 @@ A relative link to a file that is not a page, such as `[the spec](./spec.pdf)` o
 
 ## Static folder
 
-aid mirrors the static folder into the output root without changes. The folder is `dir.static` in `aid.yaml`, relative to the project folder, and it defaults to `static`. A missing static folder is fine and copies nothing. aid follows symlinks inside the static folder, and a symlink whose real path leaves the folder stops the build.
+aid mirrors the static folder into the output root without changes. The folder is `dir.static` in `aid.yaml`, relative to the project folder, and it defaults to `static`. A missing static folder is fine and copies nothing. aid follows symlinks inside the static folder. A symlink whose real path leaves the folder, or a folder symlink back at the static folder or one of its parents, stops the build.
 
 This site keeps the published JSON Schema at `site/static/schemas/aid.schema.json`, so the build writes it to `dist/schemas/aid.schema.json`, served at `/aid/schemas/aid.schema.json`.
 

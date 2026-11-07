@@ -2,12 +2,14 @@ import { describe, expect, test } from "bun:test"
 import { lint } from "markdownlint/promise"
 import {
   cliReference,
+  code,
   configReference,
   configSchemaOpenApi,
   escapeMd,
   generateAll,
   inputSchema,
   schemaRows,
+  typeLabel,
 } from "../../scripts/gen-docs"
 import { main } from "../../src/cli/main"
 import { AidConfigSchema } from "../../src/core/config"
@@ -44,5 +46,30 @@ describe("gen-docs", () => {
     expect(escapeMd('<meta name="x"> a|b https://x.dev/y.')).toBe(
       '&lt;meta name="x"&gt; a\\|b `https://x.dev/y.`',
     )
+  })
+
+  test("escapeMd leaves URLs unescaped inside their code span", () => {
+    expect(escapeMd("see https://x.dev/?a=1&b=<2> & more")).toBe(
+      "see `https://x.dev/?a=1&b=<2>` &amp; more",
+    )
+  })
+
+  test("code widens its backtick fence around backticks in the value", () => {
+    expect(code("a|b")).toBe("`a\\|b`")
+    expect(code("x`y")).toBe("``x`y``")
+    expect(code("`x`")).toBe("`` `x` ``")
+  })
+
+  test("typeLabel names each member of a union instead of any", () => {
+    expect(typeLabel({ anyOf: [{ type: "string" }, { type: "null" }] })).toBe("string or null")
+    expect(typeLabel({ oneOf: [{ type: "string" }, { enum: ["a"] }] })).toBe("string or one of `a`")
+  })
+
+  test("the published schema is built from Zod, not copied from schemas/", async () => {
+    const files = await generateAll()
+    const published = files.find((f) => f.path === "site/static/schemas/aid.schema.json")
+    expect(JSON.parse(published?.content ?? "")).toMatchObject({
+      title: "aid project configuration",
+    })
   })
 })

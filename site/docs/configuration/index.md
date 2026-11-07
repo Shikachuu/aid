@@ -5,7 +5,7 @@ sidebar:
   order: 0
 ---
 
-`aid build` and `aid dev` read their settings from `aid.yaml` in the project folder. Only `name` is required. `aid lint` and `aid fmt` do not read `aid.yaml`.
+`aid build` and `aid dev` read their settings from `aid.yaml` in the project folder. Only `name` is required, and it must fit on one line. A value with a line break, including a `name: |` block scalar, which keeps its trailing line break, fails with `name must be a single line`. `aid lint` and `aid fmt` do not read `aid.yaml`.
 
 ## Example
 

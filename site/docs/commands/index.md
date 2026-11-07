@@ -25,7 +25,7 @@ Every command takes the project folder as an optional first argument. Without it
 | Code | When |
 | --- | --- |
 | 0 | The command finished without an error. |
-| 1 | The command threw an error: an invalid `aid.yaml`, a failed build, a dev-server port already in use, or `aid init`. aid prints the error message and the stack trace. |
+| 1 | The command threw an error: an invalid `aid.yaml`, a failed build, a dev-server port already in use, an invalid `--port`, or `aid init`. An expected error prints one line that starts with `aid:`. An unexpected error prints its message and stack trace. |
 | 1 | `aid lint` or `aid fmt` found a problem in at least one tool's files. With `aid fmt --check`, a file that needs formatting counts as a problem. |
 | 1 | `aid help` received an unknown command name. |
 

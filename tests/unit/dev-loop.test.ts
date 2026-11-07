@@ -1,10 +1,10 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { rebuild, serializeRuns } from "../../src/dev/loop"
 import { startDevServer } from "../../src/dev/server"
-import { endSession } from "../../src/dev/session"
+import { endSession, urlHost } from "../../src/dev/session"
 import { broadcast, type DevState } from "../../src/dev/state"
 import type { BuildContext } from "../../src/core/types"
 import { AidConfigSchema } from "../../src/core/config"
@@ -188,7 +188,8 @@ describe("serializeRuns", () => {
 })
 
 describe("broadcast", () => {
-  test("drops clients whose stream has closed", () => {
+  test("drops and logs clients whose stream has closed", () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
     const state = newState()
     const events = recordEvents(state)
     state.sseClients.add({
@@ -196,9 +197,22 @@ describe("broadcast", () => {
         throw new TypeError("closed")
       },
     } as unknown as ReadableStreamDefaultController<Uint8Array>)
-    broadcast(state, "reload", "")
-    expect(events).toEqual(["reload"])
-    expect(state.sseClients.size).toBe(1)
+    try {
+      broadcast(state, "reload", "")
+      expect(events).toEqual(["reload"])
+      expect(state.sseClients.size).toBe(1)
+      expect(warn).toHaveBeenCalledWith("[aid] dropped a reload client: closed")
+    } finally {
+      warn.mockRestore()
+    }
+  })
+})
+
+describe("urlHost", () => {
+  test("brackets IPv6 literals only", () => {
+    expect(urlHost("::1")).toBe("[::1]")
+    expect(urlHost("127.0.0.1")).toBe("127.0.0.1")
+    expect(urlHost("localhost")).toBe("localhost")
   })
 })
 

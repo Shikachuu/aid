@@ -1,19 +1,25 @@
 import { afterAll, beforeAll, expect, test } from "bun:test"
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdtemp, readdir, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import pkg from "../../packages/proto-ui/package.json"
 
 const PACKAGE_ROOT = path.resolve(import.meta.dir, "../../packages/proto-ui")
+let parent = ""
 let outdir = ""
 
 beforeAll(async () => {
-  outdir = await mkdtemp(path.join(tmpdir(), "aid-proto-ui-build-"))
+  parent = await mkdtemp(path.join(tmpdir(), "aid-proto-ui-build-"))
+  outdir = path.join(parent, "dist")
   await Bun.$`${process.execPath} run scripts/build.ts --outdir ${outdir}`.cwd(PACKAGE_ROOT).quiet()
 }, 120_000)
 
 afterAll(async () => {
-  await rm(outdir, { recursive: true, force: true })
+  await rm(parent, { recursive: true, force: true })
+})
+
+test("builds into a fresh outdir and leaves no temp dir beside it", async () => {
+  expect(await readdir(parent)).toEqual(["dist"])
 })
 
 const exportTargets = (value: unknown): string[] =>

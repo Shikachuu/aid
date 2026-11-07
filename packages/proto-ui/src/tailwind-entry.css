@@ -5,7 +5,7 @@
 @layer components {
   /*
    * Consumers retheme the component by re-declaring these `--proto-*` tokens on
-   * `.proto-root` or a wrapping selector.
+   * `.proto-root` itself. Values set on an ancestor lose to the ones below.
    */
   .proto-root {
     --proto-color-bg: oklch(99% 0 0);
@@ -35,6 +35,11 @@
     @apply px-6 py-10 text-sm;
     color: var(--proto-color-muted);
     grid-column: 1 / -1;
+  }
+
+  .proto-empty {
+    @apply m-0 text-sm;
+    color: var(--proto-color-muted);
   }
 
   .proto-error {
@@ -285,12 +290,12 @@
   }
 
   .proto-view-source-toggle {
-    @apply w-fit cursor-pointer list-none rounded px-2 py-1 text-xs before:content-['View_source'] [&::-webkit-details-marker]:hidden;
+    @apply w-fit cursor-pointer list-none rounded px-2 py-1 text-xs before:content-['Show_declaration'] [&::-webkit-details-marker]:hidden;
     color: var(--proto-color-muted);
   }
 
   .proto-view-source[open] > .proto-view-source-toggle {
-    @apply mb-2 before:content-['Hide_source'];
+    @apply mb-2 before:content-['Hide_declaration'];
   }
 
   .proto-view-source-toggle:hover {

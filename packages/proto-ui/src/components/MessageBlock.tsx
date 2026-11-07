@@ -1,18 +1,19 @@
-import type { ProtoMessage } from "../parser"
+import type { ProtoMessage, ProtoSyntax } from "../parser"
+import { DeclarationSummary } from "./DeclarationSummary"
 import { DeprecatedBadge } from "./DeprecatedBadge"
 import { DocBlock } from "./DocBlock"
 import { EntityHeader } from "./EntityHeader"
 import { EnumBlock } from "./EnumBlock"
-import { printMessage } from "./print-proto"
+import { summarizeMessage } from "./summarize-proto"
 import { TypeRef } from "./TypeRef"
-import { ViewSource } from "./ViewSource"
 
 type MessageBlockProps = {
   message: ProtoMessage
+  syntax: ProtoSyntax
   baseHref?: string
 }
 
-export const MessageBlock = ({ message, baseHref }: MessageBlockProps) => {
+export const MessageBlock = ({ message, syntax, baseHref }: MessageBlockProps) => {
   const visibleFields = message.fields.filter((f) => !f.oneofName)
   return (
     <section className="proto-message">
@@ -22,7 +23,7 @@ export const MessageBlock = ({ message, baseHref }: MessageBlockProps) => {
         fqn={message.fqn}
         deprecated={message.deprecated}
       />
-      <DocBlock raw={message.comment} />
+      <DocBlock markdown={message.comment} />
       {visibleFields.length > 0 ? (
         <table className="proto-field-table">
           <thead>
@@ -62,7 +63,7 @@ export const MessageBlock = ({ message, baseHref }: MessageBlockProps) => {
                 </td>
                 <td className="proto-field-rule">{f.rule === "singular" ? "" : f.rule}</td>
                 <td className="proto-field-doc">
-                  <DocBlock raw={f.comment} />
+                  <DocBlock markdown={f.comment} />
                 </td>
               </tr>
             ))}
@@ -72,7 +73,7 @@ export const MessageBlock = ({ message, baseHref }: MessageBlockProps) => {
       {message.oneofs.map((o) => (
         <section key={o.name} className="proto-oneof">
           <h3 className="proto-oneof-name">oneof {o.name}</h3>
-          <DocBlock raw={o.comment} />
+          <DocBlock markdown={o.comment} />
           <ul className="proto-oneof-fields">
             {message.fields
               .filter((f) => f.oneofName === o.name)
@@ -87,17 +88,17 @@ export const MessageBlock = ({ message, baseHref }: MessageBlockProps) => {
                       <DeprecatedBadge />
                     </>
                   ) : null}
-                  <DocBlock raw={f.comment} />
+                  <DocBlock markdown={f.comment} />
                 </li>
               ))}
           </ul>
         </section>
       ))}
-      <ViewSource declaration={printMessage(message)} />
+      <DeclarationSummary declaration={summarizeMessage(message, syntax)} />
       {message.nestedMessages.length > 0 || message.nestedEnums.length > 0 ? (
         <div className="proto-nested">
           {message.nestedMessages.map((nm) => (
-            <MessageBlock key={nm.fqn} message={nm} baseHref={baseHref} />
+            <MessageBlock key={nm.fqn} message={nm} syntax={syntax} baseHref={baseHref} />
           ))}
           {message.nestedEnums.map((ne) => (
             <EnumBlock key={ne.fqn} enumEntity={ne} />

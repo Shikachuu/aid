@@ -123,12 +123,14 @@ function isFile(p: string): Promise<boolean> {
 
 /**
  * Fragment links whose target page publishes its anchors but not this one.
- * Pages without `anchors` (OpenAPI, proto) render their ids in the browser, so
+ * Pages without `knownAnchorIds` (OpenAPI, proto) render their ids in the browser, so
  * links into them are not checked.
  */
 export function checkAnchors(pages: RenderedPage[]): Diagnostic[] {
   const anchorsByRoute = new Map(
-    pages.flatMap((p) => (p.anchors ? [[p.route.path, new Set(p.anchors)] as const] : [])),
+    pages.flatMap((p) =>
+      p.knownAnchorIds ? [[p.route.path, new Set(p.knownAnchorIds)] as const] : [],
+    ),
   )
   return pages.flatMap((page) =>
     (page.anchorRefs ?? []).flatMap((ref) => {
@@ -142,6 +144,7 @@ export function checkAnchors(pages: RenderedPage[]): Diagnostic[] {
 }
 
 function isKnownAnchor(fragment: string, anchors: Set<string>): boolean {
+  // Browsers scroll to the top for `#` and `#top` even without a matching id.
   if (fragment === "" || fragment === "top") {
     return true
   }
@@ -185,7 +188,9 @@ export function reportBrokenLinks(problems: Diagnostic[], ctx: BuildContext): vo
         (a.col ?? 0) - (b.col ?? 0),
     )
     .map((d) => `  ${location(d)}  ${d.code}  ${d.message}`)
-  const message = `aid: ${problems.length} broken reference${problems.length === 1 ? "" : "s"}\n${lines.join("\n")}`
+  const warnings = problems.filter((d) => d.severity !== "error").length
+  const warningNote = warnings === 0 ? "" : ` (${warnings} warning${warnings === 1 ? "" : "s"})`
+  const message = `aid: ${problems.length} broken reference${problems.length === 1 ? "" : "s"}${warningNote}\n${lines.join("\n")}`
   if (ctx.config.on_broken_links === "warn" || problems.every((d) => d.severity !== "error")) {
     console.warn(message)
     return

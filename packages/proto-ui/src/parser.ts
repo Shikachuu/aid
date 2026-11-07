@@ -3,17 +3,13 @@ import protobuf from "protobufjs"
 /** The `syntax` or `edition` the file declares. `unknown` means it declares neither. */
 export type ProtoSyntax = "proto2" | "proto3" | "editions" | "unknown"
 
-/** A type as written in a field or RPC, with its resolved target when one exists. */
 export type ProtoTypeRef = {
-  /** Raw type name as written in the .proto source. */
   raw: string
   /** Resolved fully-qualified name (no leading dot) if a user-defined type, else null. */
   fqn: string | null
-  /** True when the type is a built-in scalar such as int32, string or bytes. */
   scalar: boolean
 }
 
-/** A message field. Fields inside a oneof carry `oneofName`. */
 export type ProtoField = {
   name: string
   number: number
@@ -36,7 +32,6 @@ export type ProtoOneOf = {
   comment: string | null
 }
 
-/** An enum value. `deprecated` reflects the `[deprecated = true]` value option. */
 export type ProtoEnumValue = {
   name: string
   number: number
@@ -70,7 +65,6 @@ export type ProtoMessage = {
   nestedEnums: ProtoEnum[]
 }
 
-/** An RPC method. The streaming flags mirror the `stream` keyword on the request and response. */
 export type ProtoRpc = {
   name: string
   comment: string | null
@@ -112,10 +106,12 @@ const isScalar = (raw: string): boolean => Object.hasOwn(protobuf.types.basic, r
  * resolves.
  */
 export const parseProto = (source: string): ProtoAst => {
-  const result = protobuf.parse(source, {
-    keepCase: true,
-    alternateCommentMode: true,
-  })
+  let result: protobuf.IParserResult
+  try {
+    result = protobuf.parse(source, { keepCase: true, alternateCommentMode: true })
+  } catch (err) {
+    throw withNestingLine(err, source)
+  }
 
   resolveFeatures(result.root)
   resolveEach(result.root)
@@ -181,6 +177,53 @@ const tryResolve = (obj: protobuf.ReflectionObject): void => {
   }
 }
 
+/** protobufjs reports `max depth exceeded` without a position, so add the line where it happens. */
+const withNestingLine = (err: unknown, source: string): unknown => {
+  if (!(err instanceof Error) || err.message !== "max depth exceeded") {
+    return err
+  }
+  const limit = protobuf.util.nestingLimit
+  const code = blankComments(source)
+  let depth = 0
+  let line = 1
+  for (const char of code) {
+    if (char === "\n") {
+      line++
+    } else if (char === "{") {
+      depth++
+      if (depth > limit) {
+        return new Error(
+          `max depth exceeded: declarations nest deeper than ${limit} (line ${line})`,
+          {
+            cause: err,
+          },
+        )
+      }
+    } else if (char === "}") {
+      depth--
+    }
+  }
+  return err
+}
+
+const COMMENT_OR_STRING = /\/\*[\s\S]*?\*\/|\/\/[^\n]*|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g
+
+const blankComments = (source: string): string =>
+  source.replace(COMMENT_OR_STRING, (match) =>
+    match.startsWith("/") ? match.replace(/[^\r\n]/g, " ") : match,
+  )
+
+/** Drop the `!` of `//!` comments, which protobufjs keeps. */
+const docComment = (comment: string | null | undefined): string | null => {
+  if (comment == null) {
+    return null
+  }
+  const lines = comment.split("\n")
+  return lines.every((line) => line === "" || /^!(?:\s|$)/.test(line))
+    ? lines.map((line) => line.replace(/^! ?/, "")).join("\n")
+    : comment
+}
+
 const walkNamespace = (
   ns: protobuf.NamespaceBase,
   messages: ProtoMessage[],
@@ -202,14 +245,16 @@ const walkNamespace = (
 }
 
 const mapMessage = (t: protobuf.Type, syntax: ProtoSyntax): ProtoMessage => {
-  const fields: ProtoField[] = t.fieldsArray.map((f) => mapField(f, syntax))
+  const fields: ProtoField[] = t.fieldsArray
+    .filter((f) => !f.declaringField)
+    .map((f) => mapField(f, syntax))
 
   const oneofs: ProtoOneOf[] = []
   for (const o of t.oneofsArray) {
     if (o.isProto3Optional) {
       continue
     }
-    oneofs.push({ name: o.name, comment: o.comment ?? null })
+    oneofs.push({ name: o.name, comment: docComment(o.comment) })
   }
 
   const nestedMessages: ProtoMessage[] = []
@@ -226,7 +271,7 @@ const mapMessage = (t: protobuf.Type, syntax: ProtoSyntax): ProtoMessage => {
     kind: "message",
     name: t.name,
     fqn: stripLeadingDot(t.fullName),
-    comment: t.comment ?? null,
+    comment: docComment(t.comment),
     deprecated: optionFlag(t.options, "deprecated"),
     fields,
     oneofs,
@@ -242,7 +287,7 @@ const mapEnum = (e: protobuf.Enum): ProtoEnum => {
     values.push({
       name,
       number,
-      comment: e.comments?.[name] ?? null,
+      comment: docComment(e.comments?.[name]),
       deprecated: optionFlag(valueOptions[name], "deprecated"),
     })
   }
@@ -250,7 +295,7 @@ const mapEnum = (e: protobuf.Enum): ProtoEnum => {
     kind: "enum",
     name: e.name,
     fqn: stripLeadingDot(e.fullName),
-    comment: e.comment ?? null,
+    comment: docComment(e.comment),
     deprecated: optionFlag(e.options, "deprecated"),
     values,
   }
@@ -260,14 +305,14 @@ const mapService = (s: protobuf.Service): ProtoService => ({
   kind: "service",
   name: s.name,
   fqn: stripLeadingDot(s.fullName),
-  comment: s.comment ?? null,
+  comment: docComment(s.comment),
   deprecated: optionFlag(s.options, "deprecated"),
   rpcs: s.methodsArray.map(mapMethod),
 })
 
 const mapMethod = (m: protobuf.Method): ProtoRpc => ({
   name: m.name,
-  comment: m.comment ?? null,
+  comment: docComment(m.comment),
   deprecated: optionFlag(m.options, "deprecated"),
   requestType: makeTypeRef(m.requestType, m.resolvedRequestType),
   responseType: makeTypeRef(m.responseType, m.resolvedResponseType),
@@ -285,7 +330,7 @@ const mapField = (f: protobuf.FieldBase, syntax: ProtoSyntax): ProtoField => {
     rule: detectRule(f, syntax, isMap),
     type: makeTypeRef(f.type, f.resolvedType),
     mapKey,
-    comment: f.comment ?? null,
+    comment: docComment(f.comment),
     deprecated: optionFlag(f.options, "deprecated"),
     oneofName: f.partOf && !f.partOf.isProto3Optional ? f.partOf.name : undefined,
   }
@@ -332,7 +377,7 @@ const optionFlag = (options: Record<string, unknown> | undefined, name: string):
   options?.[name] === true || options?.[name] === "true"
 
 const detectSyntax = (source: string): ProtoSyntax => {
-  const code = source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "")
+  const code = blankComments(source)
   const declared = code.match(/^\s*syntax\s*=\s*["']([^"']+)["']/m)?.[1]
   if (declared === "proto2" || declared === "proto3") {
     return declared
@@ -344,43 +389,36 @@ const detectSyntax = (source: string): ProtoSyntax => {
 }
 
 const findPackageLeadingComment = (source: string): string | null => {
-  const pkgIndex = source.search(/^\s*package\s+/m)
+  const pkgIndex = blankComments(source).search(/^[ \t]*package\s/m)
   if (pkgIndex === -1) {
     return null
   }
 
-  const before = source.slice(0, pkgIndex).trimEnd()
-  if (before.endsWith("*/")) {
-    return blockCommentText(before)
+  const lines = source.slice(0, pkgIndex).split(/\r?\n/)
+  lines.pop()
+  if ((lines.at(-1) ?? "").trim().endsWith("*/")) {
+    return blockCommentText(lines.join("\n").trimEnd())
   }
-  const lines = before.split(/\r?\n/)
 
   const collected: string[] = []
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = (lines[i] ?? "").trim()
-    if (line === "") {
-      if (collected.length > 0) {
-        break
-      }
-      continue
-    }
-    if (line.startsWith("//")) {
-      collected.unshift(line.replace(/^\/\/\s?/, ""))
-    } else {
+    if (!line.startsWith("//")) {
       break
     }
+    collected.unshift(line.replace(/^\/\/[/!]?\s?/, ""))
   }
 
   return collected.length > 0 ? collected.join("\n") : null
 }
 
 const blockCommentText = (before: string): string | null => {
-  const start = before.lastIndexOf("/*")
-  if (start === -1) {
+  const last = [...before.matchAll(COMMENT_OR_STRING)].at(-1)
+  if (!last || !last[0].startsWith("/*") || last.index + last[0].length !== before.length) {
     return null
   }
-  const lines = before
-    .slice(start + 2, -2)
+  const lines = last[0]
+    .slice(2, -2)
     .replace(/^\*/, "")
     .split(/\r?\n/)
     .map((line) => line.trim())

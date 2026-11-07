@@ -92,6 +92,11 @@ describe("useProtoAst", () => {
     expect(result.source).toBe(VALID)
   })
 
+  test("an empty protoUrl is an error, not an endless load", async () => {
+    await render({ protoUrl: "" })
+    expect(latest().status).toBe("error")
+  })
+
   test("an HTTP error becomes the error state", async () => {
     await render({ protoUrl: "/missing.proto" })
     await settle()

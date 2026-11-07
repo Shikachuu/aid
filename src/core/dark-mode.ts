@@ -1,23 +1,28 @@
 import { blankStringsAndComments, findMatchingBrace } from "./internal/css-scan"
 
-/** Result of deriving a dark palette from light `@theme` tokens. */
+/**
+ * A dark palette derived from light `@theme` tokens. `darkBlock` is an
+ * `@media (prefers-color-scheme: dark)` rule, or "" when no token was derivable.
+ */
 export type DerivedDarkPalette = {
-  /** "@media (prefers-color-scheme: dark) { :root { ... } }" or "" if nothing was derivable. */
   darkBlock: string
-  /** Human-readable diagnostics for color tokens that couldn't be derived. */
   warnings: string[]
 }
 
-const THEME_OPEN_RE = /@theme\s*\{/g
+const THEME_OPEN_RE = /@theme\b([^{};]*)\{/g
 const DECL_RE = /(--[\w-]+)\s*:\s*([^;]+);/g
-const OKLCH_RE = /^oklch\(\s*([\d.]+%?)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+%?))?\s*\)$/
+const OKLCH_RE =
+  /^oklch\(\s*([\d.]+%?)\s+([\d.]+|none)\s+([\d.]+(?:deg)?|none)(?:\s*\/\s*([\d.]+%?))?\s*\)$/
+const UNREACHABLE_THEME_OPTIONS = ["inline", "reference"]
 
 /**
- * Walk every `@theme { ... }` block in the input CSS and derive a dark
- * counterpart for every `--color-*` token whose value is `oklch(...)`.
- * Chroma, hue, and alpha pass through; only the lightness changes.
- * `--color-*` tokens whose value is not oklch are skipped with a warning.
- * Non-color tokens are silently ignored.
+ * Walk every `@theme` block in the input CSS, with or without options such as
+ * `static`, and derive a dark counterpart for every `--color-*` token whose
+ * value is `oklch(...)`. Chroma, hue, and alpha pass through; only the
+ * lightness changes. `--color-*` tokens whose value is not oklch are skipped
+ * with a warning, and so are `@theme inline` and `@theme reference` blocks,
+ * whose tokens utilities do not read through CSS variables. Non-color tokens
+ * are ignored. `@theme` blocks in files the stylesheet `@import`s are not read.
  *
  * Uses `:root` (not `@theme`) inside the @media wrapper because Tailwind 4
  * drops `@theme` variables that no utility uses, and the dark values must
@@ -41,6 +46,15 @@ export function deriveDarkPalette(css: string): DerivedDarkPalette {
     }
     const body = code.slice(bodyStart, bodyEnd)
     THEME_OPEN_RE.lastIndex = bodyEnd + 1
+    const options = (match[1] ?? "").trim()
+    if (options.split(/\s+/).some((o) => UNREACHABLE_THEME_OPTIONS.includes(o))) {
+      if (/--color-/.test(body)) {
+        warnings.push(
+          `dark-mode auto-derivation skipped an @theme ${options} block: a dark :root override cannot reach its colors. Use theme.dark_mode: "manual" or a plain @theme block.`,
+        )
+      }
+      continue
+    }
 
     for (const [, name, rawValue] of body.matchAll(DECL_RE)) {
       if (!name || !rawValue || !name.startsWith("--color-")) {
@@ -82,7 +96,8 @@ function invertOklchLightness(value: string): string | null {
   if (!Number.isFinite(lNum)) {
     return null
   }
-  const lOut = `${Math.round(darkLightness(lNum, Number.parseFloat(c)) * 1e4) / 1e4}%`
+  const chroma = c === "none" ? 0 : Number.parseFloat(c)
+  const lOut = `${Math.round(darkLightness(lNum, chroma) * 1e4) / 1e4}%`
   const alphaSuffix = alpha !== undefined ? ` / ${alpha}` : ""
   return `oklch(${lOut} ${c} ${h}${alphaSuffix})`
 }

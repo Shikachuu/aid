@@ -10,7 +10,10 @@ const HTML_ESCAPES: Record<string, string> = {
 
 const escapeHtml = (text: string): string => text.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c] ?? c)
 
-const SAFE_HREF = /^(?:https?:|mailto:|[^:&\s]*(?:[/?#]|$))/i
+const ALLOWED_SCHEME = /^(?:https?|mailto):/i
+const RELATIVE_URL = /^[^:&\s]*(?:[/?#]|$)/
+
+const isSafeHref = (href: string): boolean => ALLOWED_SCHEME.test(href) || RELATIVE_URL.test(href)
 
 const marked = new Marked({
   async: false,
@@ -18,15 +21,10 @@ const marked = new Marked({
     html: ({ text }) => escapeHtml(text),
   },
   walkTokens: (token) => {
-    if ((token.type === "link" || token.type === "image") && !SAFE_HREF.test(token.href)) {
+    if ((token.type === "link" || token.type === "image") && !isSafeHref(token.href)) {
       token.href = "#"
     }
   },
 })
 
-/**
- * Render a proto comment from markdown to HTML. Raw HTML in the comment comes out escaped. Links
- * and images with a scheme other than http, https or mailto, such as `javascript:`, get `#` as
- * their URL.
- */
-export const renderDocMarkdown = (raw: string): string => marked.parse(raw) as string
+export const renderSafeDocMarkdown = (markdown: string): string => marked.parse(markdown) as string

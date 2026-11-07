@@ -4,6 +4,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import type { Route } from "../../../src/core/types"
 import { renderMarkdown } from "../../../src/renderers/markdown"
+import { MAX_HIGHLIGHT_LINES } from "../../../src/renderers/markdown/shiki"
 
 let dir: string
 
@@ -285,10 +286,10 @@ describe("renderMarkdown", () => {
       "page.md",
       '# Title\n\nSet id=prose here.\n\n```html\n<div id="code"></div>\n```\n\n<div ID="Raw"></div>\n',
     )
-    expect(page.anchors).toContain("title")
-    expect(page.anchors).toContain("Raw")
-    expect(page.anchors).not.toContain("prose")
-    expect(page.anchors).not.toContain("code")
+    expect(page.knownAnchorIds).toContain("title")
+    expect(page.knownAnchorIds).toContain("Raw")
+    expect(page.knownAnchorIds).not.toContain("prose")
+    expect(page.knownAnchorIds).not.toContain("code")
   })
 
   test("a leading raw <h1> counts as the page H1", async () => {
@@ -327,5 +328,49 @@ describe("renderMarkdown", () => {
     expect(page.html).toContain('src="/page/a%20b.png"')
     expect(page.html).toContain('src="/page/x.png?v=1"')
     expect(page.html).toContain('src="/page/icons.svg#star"')
+  })
+
+  test("the inserted H1 has no id, so a heading with the same text keeps the plain slug", async () => {
+    const page = await renderFixture("faq.md", "Intro.\n\n## faq\n")
+    expect(page.html).toMatch(/<h1>faq<\/h1>/)
+    expect(page.html).toMatch(/<h2 id="faq">/)
+  })
+
+  test("the footnote label gets no anchor link and is not a search heading", async () => {
+    const page = await renderFixture("page.md", "# T\n\nText[^1].\n\n[^1]: A note.\n")
+    expect(page.html).toMatch(/<h2 class="sr-only" id="footnote-label">Footnotes<\/h2>/)
+    expect(page.searchTokens.headings).toEqual(["T"])
+  })
+
+  test("relative URLs in raw HTML become warnings with the source line", async () => {
+    const page = await renderFixture(
+      "page.md",
+      `---\ntitle: T\n---\n\n<img src="./x.png">\n\n<a href="https://example.com">ok</a> <img src="/abs.png">\n\n<a href="other.md">x</a>\n`,
+    )
+    expect(page.diagnostics).toEqual([
+      expect.objectContaining({ severity: "warn", code: "html/relative-url", line: 5 }),
+      expect.objectContaining({ severity: "warn", code: "html/relative-url", line: 9 }),
+    ])
+  })
+
+  test("raw pre.mermaid HTML loads the mermaid runtime", async () => {
+    const page = await renderFixture(
+      "page.md",
+      '# T\n\n<pre class="mermaid">\ngraph LR\n  A --> B\n</pre>\n',
+    )
+    expect(page.hasMermaid).toBe(true)
+  })
+
+  test("a code block over the highlight limit renders as plain text", async () => {
+    const long = Array.from(
+      { length: MAX_HIGHLIGHT_LINES + 1 },
+      (_, i) => `const x${i} = ${i}`,
+    ).join("\n")
+    const page = await renderFixture(
+      "page.md",
+      `# T\n\n\`\`\`ts\n${long}\n\`\`\`\n\n\`\`\`ts\nconst y = 1\n\`\`\`\n`,
+    )
+    expect((page.html.match(/class="shiki/g) ?? []).length).toBe(1)
+    expect(page.html).toContain("<pre><code>const x0 = 0")
   })
 })

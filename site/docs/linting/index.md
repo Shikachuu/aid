@@ -86,7 +86,7 @@ flowchart TD
 ```
 
 1. aid parses `--filter` into a set of tools. No filter selects all five. An unknown name stops the run with exit code 1.
-2. aid walks the target directory once, dot folders such as `.github` and `.vscode` included, and matches each file against the patterns of each selected tool. It does not enter `node_modules`, `dist`, `.git`, `.aid`, and the other folders listed in [the lint defaults reference](../reference/lint-defaults.md). It does not read `.gitignore`. A folder aid cannot read prints a `read-error` warning, and aid lints the rest. A target directory that does not exist stops the run with exit code 1.
+2. aid walks the target directory once, dot folders such as `.github` and `.vscode` included, and matches each file against the patterns of each selected tool. It does not enter `node_modules`, `dist`, `.git`, `.aid`, and the other folders listed in [the lint defaults reference](../reference/lint-defaults.md). It does not read `.gitignore`. A folder or file aid cannot read, or a file that is not UTF-8, prints a `read-error` warning, and aid lints the rest. aid lists a symlink to a file outside the target directory. It skips a symlink to a file inside it, because the walk lists that file already, and it never enters a symlinked folder. A target directory that does not exist stops the run with exit code 1.
 3. aid runs the selected tools in parallel. A tool with no matching files passes with no findings.
 4. Each tool finds its config file (see [configuring the linters](./configuring.md)) or falls back to the bundled default.
 5. aid maps every finding to one shape: file, line, column, severity, code, message.
@@ -125,14 +125,17 @@ The `bun` tool runs `bun lint` from the Bun runtime that every aid binary embeds
 
 When the project has no lint config, aid turns off every `bun lint` rule category and runs only the rules in [the bundled rule table](../reference/lint-defaults.md#bun-default-bun). [Configuring the linters](./configuring.md#bun-lint-and-bun-fmt) lists the config files that replace it.
 
-`bun lint` does not check JSON files. aid parses each one instead and reports a file that does not parse as `json-syntax-error`. `.json` files must be strict JSON. `.jsonc` files and the JSON-with-comments files that tools read, such as `tsconfig.json`, `jsconfig.json`, `.oxlintrc.json`, and `.vscode/*.json`, may hold comments and trailing commas.
+`bun lint` does not check JSON files. aid parses each one instead and reports a file that does not parse as `json-syntax-error`. `.json` files must be strict JSON. `.jsonc` files and the JSON-with-comments files that tools read, such as `tsconfig.json`, `jsconfig.json`, `turbo.json`, `biome.json`, `deno.json`, `.oxlintrc.json`, and `.vscode/*.json`, may hold comments and trailing commas.
 
 ## CSS checks
 
 The `css` tool runs every check in [the CSS checks table](../reference/lint-defaults.md#css-checks-css) on each CSS file. It has no config file. Each code matches the name of the Stylelint rule with the same intent. A run has two stages:
 
-1. lightningcss, the CSS parser that `aid build` uses, parses the file. aid reports its parse errors and walks the parsed rules for unknown properties, values, selectors, at-rules, and media features, and for duplicates. Tailwind's directives, such as `@theme`, `@apply`, `@utility`, and `@custom-variant`, pass.
-2. When the file imports `tailwindcss` or `aid/theme`, aid compiles it with Tailwind the way `aid build` does. Tailwind stops at the first error, such as an unknown utility in `@apply`, so aid reports at most one `tailwind` finding per file.
+1. lightningcss, the CSS parser that `aid build` uses, parses the file. aid reports its parse errors and walks the parsed rules for unknown properties, values, selectors, at-rules, and media features, and for duplicates. Declarations in `@page` and its margin boxes count too, where the page descriptors `size`, `marks`, `bleed`, and `page-orientation` pass. Tailwind's directives, such as `@theme`, `@apply`, `@utility`, and `@custom-variant`, pass.
+2. When the file imports `tailwindcss` or `aid/theme`, outside a comment, aid compiles it with Tailwind the way `aid build` does. Tailwind stops at the first error, such as an unknown utility in `@apply`, so aid reports at most one `tailwind` finding per file. A CSS parse error that Tailwind reports names the file and line it found it in, which can be an imported partial. An `@apply` error in an imported partial points at the `@apply` line in that partial.
+
+> [!WARNING]
+> Compiling runs code. A `@plugin` or `@config` in the stylesheet loads a JavaScript file and runs it during `aid lint`, the same as during `aid build`. Lint only stylesheets you trust.
 
 aid knows a name when a W3C spec defines it. `src/lint/css-data.json` holds the names, generated from the `@webref/css` and `@webref/elements` packages. Custom properties, vendor-prefixed properties, and custom elements pass. Values that lightningcss cannot parse pass when every keyword and unit in them appears in a CSS spec, so newer values such as `word-break: auto-phrase` do not fail.
 
@@ -177,4 +180,4 @@ The exit code follows the same rule as pretty output.
 ## Limitations
 
 > [!WARNING]
-> lightningcss records no position for a declaration. aid searches the rule's source for the property name, so a finding can point at the wrong line when a nested rule declares the same property first.
+> lightningcss records no position for a declaration. aid searches the rule's own declarations for the property name and falls back to the rule's line when it finds none, so a finding can point at the selector instead of the declaration.

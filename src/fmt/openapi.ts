@@ -56,7 +56,11 @@ export const formatOpenApi = async (
     return formatted
   })
   const failed = diagnostics.some((d) => d.severity === "error")
-  return { ...result, ok: result.ok && !failed, diagnostics }
+  return {
+    ...result,
+    ok: result.ok && !failed,
+    diagnostics: [...result.diagnostics, ...diagnostics],
+  }
 }
 
 const sameData = (before: unknown, after: string): boolean => {

@@ -178,6 +178,31 @@ describe("renderHtml", () => {
     expect(md).toContain("~~old~~")
   })
 
+  test("elements markdown cannot express stay HTML in the .md export", async () => {
+    const page = await renderFixture(
+      "rich.html",
+      doc(
+        "<title>T</title>",
+        [
+          "<p>Intro.</p>",
+          "<details><summary>More</summary><p>Hidden.</p></details>",
+          "<dl><dt>Term</dt><dd>Meaning</dd></dl>",
+          '<table><tr><th colspan="2">Wide</th></tr><tr><td>a</td><td>b</td></tr></table>',
+          "<table><tr><th>K</th></tr><tr><td>line 1<br>line 2</td></tr></table>",
+          "<table><tr><th>Plain</th></tr><tr><td>x</td></tr></table>",
+        ].join(""),
+      ),
+    )
+    const md = page.exports[0]?.body ?? ""
+    expect(md).toContain("Intro.")
+    expect(md).toContain("<details><summary>More</summary><p>Hidden.</p></details>")
+    expect(md).toContain("<dl><dt>Term</dt><dd>Meaning</dd></dl>")
+    expect(md).toContain('<th colspan="2">Wide</th>')
+    expect(md).toContain("<td>line 1<br>line 2</td>")
+    expect(md).toContain("| Plain |")
+    expect(page.html).toContain("<details><summary>More</summary>")
+  })
+
   test("search indexes visible body text and every heading, not markup or scripts", async () => {
     const page = await renderFixture(
       "page.html",
@@ -198,6 +223,6 @@ describe("renderHtml", () => {
         `<h2 ID="Upper">U</h2><a name="old"></a><p>set id=fake here</p><code>name="code"</code>`,
       ),
     )
-    expect(page.anchors).toEqual(["Upper", "old"])
+    expect(page.knownAnchorIds).toEqual(["Upper", "old"])
   })
 })
