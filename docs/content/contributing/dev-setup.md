@@ -75,7 +75,7 @@ aid embeds native binaries from npm packages, and each platform's package must m
 | Group | Must match |
 | --- | --- |
 | `@bufbuild/buf` | The four `@bufbuild/buf-<platform>` pins in `package.json` and their installed versions. |
-| `@tailwindcss/oxide` | The four `@tailwindcss/oxide-<platform>` pins in `package.json`, their installed versions, and the installed `@tailwindcss/node`. |
+| `@tailwindcss/oxide` | The four `@tailwindcss/oxide-<platform>` pins in `package.json`, their installed versions, the installed `@tailwindcss/node`, and the installed `tailwindcss`. |
 | `lightningcss` | The exact version that `@tailwindcss/node` declares, for aid's own `lightningcss` pin in `package.json`, the installed `lightningcss`, and its four platform packages. |
 | Bun runtime | The four `@oven/bun-<platform>` pins in `package.json`, which must equal the `mise.toml` pin. `scripts/compile.ts` passes each one to `Bun.build` as the target's runtime, because cross-compiling a canary would otherwise download the stable runtime. |
 | Bun | The running Bun, the `mise.toml` pin, `engines.bun` (against the pin's base version), and the major and minor version of `@types/bun`. A canary reports only its base version, so for a canary pin the running binary must match the host's `@oven/bun-<platform>` binary byte for byte. |
