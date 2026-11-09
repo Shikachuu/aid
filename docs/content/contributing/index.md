@@ -32,7 +32,7 @@ aid is one Bun and TypeScript codebase that compiles to a single binary per plat
 | `tests/unit` | Unit tests for single modules. |
 | `tests/integration` | Tests that run `build()` on a temporary project. |
 | `tests/fixtures` | The `sample-site` project and the lint fixtures. |
-| `site/` | This documentation site, built by aid. |
+| `docs/` | This documentation site, built by aid. |
 | `.claude/` | Claude Code setup: style rules in `rules/`, the format hook in `hooks/`, the `docs-sync` skill in `skills/`, and the hooks and tool permissions in `settings.json`. |
 | `.mcp.json` | The codebase-memory-mcp and Context7 MCP servers for Claude Code. See [development setup](./dev-setup.md#mcp-servers-for-claude-code). |
 

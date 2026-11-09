@@ -5,7 +5,7 @@ const BOM = "\uFEFF"
 const UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
 
 /** A file's text without its byte order mark, and whether it had one, so a rewrite can put it back. */
-export type SourceFile = { text: string; bom: boolean }
+type SourceFile = { text: string; bom: boolean }
 
 /** The `code` of a Node.js file system error, such as `ENOENT`, for a one-line message. */
 export const errorCode = (err: unknown): string =>

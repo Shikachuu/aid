@@ -6,7 +6,7 @@ import { broadcast, closeClients, type DevState } from "./state"
 import { watchContent } from "./watcher"
 
 /** Inputs for `startDevSession`. */
-export type StartDevSessionArgs = {
+type StartDevSessionArgs = {
   ctx: BuildContext
   host: string
   port: number

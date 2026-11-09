@@ -113,8 +113,7 @@ export const listFiles = async (
   return { files: files.sort(), errors }
 }
 
-/** Keep the relative `files` that match any of `patterns`, as absolute paths under `root` in the order of `files`. */
-export const matchFiles = (
+const matchFiles = (
   root: string,
   files: readonly string[],
   patterns: readonly string[],

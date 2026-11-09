@@ -8,7 +8,7 @@ file=$(printf '%s' "$payload" | jq -r '.tool_input.file_path // .tool_input.note
 
 case "$file" in
   */node_modules/*|*/dist/*|*/.bun/*|*/schemas/aid.schema.json) exit 0 ;;
-  */site/docs/reference/*|*/site/static/schemas/*|*/.prettierrc.json) exit 0 ;;
+  */docs/content/reference/*|*/docs/static/schemas/*|*/.prettierrc.json) exit 0 ;;
 esac
 
 bun_() { mise -C "$root" x -- bun "$@"; }

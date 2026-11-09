@@ -4,7 +4,7 @@ import { blankStringsAndComments, findMatchingBrace } from "./internal/css-scan"
  * A dark palette derived from light `@theme` tokens. `darkBlock` is an
  * `@media (prefers-color-scheme: dark)` rule, or "" when no token was derivable.
  */
-export type DerivedDarkPalette = {
+type DerivedDarkPalette = {
   darkBlock: string
   warnings: string[]
 }

@@ -6,8 +6,7 @@ import { driftedFiles, type GeneratedFile } from "./generated-files"
 
 const ROOT = path.resolve(import.meta.dir, "..")
 
-/** Rules the aid repository adds on top of the bundled defaults. */
-export const repoRules: Record<string, LintRule> = {
+const repoRules: Record<string, LintRule> = {
   "import/no-default-export": "error",
   "import/no-namespace": "error",
   curly: ["error", "all"],

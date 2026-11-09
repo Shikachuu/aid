@@ -35,8 +35,8 @@ describe("DOCS_MAP", () => {
     const mapped = new Set([...DOCS_MAP.flatMap((e) => e.pages), ...HUB_PAGES])
     const pages = (await repoFiles()).filter(
       (f) =>
-        f.startsWith("site/docs/") &&
-        !f.startsWith("site/docs/reference/") &&
+        f.startsWith("docs/content/") &&
+        !f.startsWith("docs/content/reference/") &&
         /\.(md|html|proto)$/.test(f),
     )
     expect(pages.filter((p) => !mapped.has(p))).toEqual([])
@@ -47,10 +47,10 @@ describe("affectedPages", () => {
   test("maps a source change to its pages and flags pages the change already touches", () => {
     const { pages, unmapped } = affectedPages([
       "src/lint/markdown.ts",
-      "site/docs/linting/index.md",
+      "docs/content/linting/index.md",
     ])
-    expect(pages).toContainEqual({ page: "site/docs/linting/index.md", touched: true })
-    expect(pages).toContainEqual({ page: "site/docs/linting/configuring.md", touched: false })
+    expect(pages).toContainEqual({ page: "docs/content/linting/index.md", touched: true })
+    expect(pages).toContainEqual({ page: "docs/content/linting/configuring.md", touched: false })
     expect(unmapped).toEqual([])
   })
 

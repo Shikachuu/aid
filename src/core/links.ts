@@ -6,10 +6,10 @@ import { routePathFromStem, routeUrl } from "./router"
 import type { AnchorRef, BuildContext, RenderedPage, Route } from "./types"
 
 /** Diagnostic codes for references the build could not resolve. */
-export type BrokenLinkCode = "link/missing" | "link/excluded" | "link/outside"
+type BrokenLinkCode = "link/missing" | "link/excluded" | "link/outside"
 
 /** Outcome of resolving one author-written href against the route table. */
-export type ResolvedLink =
+type ResolvedLink =
   | { kind: "skip" }
   | { kind: "page"; href: string; routePath: string; fragment: string }
   | { kind: "asset"; href: string }

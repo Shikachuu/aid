@@ -1,31 +1,32 @@
 ---
 title: Docs site
-description: How aid builds its own documentation site from site/, which pages are generated, and how to keep the pages in sync with the code.
+description: How aid builds its own documentation site from docs/, which pages are generated, and how to keep the pages in sync with the code.
 llms: optional
 sidebar:
   order: 8
 ---
 
-This site is an aid project in `site/`, and aid from the same checkout builds it. A broken link in these pages fails `bun run docs:build` the same way it fails any aid build.
+This site is an aid project in `docs/`, and aid from the same checkout builds it. A broken link in these pages fails `bun run docs:build` the same way it fails any aid build.
 
 ## Files
 
 | Path | Role |
 | --- | --- |
-| `site/aid.yaml` | The project config. |
-| `site/main.css` | The stylesheet: `@import "tailwindcss"`, `@import "aid/theme"`, and an `@theme` block that sets `--color-aid-accent`. |
-| `site/templates/llms.txt` | An llms.txt template that replaces the bundled default. It adds an intro paragraph and a line above the optional section. |
-| `site/docs/` | The pages. `site/docs/_meta.yaml` sets the order and labels of the top-level folders. |
-| `site/docs/reference/` | Generated reference pages. Never edit them by hand. |
-| `site/static/schemas/aid.schema.json` | A generated copy of `schemas/aid.schema.json`. aid copies it to `/aid/schemas/aid.schema.json` in the output. |
+| `docs/aid.yaml` | The project config. |
+| `docs/main.css` | The stylesheet: `@import "tailwindcss"`, `@import "aid/theme"`, and an `@theme` block that sets `--color-aid-accent`. |
+| `docs/templates/llms.txt` | An llms.txt template that replaces the bundled default. It adds an intro paragraph and a line above the optional section. |
+| `docs/content/` | The pages. `docs/content/_meta.yaml` sets the order and labels of the top-level folders. |
+| `docs/content/reference/` | Generated reference pages. Never edit them by hand. |
+| `docs/static/schemas/aid.schema.json` | A generated copy of `schemas/aid.schema.json`. aid copies it to `/aid/schemas/aid.schema.json` in the output. |
 
-`site/aid.yaml` sets these keys:
+`docs/aid.yaml` sets these keys:
 
 - `base_path: /aid`, because GitHub Pages serves the site under the repository name.
 - `base_url: https://shikachuu.github.io`, the origin only. aid appends `base_path` to it for the absolute links in llms.txt.
-- `dir.templates: templates`, so aid reads `site/templates/llms.txt`. Tailwind also scans that directory for class names.
+- `dir.content: content`, so the pages live in `docs/content/` instead of a nested `docs/docs/`.
+- `dir.templates: templates`, so aid reads `docs/templates/llms.txt`. Tailwind also scans that directory for class names.
 
-The other keys keep their defaults: pages in `docs/`, static files in `static/`, output in `dist/`, and the stylesheet `main.css`. [Paths and URLs](../configuration/paths-and-urls.md) explains `base_path` and `base_url`.
+The other keys keep their defaults: static files in `static/`, output in `dist/`, and the stylesheet `main.css`. [Paths and URLs](../configuration/paths-and-urls.md) explains `base_path` and `base_url`.
 
 ## Scripts
 
@@ -33,24 +34,24 @@ The other keys keep their defaults: pages in `docs/`, static files in `static/`,
 bun run docs:dev
 ```
 
-`docs:dev` runs `bun src/cli/index.ts dev site` and serves the site at `http://localhost:3000/aid/` with live reload.
+`docs:dev` runs `bun src/cli/index.ts dev docs` and serves the site at `http://localhost:3000/aid/` with live reload.
 
 ```sh
 bun run docs:build
 ```
 
-`docs:build` runs `bun src/cli/index.ts build site --clean` and writes `site/dist`.
+`docs:build` runs `bun src/cli/index.ts build docs --clean` and writes `docs/dist`.
 
 ```sh
 bun run docs:lint
 ```
 
-`docs:lint` runs `bun src/cli/index.ts lint site --filter md`, which is markdownlint only. The other tools stay off for two reasons:
+`docs:lint` runs `bun src/cli/index.ts lint docs --filter md`, which is markdownlint only. The other tools stay off for two reasons:
 
 - buf's `STANDARD` rules include `PACKAGE_DIRECTORY_MATCH`. A `.proto` example under `content-types/` cannot pass it, because a proto package name cannot contain a hyphen.
 - Spectral only lints files named `openapi.*` or `*.openapi.*`, or files under an `openapi/` directory (`PATTERNS` in `src/lint/discovery.ts`), so it would not see the generated `reference/config-schema.yaml`.
 
-To lint only the pages, run `bun src/cli/index.ts lint site/docs --filter md`.
+To lint only the pages, run `bun src/cli/index.ts lint docs/content --filter md`.
 
 ## Generated reference pages
 
@@ -61,13 +62,13 @@ bun run gen-docs --check
 
 `scripts/gen-docs.ts` writes eight files:
 
-- `site/docs/reference/index.md`, `cli.md`, `configuration.md`, `frontmatter.md`, and `lint-defaults.md`.
-- `site/docs/reference/config-schema.yaml`, the config schemas as an OpenAPI document, so aid renders them with Scalar.
-- `site/docs/reference/aid-schema.json` and `site/static/schemas/aid.schema.json`, the published JSON Schema.
+- `docs/content/reference/index.md`, `cli.md`, `configuration.md`, `frontmatter.md`, and `lint-defaults.md`.
+- `docs/content/reference/config-schema.yaml`, the config schemas as an OpenAPI document, so aid renders them with Scalar.
+- `docs/content/reference/aid-schema.json` and `docs/static/schemas/aid.schema.json`, the published JSON Schema.
 
 It reads the Zod schemas (`AidConfigSchema` in `src/core/config.ts`, `FrontmatterSchema` and `NavMetaSchema` in `src/renderers/markdown/frontmatter.ts`), the citty command tree from `src/cli/main.ts`, and the lint tables in `src/lint/discovery.ts`, `src/lint/configs/*`, and `CSS_RULES` in `src/lint/css.ts`. It builds the JSON Schema in process with the same function as `emit-schema`, so it never copies a stale `schemas/aid.schema.json`. The generated files carry no "do not edit" marker: `bun run check` runs `gen-docs --check`, which catches a hand edit.
 
-`site/docs/reference/` belongs to the script. A file there that it does not generate, such as a page left over from a rename, counts as drift under `--check`, and a plain run deletes it.
+`docs/content/reference/` belongs to the script. A file there that it does not generate, such as a page left over from a rename, counts as drift under `--check`, and a plain run deletes it.
 
 With `--check`, the script writes nothing. It lists every file whose content differs, and every leftover file, and exits 1. Run the check before you commit, so a change to a flag, a config key, or a lint default does not leave the reference pages stale.
 
@@ -82,8 +83,8 @@ bun run docs:affected --base origin/main
 `scripts/docs-affected.ts` collects the changed files: the diff between `--base` (default `origin/main`) and `HEAD`, uncommitted changes, and untracked files. It matches them against `DOCS_MAP`, a list of source globs and the pages that document them, and prints one line per result:
 
 ```text
-changed  site/docs/contributing/build-pipeline.md
-review   site/docs/commands/build.md
+changed  docs/content/contributing/build-pipeline.md
+review   docs/content/commands/build.md
 unmapped src/core/new-module.ts
 ```
 
@@ -97,11 +98,11 @@ The findings never change the exit code. The script exits 1 only when `--base` h
 
 `.claude/skills/docs-sync/SKILL.md` is a Claude Code skill for keeping these pages true to the code. It runs `docs:affected`, reads the diff, regenerates the reference pages, edits the mapped pages, and checks the result with `gen-docs --check`, `docs:build`, and `docs:lint`.
 
-The path-scoped rule `.claude/rules/docs-sync.md` loads when Claude Code touches `src/**`, `scripts/**`, `packages/proto-ui/src/**`, `.github/workflows/**`, `mise.toml`, or `site/**`. It tells Claude Code to run the skill after any change that users or contributors can see, and to skip it for refactors, test-only changes, and comment-only changes.
+The path-scoped rule `.claude/rules/docs-sync.md` loads when Claude Code touches `src/**`, `scripts/**`, `packages/proto-ui/src/**`, `.github/workflows/**`, `mise.toml`, or `docs/**`. It tells Claude Code to run the skill after any change that users or contributors can see, and to skip it for refactors, test-only changes, and comment-only changes.
 
 ## Writing rules
 
-Two files hold the rules for every page under `site/docs`:
+Two files hold the rules for every page under `docs/content`:
 
 - `.claude/skills/docs-sync/references/page-conventions.md`: frontmatter, headings, relative links, callouts, code fence languages, and known-wrong claims to avoid.
 - `.claude/skills/docs-sync/references/writing-rules.md`: voice, banned words, and sentence rules. ASCII punctuation only.
@@ -110,9 +111,9 @@ Two files hold the rules for every page under `site/docs`:
 
 ## Add a page
 
-1. Put the file in the folder of its feature, for example `site/docs/content-types/new-format.md`.
+1. Put the file in the folder of its feature, for example `docs/content/content-types/new-format.md`.
 2. Start it with frontmatter: `title`, a one-sentence `description`, and `sidebar.order` among its siblings. Pages under `contributing/` also set `llms: optional`. Start the body at `##`, because aid renders the title as the H1.
-3. For a new top-level folder, add it to `site/docs/_meta.yaml` with an `order`, and a `label` if the folder name is not the label you want.
+3. For a new top-level folder, add it to `docs/content/_meta.yaml` with an `order`, and a `label` if the folder name is not the label you want.
 4. Link to other pages by relative source path, such as `../search/index.md`.
 5. Add the source files the page documents to `DOCS_MAP` in `scripts/docs-affected.ts`.
 6. Run `bun run docs:build` and `bun run docs:lint`.

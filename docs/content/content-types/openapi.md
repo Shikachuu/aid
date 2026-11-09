@@ -5,7 +5,7 @@ sidebar:
   order: 3
 ---
 
-aid turns every OpenAPI or Swagger spec in the content folder into an API reference page. It parses the spec at build time and Scalar renders it in the browser. The [configuration schema](../reference/config-schema.yaml) page of this site is an OpenAPI page built from `site/docs/reference/config-schema.yaml`.
+aid turns every OpenAPI or Swagger spec in the content folder into an API reference page. It parses the spec at build time and Scalar renders it in the browser. The [configuration schema](../reference/config-schema.yaml) page of this site is an OpenAPI page built from `docs/content/reference/config-schema.yaml`.
 
 ## Use it
 

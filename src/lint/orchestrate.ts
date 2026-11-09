@@ -7,7 +7,7 @@ import { lintOpenApi } from "./openapi"
 import { lintProto } from "./proto"
 
 /** Options for `lintAll`. A `null` filter runs every tool. */
-export type LintOptions = {
+type LintOptions = {
   dir: string
   fix: boolean
   filter: Set<Tool> | null

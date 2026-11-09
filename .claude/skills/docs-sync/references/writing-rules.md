@@ -1,6 +1,6 @@
-# Writing rules for site/docs
+# Writing rules for docs/content
 
-Every page under `site/docs/` follows these rules. They apply to prose, not to code blocks, identifiers, or quoted tool output.
+Every page under `docs/content/` follows these rules. They apply to prose, not to code blocks, identifiers, or quoted tool output.
 
 ## Voice
 

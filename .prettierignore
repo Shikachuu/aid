@@ -1,6 +1,6 @@
 schemas/aid.schema.json
-site/docs/reference/
-site/static/schemas/
+docs/content/reference/
+docs/static/schemas/
 src/lint/css-data.json
 tests/fixtures/lint-fixtures/openapi-bad-json/
 .prettierrc.json

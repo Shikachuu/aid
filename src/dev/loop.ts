@@ -9,7 +9,7 @@ import { broadcast, type DevErrorPayload, type DevState, toErrorPayload } from "
  * partial whose error failed the build still gets watched. A failure also lists
  * the relative `@import` targets, including one that does not exist yet.
  */
-export type RebuildResult = { durationMs: number; stylesheetDependencies: string[] } & (
+type RebuildResult = { durationMs: number; stylesheetDependencies: string[] } & (
   { ok: true } | { ok: false; error: DevErrorPayload }
 )
 

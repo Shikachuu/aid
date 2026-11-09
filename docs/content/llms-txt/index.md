@@ -45,7 +45,7 @@ aid reads these `aid.yaml` keys. There is no `llms_txt` block. The [configuratio
 
 Set `dir.templates` to a folder relative to the project folder and put an `llms.txt` file in it. aid uses that file as written and replaces only the placeholders. Without the file, or with `dir.templates` unset, aid uses the bundled template.
 
-This site sets `dir.templates: templates` and keeps its template in `site/templates/llms.txt`:
+This site sets `dir.templates: templates` and keeps its template in `docs/templates/llms.txt`:
 
 ```md
 # {{name}}
@@ -125,7 +125,7 @@ aid builds the URL from `base_path` and the export path. With `base_url` set, it
 | --- | --- | --- | --- |
 | unset | `/` | `docs/guides/intro.md` | `/guides/intro.md` |
 | unset | `/docs` | `docs/api.yaml` | `/docs/api.json` |
-| `https://shikachuu.github.io` | `/aid` | `site/docs/index.md` | `https://shikachuu.github.io/aid/index.md` |
+| `https://shikachuu.github.io` | `/aid` | `docs/content/index.md` | `https://shikachuu.github.io/aid/index.md` |
 
 ## Limitations
 

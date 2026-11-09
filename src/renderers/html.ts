@@ -18,7 +18,7 @@ import { isMermaidElement } from "./markdown/mermaid"
 import { collectAnchors, hastText, headingTexts, vfileDiagnostics } from "./shared"
 
 /** What the pipeline passes to {@link renderHtml}; without the callbacks the render has no side effects. */
-export type RenderHtmlArgs = {
+type RenderHtmlArgs = {
   route: Route
   sourcePath: string
   copyAsset?: CopyAsset

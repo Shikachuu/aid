@@ -5,7 +5,7 @@ sidebar:
   order: 4
 ---
 
-aid builds one page from every markdown, HTML, OpenAPI, Protobuf, and JSON Schema file in the content folder. The content folder is `dir.content` in `aid.yaml`. It defaults to `docs`, and this site uses `site/docs`.
+aid builds one page from every markdown, HTML, OpenAPI, Protobuf, and JSON Schema file in the content folder. The content folder is `dir.content` in `aid.yaml`. It defaults to `docs`, and this site uses `docs/content`.
 
 ## Page kinds
 

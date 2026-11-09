@@ -4,14 +4,14 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 type SchemaObject = Record<string, unknown>
 
 /** Where a field sits in its parent, which decides how the page labels it. */
-export type SchemaNodeKind =
+type SchemaNodeKind =
   "root" | "definition" | "property" | "pattern" | "additional" | "items" | "option"
 
 /** A `$ref` on a field. `href` is set when the page links to the target instead of expanding it. */
-export type SchemaRef = { label: string; href?: string }
+type SchemaRef = { label: string; href?: string }
 
 /** A `oneOf`, `anyOf`, or unmergeable `allOf` group under one field. */
-export type SchemaVariantGroup = { kind: "oneOf" | "anyOf" | "allOf"; options: SchemaNode[] }
+type SchemaVariantGroup = { kind: "oneOf" | "anyOf" | "allOf"; options: SchemaNode[] }
 
 /** One field of the rendered page: everything the components need, with `$ref`s already resolved. */
 export type SchemaNode = {
@@ -57,7 +57,7 @@ export type SchemaDocument = {
 }
 
 /** Where the schema lives, so relative `$ref`s resolve, and how to link ones that hit other schema pages. */
-export type BuildSchemaOptions = {
+type BuildSchemaOptions = {
   /** Absolute path of the source file. Relative `$ref`s resolve against it. */
   sourcePath: string
   /** Page URL of another schema file in the content tree, or undefined when it is not a page. */

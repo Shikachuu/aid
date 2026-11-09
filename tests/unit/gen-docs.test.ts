@@ -67,7 +67,7 @@ describe("gen-docs", () => {
 
   test("the published schema is built from Zod, not copied from schemas/", async () => {
     const files = await generateAll()
-    const published = files.find((f) => f.path === "site/static/schemas/aid.schema.json")
+    const published = files.find((f) => f.path === "docs/static/schemas/aid.schema.json")
     expect(JSON.parse(published?.content ?? "")).toMatchObject({
       title: "aid project configuration",
     })

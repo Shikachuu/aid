@@ -7,7 +7,7 @@ import { PageProto } from "../../theme/components/PageProto"
 import { firstParagraph, nonEmpty } from "../shared"
 
 /** What the pipeline passes to {@link renderProto}. */
-export type RenderProtoArgs = {
+type RenderProtoArgs = {
   route: Route
   sourcePath: string
   /** `config.base_path`, so the browser fetches the `.proto` export by absolute URL. */

@@ -17,7 +17,7 @@ import { jsonFence, renderMarkdownFragment } from "./markdown"
 import { buildSchemaDocument, type SchemaDocument, type SchemaNode } from "./model"
 
 /** What the pipeline passes to {@link renderJsonSchema}; unit tests omit `index` and `resolveLink`. */
-export type RenderJsonSchemaArgs = {
+type RenderJsonSchemaArgs = {
   route: Route
   sourcePath: string
   /** Route table, so a `$ref` to another schema page becomes a link to it. */

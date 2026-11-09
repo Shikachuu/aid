@@ -10,16 +10,16 @@ import { lcssNodeFile, TARGETS } from "./natives"
 const REPO_ROOT = resolve(import.meta.dir, "..")
 
 /** One version that must equal its family's expected version. `null` means not installed. */
-export type Member = { name: string; version: string | null }
+type Member = { name: string; version: string | null }
 
 /** Packages that must all resolve to one version. */
-export type Family = { name: string; expected: string | null; members: Member[] }
+type Family = { name: string; expected: string | null; members: Member[] }
 
 /** Hashes that show whether `vendor/natives` still holds the installed binding. `null` means the file is missing. */
-export type StagedNative = { name: string; source: bigint | null; staged: bigint | null }
+type StagedNative = { name: string; source: bigint | null; staged: bigint | null }
 
 /** The Bun versions that must agree. */
-export type Runtime = {
+type Runtime = {
   running: string
   pinned: string | null
   engines: string
@@ -27,10 +27,10 @@ export type Runtime = {
 }
 
 /** A package or runtime and its latest upstream version. `null` means the lookup failed. */
-export type Update = { family: string; current: string; latest: string | null }
+type Update = { family: string; current: string; latest: string | null }
 
 /** Printed next to each family. Only `update available` also prints the bump commands. */
-export type UpdateStatus = "up to date" | "update available" | "ahead of upstream" | "lookup failed"
+type UpdateStatus = "up to date" | "update available" | "ahead of upstream" | "lookup failed"
 
 /** Classify by semver order, so `1.10.0` is newer than `1.9.0` and a canary sorts before its release. */
 export const updateStatus = ({ current, latest }: Update): UpdateStatus => {
@@ -111,7 +111,7 @@ export const updateCommands = ({ family, latest }: Update & { latest: string }):
       ]
     case "@tailwindcss/oxide":
       return [
-        `bun add @tailwindcss/node@^${latest} @tailwindcss/oxide@^${latest}`,
+        `bun add @tailwindcss/node@^${latest} @tailwindcss/oxide@^${latest} tailwindcss@^${latest}`,
         `bun add -d --exact ${exact(TARGETS.map((t) => t.oxideSubpkg))}`,
         `bun add -d -F @aid/proto-ui @tailwindcss/node@^${latest} @tailwindcss/oxide@^${latest} tailwindcss@^${latest}`,
         "mise install",
@@ -172,9 +172,9 @@ const subpackageFamily = async (
   ).flat(),
 })
 
-const withMember = (family: Family, member: Member): Family => ({
+const withMembers = (family: Family, ...members: Member[]): Family => ({
   ...family,
-  members: [...family.members, member],
+  members: [...family.members, ...members],
 })
 
 const collectFamilies = async (
@@ -193,7 +193,7 @@ const collectFamilies = async (
       TARGETS.map((t) => t.bufSubpkg),
       pins,
     ),
-    await withMember(
+    withMembers(
       await subpackageFamily(
         root,
         "@tailwindcss/oxide",
@@ -201,6 +201,7 @@ const collectFamilies = async (
         pins,
       ),
       { name: "@tailwindcss/node", version: twNode?.version ?? null },
+      { name: "tailwindcss", version: await installed(root, "tailwindcss") },
     ),
     {
       name: "Bun runtime (pinned by mise.toml)",

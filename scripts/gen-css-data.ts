@@ -9,8 +9,7 @@ const IDENT_TYPES = new Set(["custom-ident", "dashed-ident", "custom-property-na
 
 type Named = { name: string; syntax?: string }
 
-/** Names `aid lint`'s CSS checks treat as known, taken from the W3C specs through webref. */
-export type CssData = {
+type CssData = {
   properties: string[]
   identProperties: string[]
   keywords: string[]
@@ -67,8 +66,7 @@ const elementNames = async (): Promise<string[]> => {
   return sorted(names)
 }
 
-/** Read the installed webref packages. A webref bump changes the CSS checks only after `gen-css-data` runs. */
-export const generateCssData = async (): Promise<CssData> => {
+const generateCssData = async (): Promise<CssData> => {
   const properties = webref.properties as Named[]
   const types = webref.types as Named[]
   const grammar = new Map<string, string>()

@@ -2,9 +2,9 @@
 import path from "node:path"
 
 /** One mapping from source globs to the site pages that document them. */
-export type DocsMapEntry = { sources: readonly string[]; pages: readonly string[] }
+type DocsMapEntry = { sources: readonly string[]; pages: readonly string[] }
 
-const DOCS = "site/docs"
+const DOCS = "docs/content"
 
 /**
  * Which pages document which source files. The docs-sync skill reads it to
@@ -149,9 +149,9 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
       "scripts/generated-files.ts",
       "scripts/docs-affected.ts",
       ".claude/skills/docs-sync/**",
-      "site/aid.yaml",
-      "site/main.css",
-      "site/templates/**",
+      "docs/aid.yaml",
+      "docs/main.css",
+      "docs/templates/**",
     ],
     pages: [`${DOCS}/contributing/docs-site.md`],
   },
@@ -167,7 +167,7 @@ export const HUB_PAGES: readonly string[] = [`${DOCS}/index.md`, `${DOCS}/deploy
 const WATCHED_PREFIXES = ["src/", "scripts/", "packages/proto-ui/src/"]
 
 /** Result of {@link affectedPages}. `unmapped` lists changed sources that no entry covers, so the map can grow with them. */
-export type Affected = {
+type Affected = {
   pages: { page: string; touched: boolean }[]
   unmapped: string[]
 }
