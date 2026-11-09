@@ -32,14 +32,14 @@ The `check`, `e2e`, and `build` jobs cancel the same jobs of an older run on the
 
 ## Docs previews
 
-`deploy-docs` runs `wrangler pages deploy` through `cloudflare/wrangler-action`, with the Pages project `shikachuu-aid` that `PAGES_PROJECT` in `ci.yml` names.
+`deploy-docs` runs `bun x wrangler@$WRANGLER_VERSION pages deploy` for the Pages project `shikachuu-aid`. `ci.yml` sets `PAGES_PROJECT` and `WRANGLER_VERSION` at the top. Dependabot does not bump `WRANGLER_VERSION`, so update it by hand.
 
 | Event | Pages branch | URL |
 | --- | --- | --- |
 | Pull request `#<n>` | `pr-<n>` | `https://pr-<n>.shikachuu-aid.pages.dev` |
 | Push to `main` | `main`, the production branch | `https://shikachuu-aid.pages.dev` |
 
-wrangler-action also creates a GitHub deployment, so the pull request shows a "View deployment" button with the preview URL. The job summary lists the URL too.
+After the upload, the job creates a GitHub deployment named `docs (pr-<n>)` or `docs (main)` through the deployments API, so the pull request shows a "View deployment" button with the URL. The job summary lists the URL too.
 
 Every preview keeps `base_url: https://shikachuu-aid.pages.dev` from `docs/aid.yaml`, so the absolute links in a preview's `llms.txt` point at the production site.
 
@@ -76,7 +76,7 @@ The release job turns off the mise and Bun caches. A cache that a pull request r
 
 The workflows need these settings in the GitHub repository and the Cloudflare account:
 
-1. Create the Pages project with `npx wrangler pages project create shikachuu-aid --production-branch main`. If Cloudflare assigns a different `*.pages.dev` subdomain, update `PAGES_PROJECT` in `ci.yml` and `base_url` in `docs/aid.yaml`.
+1. Create the Pages project with `bun x wrangler pages project create shikachuu-aid --production-branch main`. If Cloudflare assigns a different `*.pages.dev` subdomain, update `PAGES_PROJECT` in `ci.yml` and `base_url` in `docs/aid.yaml`.
 2. Create a Cloudflare API token with the "Cloudflare Pages: Edit" permission.
 3. Add the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 4. Protect `main` and require the `check`, `e2e`, and `build` jobs.
