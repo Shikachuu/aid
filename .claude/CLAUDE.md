@@ -1,6 +1,6 @@
 # `aid` project instructions
 
-`aid` is a single-binary documentation tool that generates static documentation sites from markdown, HTML, OpenAPI, and Protobuf sources. See @docs/PRODUCT_OVERVIEW.md and @docs/RESEARCH_stack.md for the full overview and stack rationale.
+`aid` is a single-binary documentation tool that generates static documentation sites from markdown, HTML, OpenAPI, and Protobuf sources.
 
 ## Stack
 

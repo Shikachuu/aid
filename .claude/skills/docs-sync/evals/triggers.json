@@ -14,7 +14,7 @@
   "should_not_trigger": [
     "fix the failing test in tests/unit/router.test.ts",
     "add JSDoc to the exports in src/core/links.ts",
-    "update docs/PRODUCT_OVERVIEW.md with the new research notes",
+    "add a comment explaining the retry in src/dev/watcher.ts",
     "rename this private helper in pipeline.ts",
     "bump zod to the latest version",
     "why does the build fail on my machine?",
