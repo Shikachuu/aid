@@ -16,13 +16,14 @@ Install [mise](https://mise.jdx.dev), then run this in the repository root:
 mise install
 ```
 
-`mise install` installs the Bun canary that `mise.toml` pins and then runs the `postinstall` hook from `mise.toml`. The hook runs three commands in order:
+`mise install` installs the Bun canary and codebase-memory-mcp that `mise.toml` pins, then runs the `postinstall` hook from `mise.toml`. The hook runs four commands in order and stops at the first failure:
 
 1. `bun install --cpu='*' --os='*'` installs every platform subpackage of `@tailwindcss/oxide`, `@bufbuild/buf`, `lightningcss`, and `@oven/bun`, not only the ones for your machine. `scripts/compile.ts` needs all of them to cross-compile the four release binaries.
 2. `bun scripts/stage-natives.ts` copies each `lightningcss-<platform>` `.node` binding to `vendor/natives/lightningcss-<platform>.bin`. See [single binary](./single-binary.md) for why the extension changes.
 3. `bun run -F @aid/proto-ui build` builds `packages/proto-ui/dist`, which holds the `styles.css` that aid serves on proto pages.
+4. `codebase-memory-mcp cli index_repository --repo-path "$MISE_PROJECT_ROOT"` indexes the checkout for Claude Code. See [MCP servers](#mcp-servers-for-claude-code).
 
-`mise.toml` also sets `experimental = true` under `[settings]`.
+`mise.toml` pins [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) from its GitHub release archives, and sets `experimental = true` under `[settings]`.
 
 > [!IMPORTANT]
 > Never run a bare `bun install`. It installs only the platform packages that match your machine and prints no warning. The compile pipeline then fails on the missing packages, and `vendor/natives/` stays empty. Run `mise install` after every pull that changes `package.json` or `bun.lock`.
@@ -51,6 +52,21 @@ To add a dependency, run `bun add <pkg>` to update `package.json`, then `mise in
 | `bun run gen-bunfig` | `scripts/gen-bunfig.ts`: regenerates `bunfig.toml` (lint rules) and `.prettierrc.json` (format options) from the bundled defaults plus the repo settings. Add `--check` to fail on drift instead of writing. |
 
 [Docs site](./docs-site.md) covers the `docs:*` and `gen-docs` scripts in detail.
+
+## MCP servers for Claude Code
+
+`.mcp.json` registers two MCP servers. Claude Code asks you to approve them the first time it starts in the checkout.
+
+| Server | What it gives Claude Code |
+| --- | --- |
+| `codebase-memory-mcp` | A knowledge graph of the repository: symbols, call chains, data flow, and architecture. Claude Code starts it with `mise exec -- codebase-memory-mcp`, so it runs the version `mise.toml` pins. It fails to start until you have run `mise trust` and `mise install` in the checkout. |
+| `context7` | Current documentation for third-party libraries, from `https://mcp.context7.com/mcp`. |
+
+codebase-memory-mcp stores its index in `~/.cache/codebase-memory-mcp/`, outside the checkout. Each worktree gets its own index. `mise install` builds it, or refreshes it when it exists. A full index of this repository takes about 2 seconds. While Claude Code runs, the daemon re-indexes the checkout when git reports changes. `.cbmignore` keeps the generated copies of `aid.schema.json` out of the index. Per-user settings such as `auto_index` and `ignore_worktrees` live in `codebase-memory-mcp config`, not in the repository.
+
+Context7 works without an account at a lower rate limit. To use a key, export `CONTEXT7_API_KEY` before you start Claude Code.
+
+`.claude/rules/code-search.md` tells Claude Code when to use each server, and [conventions](./conventions.md#codebase-memory-hooks) describes the hooks that feed graph context into a session.
 
 ## Check the binaries and the runtime
 

@@ -12,7 +12,7 @@ aid has no published release: the repository has no tags and no downloadable bin
 - git
 - [mise](https://mise.jdx.dev), which installs the pinned Bun version
 
-`mise.toml` pins Bun 1.4.4. `package.json` requires Bun 1.3.6 or newer.
+`mise.toml` pins the Bun canary `1.4.4-canary.20261103.1`. `package.json` requires that build or newer.
 
 ## Set up the checkout
 
@@ -25,11 +25,12 @@ mise install
 
 `mise trust` marks the repository's `mise.toml` as trusted. mise does not apply an untrusted config file and reports an error instead.
 
-Run `mise install`, not `bun install`. `mise install` installs Bun 1.4.4 and then runs the `postinstall` hook from `mise.toml`, which runs three commands:
+Run `mise install`, not `bun install`. `mise install` installs the pinned Bun and codebase-memory-mcp, which Claude Code uses (see [development setup](../contributing/dev-setup.md#mcp-servers-for-claude-code)). It then runs the `postinstall` hook from `mise.toml`, which runs four commands:
 
 1. `bun install --cpu='*' --os='*'` installs the dependencies for every platform. The flags pull in the native packages of `@tailwindcss/oxide` and `@bufbuild/buf` for every operating system and CPU, which the cross-compile step needs. A bare `bun install` skips the packages for other platforms without a warning.
 2. `bun scripts/stage-natives.ts` copies each platform's lightningcss `.node` binding to `vendor/natives/` with a `.bin` extension, so the compiled binary can embed it.
 3. `bun run -F @aid/proto-ui build` builds the `packages/proto-ui` workspace package, which renders Protobuf pages in the browser.
+4. `codebase-memory-mcp cli index_repository` indexes the checkout for Claude Code. The index goes to `~/.cache/codebase-memory-mcp/`, not into the checkout.
 
 Run `mise install` again after you pull changes to `package.json` or `bun.lock`.
 
@@ -42,7 +43,7 @@ bun src/cli/index.ts build ../my-docs
 bun src/cli/index.ts dev ../my-docs
 ```
 
-mise selects Bun 1.4.4 only inside the checkout. In other folders `bun` may be another version, and older versions fail with `undefined is not an object (evaluating 'Bun.YAML.parse')`. To run aid from your project folder, call the pinned Bun through mise:
+mise selects the pinned Bun only inside the checkout. In other folders `bun` may be another version, and older versions fail with `undefined is not an object (evaluating 'Bun.YAML.parse')`. To run aid from your project folder, call Bun 1.4.4 or newer through mise:
 
 ```sh
 alias aid='mise exec bun@1.4.4 -- bun /path/to/aid/src/cli/index.ts'

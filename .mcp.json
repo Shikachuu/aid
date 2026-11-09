@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "codebase-memory-mcp": {
+      "type": "stdio",
+      "command": "mise",
+      "args": ["exec", "--", "codebase-memory-mcp"],
+      "env": {
+        "MISE_AUTO_INSTALL": "0"
+      }
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY:-}"
+      }
+    }
+  }
+}
