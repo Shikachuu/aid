@@ -26,7 +26,7 @@ Claude Code loads a rule file without `paths:` frontmatter in every session. It 
 
 `bunfig.toml` configures `bun lint` for the repository, and `.prettierrc.json` configures `bun fmt`. `scripts/gen-bunfig.ts` generates both from the rules and options `aid lint` and `aid fmt` bundle for user projects (`src/lint/configs/bun.default.ts`), plus the repository rules below. Run `bun run gen-bunfig` after changing either, and `bun run gen-bunfig --check` to find drift.
 
-- `bun run lint` runs `bun lint` over `src/`, `scripts/`, `tests/`, and `packages/`, then aid's own CSS checks over every `.css` file.
+- `bun run lint` runs `bun lint` over `src/`, `scripts/`, `tests/`, `packages/`, and `.claude/hooks/`, then aid's own CSS checks over every `.css` file. It then runs `actionlint` over `.github/workflows/`, which also passes each `run:` block through shellcheck, and `shellcheck` over every `.sh` file that git tracks.
 - `bun run fmt` runs `bun fmt` over the JS, TS, JSON, and CSS files in `src/`, `scripts/`, `tests/`, `packages/`, and `docs/`, and the root `*.json` files. Markdown stays with aid's own formatter and markdownlint.
 - `.prettierignore` keeps `bun fmt` away from the generated files, `.prettierrc.json` among them, and from the invalid JSON fixture in `tests/fixtures/lint-fixtures/openapi-bad-json`.
 
@@ -53,7 +53,7 @@ Rules on top of the bundled set:
 `.claude/settings.json` registers `.claude/hooks/format-on-edit.sh` as a `PostToolUse` hook for Claude Code's `Edit`, `Write`, and `MultiEdit` tools. The script reads the edited path from the hook payload and formats that one file:
 
 - `.ts`, `.tsx`, `.js`, `.jsx`, `.json`, `.jsonc`, and `.css` files go through `bun fmt`. JS and TS files then go through `bun lint --fix`.
-- `.md` files go through `formatMarkdown` from `src/fmt/markdown.ts`, which applies markdownlint's fixable rules with the same config resolution as `aid lint`.
+- `.md` files go through `.claude/hooks/format-markdown.ts`, which calls `formatMarkdown` from `src/fmt/markdown.ts`. It applies markdownlint's fixable rules with the same config resolution as `aid lint`.
 
 It skips files under `node_modules`, `dist`, and `.bun`, plus `.prettierrc.json` and the generated `schemas/aid.schema.json`, `docs/content/reference/**`, and `docs/static/schemas/**`. When `bun fmt` or the markdown formatter fails, it prints the error to stderr and exits with code 2, so Claude Code shows the failure to Claude. `bun lint --fix` failures are ignored. Without Claude Code, run `bun run fmt` for code and `bun src/cli/index.ts fmt <dir> --filter md` for markdown.
 

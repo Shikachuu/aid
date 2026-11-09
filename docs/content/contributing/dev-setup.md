@@ -16,7 +16,7 @@ Install [mise](https://mise.jdx.dev), then run this in the repository root:
 mise install
 ```
 
-`mise install` installs the Bun canary and codebase-memory-mcp that `mise.toml` pins, then runs the `postinstall` hook from `mise.toml`. The hook runs four commands in order and stops at the first failure:
+`mise install` installs the Bun canary, actionlint, shellcheck, and codebase-memory-mcp that `mise.toml` pins, then runs the `postinstall` hook from `mise.toml`. The hook runs four commands in order and stops at the first failure:
 
 1. `bun install --cpu='*' --os='*'` installs every platform subpackage of `@tailwindcss/oxide`, `@bufbuild/buf`, `lightningcss`, and `@oven/bun`, not only the ones for your machine. `scripts/compile.ts` needs all of them to cross-compile the four release binaries.
 2. `bun scripts/stage-natives.ts` copies each `lightningcss-<platform>` `.node` binding to `vendor/natives/lightningcss-<platform>.bin`. See [single binary](./single-binary.md) for why the extension changes.
@@ -49,8 +49,8 @@ To add a dependency, run `bun add <pkg>` to update `package.json`, then `mise in
 | `bun test` | The Bun test runner over `tests/`. |
 | `bun run test:e2e` | The Playwright browser tests in `tests/e2e`, with screenshots in `tests/e2e/__screenshots__/`. `bun run check` does not run them. Run them after a change to the theme, the browser runtime, or a renderer. See [testing](./testing.md#browser-tests). |
 | `bun run typecheck` | `tsc --noEmit`. |
-| `bun run lint` | `bun lint` over `src`, `scripts`, `tests`, and `packages`, then `aid lint . --filter css` over every CSS file. |
-| `bun run fmt` | `bun fmt` over the JS, TS, JSON, and CSS files in `src`, `scripts`, `tests`, `packages`, and `docs`, and the root `*.json` files. |
+| `bun run lint` | `bun lint` over `src`, `scripts`, `tests`, `packages`, and `.claude/hooks`, `aid lint . --filter css` over every CSS file, `actionlint` over the workflows, and `shellcheck` over every tracked `.sh` file. |
+| `bun run fmt` | `bun fmt` over the JS, TS, JSON, and CSS files in `src`, `scripts`, `tests`, `packages`, and `docs`, the TS files in `.claude/hooks`, and the root `*.json` files. |
 | `bun run fmt:check` | The same files as `fmt`, with `--check`: it writes nothing and exits 1 when a file needs formatting. |
 | `bun run gen-bunfig` | `scripts/gen-bunfig.ts`: regenerates `bunfig.toml` (lint rules) and `.prettierrc.json` (format options) from the bundled defaults plus the repo settings. Add `--check` to fail on drift instead of writing. |
 

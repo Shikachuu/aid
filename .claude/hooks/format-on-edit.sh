@@ -25,11 +25,7 @@ case "$file" in
     esac
     ;;
   *.md)
-    out=$(AID_ROOT_DIR="$root" AID_MD_FILE="$file" bun_ -e '
-      const { formatMarkdown } = await import(`${process.env.AID_ROOT_DIR}/src/fmt/markdown.ts`)
-      const file = process.env.AID_MD_FILE
-      await formatMarkdown([file], file.slice(0, file.lastIndexOf("/")), { check: false })
-    ' 2>&1) || report "markdown formatting failed for $file:"$'\n'"$out"
+    out=$(bun_ "$root/.claude/hooks/format-markdown.ts" "$file" 2>&1) || report "markdown formatting failed for $file:"$'\n'"$out"
     ;;
 esac
 

@@ -20,7 +20,7 @@
 | `bun run build` | Run `scripts/compile.ts`: emit the schema, bundle the browser runtime, and cross-compile the release binaries |
 | `bun run emit-schema` | Emit `schemas/aid.schema.json` from Zod |
 | `bun run typecheck` | `tsc --noEmit` |
-| `bun run lint` | `bun lint` over the code, then `aid lint --filter css` over every CSS file |
+| `bun run lint` | `bun lint` over the code, `aid lint --filter css` over every CSS file, `actionlint` over the workflows, and `shellcheck` over every tracked `.sh` file |
 | `bun run fmt` | `bun fmt` over the code, JSON, and CSS |
 | `bun run gen-bunfig` | Generate `bunfig.toml` and `.prettierrc.json` from the bundled defaults plus the repo extras (`--check` fails on drift) |
 | `bun run gen-css-data` | Generate `src/lint/css-data.json` from the webref packages (`--check` fails on drift) |
