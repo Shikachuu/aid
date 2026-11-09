@@ -5,7 +5,7 @@ sidebar:
   order: 0
 ---
 
-`aid build` writes plain static files: HTML pages, CSS, JavaScript, the machine-readable exports, and `llms.txt`. aid has no server component and no host-specific output, so any server that returns files from a folder can host the site. [GitHub Pages](./github-pages.md) shows the setup for this site.
+`aid build` writes plain static files: HTML pages, CSS, JavaScript, the machine-readable exports, and `llms.txt`. aid has no server component and no host-specific output, so any server that returns files from a folder can host the site. [GitHub Pages](./github-pages.md) has a workflow that builds and deploys a site from your repository.
 
 ## Before you deploy
 

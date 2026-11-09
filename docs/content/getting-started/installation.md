@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-aid has no published release: the repository has no tags and no downloadable binaries. Install it from a checkout of the source.
+aid has no published release: the repository has no tags and no downloadable binaries. Install it from a checkout of the source. When a maintainer publishes a release, the release workflow attaches the four binaries and a `SHA256SUMS` file to it. See [CI and releases](../contributing/ci.md#releases).
 
 ## Requirements
 

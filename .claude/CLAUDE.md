@@ -27,7 +27,7 @@
 | `bun test` | Bun test runner |
 | `bun run test:e2e` | Playwright browser tests and screenshots (`tests/e2e`); optional, not part of `check` |
 | `bun run gen-docs` | Generate `docs/content/reference/**` from the Zod schemas, CLI definitions, and lint tables (`--check` fails on drift) |
-| `bun run docs:dev` | Serve the docs site at `http://localhost:3000/aid/` with live reload |
+| `bun run docs:dev` | Serve the docs site at `http://localhost:3000/` with live reload |
 | `bun run docs:build` | Build the docs site into `docs/dist` |
 | `bun run docs:lint` | Run `aid lint --filter md` over `docs/` |
 | `bun run docs:affected` | List docs pages mapped to the files changed since `origin/main` |

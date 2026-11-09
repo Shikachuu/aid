@@ -23,6 +23,8 @@ mise install
 3. `bun run -F @aid/proto-ui build` builds `packages/proto-ui/dist`, which holds the `styles.css` that aid serves on proto pages.
 4. `codebase-memory-mcp cli index_repository --repo-path "$MISE_PROJECT_ROOT"` indexes the checkout for Claude Code. See [MCP servers](#mcp-servers-for-claude-code).
 
+When the `CI` environment variable is set, the hook adds `--frozen-lockfile` to `bun install` and skips the index. [CI and releases](./ci.md#setup-action) covers the CI setup.
+
 `mise.toml` pins [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) from its GitHub release archives, and sets `experimental = true` under `[settings]`.
 
 > [!IMPORTANT]
@@ -34,8 +36,8 @@ To add a dependency, run `bun add <pkg>` to update `package.json`, then `mise in
 
 | Command | What it runs |
 | --- | --- |
-| `bun run check` | The local merge gate. It runs `bun test`, `typecheck`, `lint`, every generator with `--check` (`gen-bunfig`, `gen-css-data`, `gen-docs`, `emit-schema`), `deps:binaries --offline`, and `docs:lint`, and stops at the first failure. Run it before you open a pull request. |
-| `bun run build` | `scripts/compile.ts`: emits the schema, bundles the browser runtime, and compiles the four release binaries into `dist/bin/`. |
+| `bun run check` | The local merge gate, which CI also runs. It runs `bun test`, `typecheck`, `lint`, `fmt:check`, every generator with `--check` (`gen-bunfig`, `gen-css-data`, `gen-docs`, `emit-schema`), `deps:binaries --offline`, and `docs:lint`, and stops at the first failure. Run it before you open a pull request. |
+| `bun run build` | `scripts/compile.ts`: emits the schema, bundles the browser runtime, and compiles the four release binaries into `dist/bin/`. Add `--target <os>-<arch>`, such as `--target linux-x64`, to compile one binary. |
 | `bun run emit-schema` | `scripts/emit-schema.ts`: writes `schemas/aid.schema.json` from the Zod schema in `src/core/config.ts`. |
 | `bun run gen-docs` | `scripts/gen-docs.ts`: regenerates `docs/content/reference/**` and `docs/static/schemas/aid.schema.json`. Add `--check` to fail on drift instead of writing. |
 | `bun run gen-css-data` | `scripts/gen-css-data.ts`: regenerates `src/lint/css-data.json`, the CSS names `aid lint` knows, from the `@webref/css` and `@webref/elements` dev dependencies. Run it after bumping either package. Add `--check` to fail on drift instead of writing. |
@@ -49,6 +51,7 @@ To add a dependency, run `bun add <pkg>` to update `package.json`, then `mise in
 | `bun run typecheck` | `tsc --noEmit`. |
 | `bun run lint` | `bun lint` over `src`, `scripts`, `tests`, and `packages`, then `aid lint . --filter css` over every CSS file. |
 | `bun run fmt` | `bun fmt` over the JS, TS, JSON, and CSS files in `src`, `scripts`, `tests`, `packages`, and `docs`, and the root `*.json` files. |
+| `bun run fmt:check` | The same files as `fmt`, with `--check`: it writes nothing and exits 1 when a file needs formatting. |
 | `bun run gen-bunfig` | `scripts/gen-bunfig.ts`: regenerates `bunfig.toml` (lint rules) and `.prettierrc.json` (format options) from the bundled defaults plus the repo settings. Add `--check` to fail on drift instead of writing. |
 
 [Docs site](./docs-site.md) covers the `docs:*` and `gen-docs` scripts in detail.

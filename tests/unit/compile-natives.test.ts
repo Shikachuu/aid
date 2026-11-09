@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import path from "node:path"
-import { compileTarget, nativeStubs } from "../../scripts/compile"
+import { compileTarget, nativeStubs, selectTargets } from "../../scripts/compile"
 import { TARGETS } from "../../scripts/natives"
 
 const SRC = path.join(import.meta.dir, "../../src")
@@ -39,5 +39,50 @@ describe("compileTarget", () => {
     await expect(compileTarget(target, "/dev/null", { bundled: missing })).rejects.toThrow(
       `${missing} is missing. Run \`bun scripts/bundle-web.ts\` first.`,
     )
+  })
+})
+
+describe("selectTargets", () => {
+  test("selects every target without --target", () => {
+    expect(selectTargets([])).toEqual(TARGETS)
+  })
+
+  test.each(TARGETS.map((t) => [t.outSuffix, t] as const))(
+    "--target %s selects only that target",
+    (outSuffix, target) => {
+      expect(selectTargets(["--target", outSuffix])).toEqual([target])
+    },
+  )
+
+  test("rejects an unknown target, a missing value, and a positional argument", () => {
+    expect(() => selectTargets(["--target", "windows-x64"])).toThrow("unknown --target windows-x64")
+    expect(() => selectTargets(["--target"])).toThrow()
+    expect(() => selectTargets(["linux-x64"])).toThrow()
+  })
+})
+
+describe("compile.ts --target", () => {
+  test("exits 1 on an unknown target and lists the known ones", async () => {
+    const proc = Bun.spawn([process.execPath, "scripts/compile.ts", "--target", "windows-x64"], {
+      cwd: path.join(import.meta.dir, "../.."),
+      stdout: "pipe",
+      stderr: "pipe",
+    })
+    expect(await proc.exited).toBe(1)
+    const stderr = await new Response(proc.stderr).text()
+    expect(stderr).toStartWith("[compile] unknown --target windows-x64")
+    expect(stderr).toContain("linux-x64")
+  })
+
+  test("exits 1 with a one-line message when --target has no value", async () => {
+    const proc = Bun.spawn([process.execPath, "scripts/compile.ts", "--target"], {
+      cwd: path.join(import.meta.dir, "../.."),
+      stdout: "pipe",
+      stderr: "pipe",
+    })
+    expect(await proc.exited).toBe(1)
+    const stderr = await new Response(proc.stderr).text()
+    expect(stderr).toStartWith("[compile] ")
+    expect(stderr.trim().split("\n")).toHaveLength(1)
   })
 })

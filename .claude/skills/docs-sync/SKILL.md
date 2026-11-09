@@ -54,7 +54,7 @@ bun run docs:lint
 bun test tests/unit/docs-map.test.ts tests/unit/gen-docs.test.ts
 ```
 
-For a visual check, run `bun run docs:dev` and open `http://localhost:3000/aid/`.
+For a visual check, run `bun run docs:dev` and open `http://localhost:3000/`.
 
 ## 6. Report
 

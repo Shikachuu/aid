@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { mkdir, rm } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
+import { parseArgs } from "node:util"
 import { checkStaged, collectStaged } from "./check-binaries"
 import { TARGETS, type Target } from "./natives"
 
@@ -133,7 +134,35 @@ const printArtefacts = async (): Promise<void> => {
   }
 }
 
+/** Resolve the compile.ts argv to the targets to build: every target, or the one `--target` names. */
+export const selectTargets = (args: readonly string[]): readonly Target[] => {
+  const { values } = parseArgs({
+    args: [...args],
+    options: { target: { type: "string" } },
+    strict: true,
+  })
+  if (values.target === undefined) {
+    return TARGETS
+  }
+  const match = TARGETS.filter((t) => t.outSuffix === values.target)
+  if (match.length === 0) {
+    const known = TARGETS.map((t) => t.outSuffix).join(", ")
+    throw new Error(`unknown --target ${values.target} (expected one of: ${known})`)
+  }
+  return match
+}
+
+const targetsOrExit = (args: readonly string[]): readonly Target[] => {
+  try {
+    return selectTargets(args)
+  } catch (error) {
+    console.error(`[compile] ${(error as Error).message}`)
+    process.exit(1)
+  }
+}
+
 if (import.meta.main) {
+  const targets = targetsOrExit(Bun.argv.slice(2))
   await cleanDist()
   await run([process.execPath, "scripts/emit-schema.ts"], "emit-schema")
   await copySchema()
@@ -143,7 +172,7 @@ if (import.meta.main) {
     console.error(`[compile] vendor/natives is out of sync:\n  - ${drift.join("\n  - ")}`)
     process.exit(1)
   }
-  for (const target of TARGETS) {
+  for (const target of targets) {
     await compileTarget(target, resolve(DIST, "bin", `aid-${target.outSuffix}`))
   }
   await printArtefacts()

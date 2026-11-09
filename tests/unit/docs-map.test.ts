@@ -58,4 +58,15 @@ describe("affectedPages", () => {
     const { unmapped } = affectedPages(["src/core/new-feature.ts", "README.md"])
     expect(unmapped).toEqual(["src/core/new-feature.ts"])
   })
+
+  test.each([
+    ".github/workflows/ci.yml",
+    ".github/actions/setup/action.yml",
+    "cliff.toml",
+    "mise.toml",
+  ])("maps %s to the CI page", (source) => {
+    const { pages, unmapped } = affectedPages([source])
+    expect(pages).toContainEqual({ page: "docs/content/contributing/ci.md", touched: false })
+    expect(unmapped).toEqual([])
+  })
 })

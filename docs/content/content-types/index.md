@@ -42,7 +42,7 @@ The route path is the source path relative to the content folder, without its ex
 | `docs/billing.proto` | `/billing` | `dist/billing/index.html` | `dist/billing.proto` |
 | `docs/user.json` | `/user` | `dist/user/index.html` | `dist/user.json` |
 
-The public URL is `base_path` followed by the route. This site sets `base_path: /aid`, so the route `/content-types/markdown` is served at `/aid/content-types/markdown`. See [paths and URLs](../configuration/paths-and-urls.md) for how `base_path` and `base_url` combine.
+The public URL is `base_path` followed by the route. With `base_path: /docs`, the route `/content-types/markdown` is served at `/docs/content-types/markdown`. This site keeps the default `base_path: /`, so the URL equals the route. See [paths and URLs](../configuration/paths-and-urls.md) for how `base_path` and `base_url` combine.
 
 ## Exports
 

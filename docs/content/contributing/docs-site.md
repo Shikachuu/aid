@@ -17,12 +17,12 @@ This site is an aid project in `docs/`, and aid from the same checkout builds it
 | `docs/templates/llms.txt` | An llms.txt template that replaces the bundled default. It adds an intro paragraph and a line above the optional section. |
 | `docs/content/` | The pages. `docs/content/_meta.yaml` sets the order and labels of the top-level folders. |
 | `docs/content/reference/` | Generated reference pages. Never edit them by hand. |
-| `docs/static/schemas/aid.schema.json` | A generated copy of `schemas/aid.schema.json`. aid copies it to `/aid/schemas/aid.schema.json` in the output. |
+| `docs/static/schemas/aid.schema.json` | A generated copy of `schemas/aid.schema.json`. aid copies it to `/schemas/aid.schema.json` in the output. |
 
 `docs/aid.yaml` sets these keys:
 
-- `base_path: /aid`, because GitHub Pages serves the site under the repository name.
-- `base_url: https://shikachuu.github.io`, the origin only. aid appends `base_path` to it for the absolute links in llms.txt.
+- `base_path: /`, because Cloudflare Pages serves the site at the domain root.
+- `base_url: https://shikachuu-aid.pages.dev`, the production origin. aid appends `base_path` to it for the absolute links in llms.txt.
 - `dir.content: content`, so the pages live in `docs/content/` instead of a nested `docs/docs/`.
 - `dir.templates: templates`, so aid reads `docs/templates/llms.txt`. Tailwind also scans that directory for class names.
 
@@ -34,13 +34,13 @@ The other keys keep their defaults: static files in `static/`, output in `dist/`
 bun run docs:dev
 ```
 
-`docs:dev` runs `bun src/cli/index.ts dev docs` and serves the site at `http://localhost:3000/aid/` with live reload.
+`docs:dev` runs `bun src/cli/index.ts dev docs` and serves the site at `http://localhost:3000/` with live reload.
 
 ```sh
 bun run docs:build
 ```
 
-`docs:build` runs `bun src/cli/index.ts build docs --clean` and writes `docs/dist`.
+`docs:build` runs `bun src/cli/index.ts build docs --clean` and writes `docs/dist`. CI builds the same folder with the compiled binary and deploys it to Cloudflare Pages, with a preview for every pull request. See [CI and releases](./ci.md#docs-previews).
 
 ```sh
 bun run docs:lint
