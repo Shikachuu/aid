@@ -22,7 +22,7 @@ Every job installs the toolchain with the composite action in `.github/actions/s
 | Job | What it runs |
 | --- | --- |
 | `check` | `bun run check`: tests, typecheck, lint (including actionlint over these workflows and shellcheck over every tracked `.sh` file), `fmt:check`, every generator with `--check`, `deps:binaries --offline`, and `docs:lint`. |
-| `e2e` | `bunx playwright install --with-deps chromium`, then `bun run test:e2e`. It uploads `tests/e2e/__screenshots__/` as the `e2e-screenshots` artifact, also when a test fails. |
+| `e2e` | `bun x playwright install --with-deps chromium`, then `bun run test:e2e`. It uploads `tests/e2e/__screenshots__/` as the `e2e-screenshots` artifact, also when a test fails. |
 | `build` | `bun run build --target linux-x64`, then `./dist/bin/aid-linux-x64 build docs --clean`. It uploads the binary as the `aid-linux-x64` artifact and `docs/dist` as the `docs-site` artifact. |
 | `deploy-docs` | Runs after the three jobs above pass. It deploys the `docs-site` artifact to Cloudflare Pages. |
 
