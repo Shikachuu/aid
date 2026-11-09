@@ -161,7 +161,9 @@ describe("updateCommands", () => {
 
   test("bumps Tailwind in the root and in @aid/proto-ui", () => {
     const cmds = updateCommands({ family: "@tailwindcss/oxide", current: "4.3.0", latest: "4.3.4" })
-    expect(cmds).toContain("bun add @tailwindcss/node@^4.3.4 @tailwindcss/oxide@^4.3.4")
+    expect(cmds).toContain(
+      "bun add @tailwindcss/node@^4.3.4 @tailwindcss/oxide@^4.3.4 tailwindcss@^4.3.4",
+    )
     expect(cmds.some((c) => c.startsWith("bun add -d -F @aid/proto-ui "))).toBe(true)
     expect(cmds.find((c) => c.includes("--exact"))?.match(/@4\.3\.4/g)).toHaveLength(4)
   })
@@ -285,22 +287,28 @@ describe("against a project root", () => {
     expect(errors).toContain("  - @types/bun is not installed (run `mise install`)")
   })
 
-  test("main flags a @tailwindcss/node that drifted from @tailwindcss/oxide", async () => {
-    const pkg = (name: string, version: string) =>
-      Bun.write(path.join(root, "node_modules", name, "package.json"), JSON.stringify({ version }))
-    await pkg("@tailwindcss/oxide", "4.3.4")
-    await pkg("@tailwindcss/node", "4.3.3")
-    const errors: string[] = []
-    const error = spyOn(console, "error").mockImplementation((msg: string) => errors.push(msg))
-    try {
-      await main(["--offline"], root)
-    } finally {
-      error.mockRestore()
-    }
-    expect(errors).toContain(
-      "  - @tailwindcss/node is 4.3.3, expected 4.3.4 to match @tailwindcss/oxide",
-    )
-  })
+  test.each(["@tailwindcss/node", "tailwindcss"])(
+    "main flags a %s that drifted from @tailwindcss/oxide",
+    async (drifted) => {
+      const pkg = (name: string, version: string) =>
+        Bun.write(
+          path.join(root, "node_modules", name, "package.json"),
+          JSON.stringify({ version }),
+        )
+      await pkg("@tailwindcss/oxide", "4.3.4")
+      await pkg(drifted, "4.3.3")
+      const errors: string[] = []
+      const error = spyOn(console, "error").mockImplementation((msg: string) => errors.push(msg))
+      try {
+        await main(["--offline"], root)
+      } finally {
+        error.mockRestore()
+      }
+      expect(errors).toContain(
+        `  - ${drifted} is 4.3.3, expected 4.3.4 to match @tailwindcss/oxide`,
+      )
+    },
+  )
 })
 
 describe("latestBunKeepingCanaryPin", () => {
