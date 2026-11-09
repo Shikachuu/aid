@@ -9,7 +9,7 @@
 - Start with `get_architecture` when a task touches a module you have not seen in this session.
 - Use Grep and rg for literal strings, config keys, error messages, markdown, CSS, and generated files.
 - Read a file before editing it, even after `get_code_snippet` showed the symbol.
-- If `index_status` reports the project as unindexed, ask before calling `index_repository`. The index lives in `~/.cache/codebase-memory-mcp/`, and the first build takes a while.
+- `mise install` builds the index. If `index_status` reports the project as unindexed, ask the user to run `mise install` instead of calling `index_repository` yourself.
 
 ## Library docs
 

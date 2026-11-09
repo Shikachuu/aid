@@ -15,4 +15,4 @@ linux-x64 = { url = "https://registry.npmjs.org/@oven/bun-linux-x64/-/bun-linux-
 experimental = true
 
 [hooks]
-postinstall = "bun install --cpu='*' --os='*' && bun scripts/stage-natives.ts && bun run -F @aid/proto-ui build"
+postinstall = "bun install --cpu='*' --os='*' && bun scripts/stage-natives.ts && bun run -F @aid/proto-ui build && codebase-memory-mcp cli --quiet index_repository --repo-path \"$MISE_PROJECT_ROOT\" >/dev/null"
