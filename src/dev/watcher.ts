@@ -3,7 +3,7 @@ import path from "node:path"
 import type { BuildContext } from "../core/types"
 
 /** What `aid dev` keeps after starting the watcher: a way to stop it and to watch the stylesheet partials a rebuild reports. */
-export type WatchHandle = {
+type WatchHandle = {
   close: () => void
   watchFiles: (files: Iterable<string>) => void
 }
@@ -226,7 +226,7 @@ export function ignoredIn(ctx: BuildContext): (absPath: string) => boolean {
 }
 
 /** Inputs for {@link createChangeQueue}. */
-export type ChangeQueueArgs = {
+type ChangeQueueArgs = {
   isIgnored: (absPath: string) => boolean
   configPath: string
   onChange: (configChanged: boolean) => void

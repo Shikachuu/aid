@@ -5,7 +5,7 @@ import { titleCase } from "../renderers/shared"
 import type { BuildContext, NavNode, RenderedPage } from "./types"
 
 /** Sidebar tree plus problems found in `_meta.yaml` files. */
-export type NavResult = { tree: NavNode[]; diagnostics: Diagnostic[] }
+type NavResult = { tree: NavNode[]; diagnostics: Diagnostic[] }
 
 type Meta = Record<string, { label?: string; order?: number }>
 

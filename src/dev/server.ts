@@ -4,7 +4,7 @@ import { RELOAD_CLIENT_SCRIPT, RELOAD_PATH } from "./reload"
 import { type DevState, sseFrame } from "./state"
 
 /** Inputs for {@link startDevServer}. `host` and `port` come from the CLI flags; port 0 picks a free port. */
-export type StartDevServerArgs = {
+type StartDevServerArgs = {
   state: DevState
   config: AidConfig
   host: string

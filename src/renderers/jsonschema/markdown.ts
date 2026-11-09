@@ -18,7 +18,7 @@ const SAFE_SCHEME_RE = /^(?:https?|mailto):/i
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i
 
 /** HTML for one markdown fragment, plus what its links need for the build's link check. */
-export type RenderedFragment = { html: string; anchorRefs: AnchorRef[]; file: VFile }
+type RenderedFragment = { html: string; anchorRefs: AnchorRef[]; file: VFile }
 
 /**
  * Render a schema `description` (or a generated code fence) to HTML. Schema

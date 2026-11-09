@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 /** Sidebar label and position, shared by page frontmatter and `_meta.yaml` entries. */
-export const SidebarEntrySchema = z
+const SidebarEntrySchema = z
   .object({
     label: z.string().min(1).optional().describe("Sidebar label. Defaults to the page title."),
     order: z
@@ -48,7 +48,7 @@ export type Frontmatter = z.infer<typeof FrontmatterSchema>
 const FRONTMATTER_RE = /^---\r?\n(?:([\s\S]*?)\r?\n)??---(?:\r?\n|$)/
 
 /** The frontmatter and the body the markdown parser sees, with the offset that maps body lines back. */
-export type ExtractedFrontmatter = {
+type ExtractedFrontmatter = {
   frontmatter: Frontmatter | undefined
   body: string
   /** 1-based source line where `body` starts, for mapping body positions back to the file. */

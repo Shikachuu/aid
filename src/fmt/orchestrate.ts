@@ -9,7 +9,7 @@ import { formatProto } from "./proto"
 export const FORMAT_TOOLS: readonly Tool[] = KNOWN_TOOLS.filter((tool) => tool !== "css")
 
 /** Options for `formatAll`. A `null` filter runs every tool. */
-export type FormatOptions = {
+type FormatOptions = {
   dir: string
   check: boolean
   filter: Set<Tool> | null

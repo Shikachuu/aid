@@ -6,7 +6,7 @@ import { firstParagraph, nonEmpty, refWarning } from "../shared"
 import { parseOpenApi } from "./parser"
 
 /** What the pipeline passes to {@link renderOpenApi}. */
-export type RenderOpenApiArgs = {
+type RenderOpenApiArgs = {
   route: Route
   /** Absolute path of the source `.yaml` / `.yml` / `.json` spec on disk. */
   sourcePath: string

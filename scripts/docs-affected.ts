@@ -2,7 +2,7 @@
 import path from "node:path"
 
 /** One mapping from source globs to the site pages that document them. */
-export type DocsMapEntry = { sources: readonly string[]; pages: readonly string[] }
+type DocsMapEntry = { sources: readonly string[]; pages: readonly string[] }
 
 const DOCS = "docs/content"
 
@@ -167,7 +167,7 @@ export const HUB_PAGES: readonly string[] = [`${DOCS}/index.md`, `${DOCS}/deploy
 const WATCHED_PREFIXES = ["src/", "scripts/", "packages/proto-ui/src/"]
 
 /** Result of {@link affectedPages}. `unmapped` lists changed sources that no entry covers, so the map can grow with them. */
-export type Affected = {
+type Affected = {
   pages: { page: string; touched: boolean }[]
   unmapped: string[]
 }

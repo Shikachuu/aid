@@ -18,7 +18,7 @@ export const BASE_PATH = "/e2e"
 // Mermaid first inserts an empty measuring svg, so wait for a rendered node.
 export const MERMAID_NODE = "pre.mermaid svg g.node, div.mermaid svg g.node"
 
-export const SCREENSHOT_DIR = path.join(import.meta.dir, "__screenshots__")
+const SCREENSHOT_DIR = path.join(import.meta.dir, "__screenshots__")
 
 export const VIEWPORTS = {
   desktop: { width: 1280, height: 800 },

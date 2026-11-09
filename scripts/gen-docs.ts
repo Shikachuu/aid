@@ -20,7 +20,7 @@ const ROOT = path.resolve(import.meta.dir, "..")
 const REFERENCE_DIR = "docs/content/reference"
 
 /** JSON Schema node, as far as the reference pages read it. */
-export type SchemaNode = {
+type SchemaNode = {
   type?: string
   description?: string
   default?: unknown
@@ -38,7 +38,7 @@ export type SchemaNode = {
 }
 
 /** One documented key. `required` makes the Default column read `required` instead of a value. */
-export type SchemaRow = { key: string; node: SchemaNode; required: boolean }
+type SchemaRow = { key: string; node: SchemaNode; required: boolean }
 
 /** Input-mode JSON Schema, so defaulted keys read as optional, as they are at runtime. */
 export const inputSchema = (schema: z.ZodType): SchemaNode => {
@@ -260,8 +260,7 @@ export const configReference = (): string => {
   )
 }
 
-/** Frontmatter and `_meta.yaml` reference page, built from the Zod schemas the build validates them with. */
-export const frontmatterReference = (): string => {
+const frontmatterReference = (): string => {
   const entry = inputSchema(NavMetaSchema)
   const entryNode = (entry as { additionalProperties?: SchemaNode }).additionalProperties ?? {}
   return page(
@@ -282,8 +281,7 @@ export const frontmatterReference = (): string => {
   )
 }
 
-/** Lint and fmt defaults page, built from the discovery tables and the bundled configs each tool falls back to. */
-export const lintDefaultsReference = (): string => {
+const lintDefaultsReference = (): string => {
   const rows = KNOWN_TOOLS.map((tool) => [
     code(tool),
     PATTERNS[tool].map(code).join(", "),

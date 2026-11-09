@@ -144,8 +144,7 @@ export const renderPretty = (results: ToolResult[]): string => {
   return lines.join("\n")
 }
 
-/** For scripts: every `ToolResult` as is, skipped tools and would-change lists included. */
-export const renderJson = (results: ToolResult[]): string => JSON.stringify({ results }, null, 2)
+const renderJson = (results: ToolResult[]): string => JSON.stringify({ results }, null, 2)
 
 /** Write `report` to stdout as `pretty` or `json`, then exit 0 when it passed and 1 otherwise. */
 export const printReport = (report: Report, format: string): never => {

@@ -57,7 +57,7 @@ export type SearchTokens = {
 }
 
 /** A machine-readable variant of a page, served at the route path plus `suffix`. */
-export type SideChannelExport = {
+type SideChannelExport = {
   suffix: ".md" | ".json" | ".proto"
   body: string
 }

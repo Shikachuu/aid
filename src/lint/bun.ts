@@ -46,7 +46,7 @@ export const FORMAT_CONFIGS = [
 ] as const
 
 /** The parts of a `bunfig.toml` that aid writes for its bundled defaults. */
-export type Bunfig = {
+type Bunfig = {
   lint: { rules: Record<string, LintRule>; ignorePatterns?: readonly string[] }
   fmt?: Record<string, string | number | boolean>
 }
@@ -139,7 +139,7 @@ export const configArgs = async (dir: string, tool: "lint" | "fmt"): Promise<str
 }
 
 /** Both output streams of a `bun` subprocess, already stripped of ANSI colors, for the parsers below. */
-export type BunRun = { stdout: string; stderr: string; exitCode: number }
+type BunRun = { stdout: string; stderr: string; exitCode: number }
 
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g")
 

@@ -29,7 +29,7 @@ import { extractFrontmatter } from "./frontmatter"
 import { codeBlocks, HAS_MERMAID_FLAG } from "./mermaid"
 
 /** What the pipeline passes to {@link renderMarkdown}; without the callbacks the render has no side effects. */
-export type RenderMarkdownArgs = {
+type RenderMarkdownArgs = {
   route: Route
   sourcePath: string
   copyAsset?: CopyAsset

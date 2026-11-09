@@ -2,7 +2,7 @@ import { dereference, normalize, upgrade } from "@scalar/openapi-parser"
 import { assertAcyclic } from "../shared"
 
 /** A spec ready to embed, plus the `$ref` failures the page renders around. */
-export type ParsedOpenApi = {
+type ParsedOpenApi = {
   /** Normalized OpenAPI 3.1 document with `$ref`s resolved. */
   doc: Record<string, unknown>
   /** Non-fatal `$ref` resolution failures, one line each. */
