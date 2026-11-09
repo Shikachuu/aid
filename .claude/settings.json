@@ -11,7 +11,22 @@
       "Bash(git log*)",
       "Bash(git show*)",
       "Bash(rg *)",
-      "Bash(jq *)"
+      "Bash(jq *)",
+      "mcp__codebase-memory-mcp__search_graph",
+      "mcp__codebase-memory-mcp__query_graph",
+      "mcp__codebase-memory-mcp__trace_path",
+      "mcp__codebase-memory-mcp__get_code_snippet",
+      "mcp__codebase-memory-mcp__get_file_outline",
+      "mcp__codebase-memory-mcp__get_graph_schema",
+      "mcp__codebase-memory-mcp__compare_graphs",
+      "mcp__codebase-memory-mcp__get_architecture",
+      "mcp__codebase-memory-mcp__search_code",
+      "mcp__codebase-memory-mcp__list_projects",
+      "mcp__codebase-memory-mcp__index_status",
+      "mcp__codebase-memory-mcp__check_index_coverage",
+      "mcp__codebase-memory-mcp__detect_changes",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs"
     ],
     "deny": [
       "Bash(rm -rf *)",
@@ -21,6 +36,41 @@
     ]
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "MISE_AUTO_INSTALL=0 mise exec -C \"$CLAUDE_PROJECT_DIR\" -- codebase-memory-mcp hook-augment || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "MISE_AUTO_INSTALL=0 mise exec -C \"$CLAUDE_PROJECT_DIR\" -- codebase-memory-mcp hook-augment || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Grep|Glob|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "MISE_AUTO_INSTALL=0 mise exec -C \"$CLAUDE_PROJECT_DIR\" -- codebase-memory-mcp hook-augment || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",
@@ -28,6 +78,16 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/format-on-edit.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Read|mcp__.*codebase-memory-mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "MISE_AUTO_INSTALL=0 mise exec -C \"$CLAUDE_PROJECT_DIR\" -- codebase-memory-mcp hook-augment || true",
+            "timeout": 5
           }
         ]
       }

@@ -19,6 +19,7 @@ Claude Code loads a rule file without `paths:` frontmatter in every session. It 
 | `generated.md` | `schemas/**`, `**/*.schema.json`, `site/docs/reference/**`, `site/static/schemas/**` | Never hand-edit generated files. `schemas/aid.schema.json` comes from `src/core/config.ts` through `bun run emit-schema`. The reference pages come from `bun run gen-docs`. Extend the Zod schema instead of adding validation next to it. |
 | `jsdoc.md` | `src/**/*.{ts,tsx}`, `scripts/**/*.ts` | Every exported function, const, class, and type alias gets a JSDoc block with at least a one-line summary. The JSDoc says why and when, not what the types already say. |
 | `tests.md` | `tests/**`, `src/**/*.test.ts` | `bun test` only. Fixtures go in `tests/fixtures/`. Prefer integration tests through public entry points. See [testing](./testing.md). |
+| `code-search.md` | every session | Find symbols and trace callers with the codebase-memory-mcp graph tools. Keep Grep and rg for literal strings, config keys, markdown, CSS, and generated files. Ask before indexing. Check third-party APIs with Context7, and trust `bun-types` over Context7 for the Bun canary. See [MCP servers](./dev-setup.md#mcp-servers-for-claude-code). |
 | `docs-sync.md` | `src/**`, `scripts/**`, `packages/proto-ui/src/**`, `.github/workflows/**`, `mise.toml`, `site/**` | Run the `docs-sync` skill after a change that users or contributors can see. See [docs site](./docs-site.md). |
 
 ## bun lint and bun fmt
@@ -54,7 +55,25 @@ Rules on top of the bundled set:
 - `.ts`, `.tsx`, `.js`, `.jsx`, `.json`, `.jsonc`, and `.css` files go through `bun fmt`. JS and TS files then go through `bun lint --fix`.
 - `.md` files go through `formatMarkdown` from `src/fmt/markdown.ts`, which applies markdownlint's fixable rules with the same config resolution as `aid lint`.
 
-It skips files under `node_modules`, `dist`, and `.bun`, plus the generated `schemas/aid.schema.json`, `site/docs/reference/**`, and `site/static/schemas/**`. It ignores formatter failures and always exits 0. Without Claude Code, run `bun run fmt` for code and `bun src/cli/index.ts fmt <dir> --filter md` for markdown.
+It skips files under `node_modules`, `dist`, and `.bun`, plus `.prettierrc.json` and the generated `schemas/aid.schema.json`, `site/docs/reference/**`, and `site/static/schemas/**`. When `bun fmt` or the markdown formatter fails, it prints the error to stderr and exits with code 2, so Claude Code shows the failure to Claude. `bun lint --fix` failures are ignored. Without Claude Code, run `bun run fmt` for code and `bun src/cli/index.ts fmt <dir> --filter md` for markdown.
+
+## Codebase-memory hooks
+
+`.claude/settings.json` also registers `codebase-memory-mcp hook-augment` for these Claude Code hook events:
+
+| Event | Matcher | What it adds |
+| --- | --- | --- |
+| `SessionStart` | none, so every start, resume, clear, and compact | Whether the checkout is indexed, and which graph tools to use. |
+| `SubagentStart` | `*` | The same context for each subagent. |
+| `PreToolUse` | `Grep\|Glob\|Bash` | Graph symbols that match the search, next to the tool's own results. |
+| `PostToolUse` | `Read\|mcp__.*codebase-memory-mcp__.*` | Lines of a read file that the index could not parse. Graph tool calls reset its reminder to use the graph. |
+
+Each hook runs `MISE_AUTO_INSTALL=0 mise exec -C "$CLAUDE_PROJECT_DIR" -- codebase-memory-mcp hook-augment || true` with a 5-second timeout. The hooks only add context and never block a tool call:
+
+- `MISE_AUTO_INSTALL=0` stops mise from downloading a missing binary inside a hook. Without it, mise falls back to its shim, which installs the tool and runs past the timeout. `.mcp.json` sets the same variable for the MCP server.
+- `|| true` turns a failure into exit 0, so Claude Code continues. The command does not redirect stderr, so error text from mise or the binary is kept.
+
+The MCP server starts the codebase-memory-mcp daemon. Without a running daemon, the hooks add no graph context.
 
 ## Commits
 
