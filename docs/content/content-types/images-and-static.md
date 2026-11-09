@@ -9,7 +9,7 @@ aid puts non-page files into the output two ways. It copies each file that a mar
 
 ## Colocated images
 
-Put an image anywhere in the content folder and reference it with a relative path. This page shows the aid logo from `site/docs/logo.svg`:
+Put an image anywhere in the content folder and reference it with a relative path. This page shows the aid logo from `docs/content/logo.svg`:
 
 ```md
 ![aid logo](../logo.svg)
@@ -37,7 +37,7 @@ A relative link to a file that is not a page, such as `[the spec](./spec.pdf)` o
 
 aid mirrors the static folder into the output root without changes. The folder is `dir.static` in `aid.yaml`, relative to the project folder, and it defaults to `static`. A missing static folder is fine and copies nothing. aid follows symlinks inside the static folder. A symlink whose real path leaves the folder, or a folder symlink back at the static folder or one of its parents, stops the build.
 
-This site keeps the published JSON Schema at `site/static/schemas/aid.schema.json`, so the build writes it to `dist/schemas/aid.schema.json`, served at `/aid/schemas/aid.schema.json`.
+This site keeps the published JSON Schema at `docs/static/schemas/aid.schema.json`, so the build writes it to `dist/schemas/aid.schema.json`, served at `/aid/schemas/aid.schema.json`.
 
 aid does not rewrite absolute links, so a link to a static file must include `base_path` itself, or use a full URL. Use the static folder for files that other sites or tools fetch by a fixed URL, such as `favicon.ico`, `robots.txt`, or a schema. Use colocated files for anything a page shows.
 

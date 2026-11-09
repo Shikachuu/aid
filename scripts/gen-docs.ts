@@ -17,7 +17,7 @@ import { aidJsonSchema } from "./emit-schema"
 import { driftedFiles, type GeneratedFile, orphanedFiles } from "./generated-files"
 
 const ROOT = path.resolve(import.meta.dir, "..")
-const REFERENCE_DIR = "site/docs/reference"
+const REFERENCE_DIR = "docs/content/reference"
 
 /** JSON Schema node, as far as the reference pages read it. */
 export type SchemaNode = {
@@ -396,7 +396,7 @@ export const generateAll = async (): Promise<GeneratedFile[]> => {
     { path: `${REFERENCE_DIR}/lint-defaults.md`, content: lintDefaultsReference() },
     { path: `${REFERENCE_DIR}/config-schema.yaml`, content: configSchemaOpenApi() },
     { path: `${REFERENCE_DIR}/aid-schema.json`, content: publishedSchema },
-    { path: "site/static/schemas/aid.schema.json", content: publishedSchema },
+    { path: "docs/static/schemas/aid.schema.json", content: publishedSchema },
   ]
 }
 

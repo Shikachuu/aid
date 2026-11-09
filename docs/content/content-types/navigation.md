@@ -46,7 +46,7 @@ HTML, OpenAPI, and proto pages have no frontmatter. Set their label and order in
 
 A `_meta.yaml` file in any content folder maps the names of the pages and subfolders in that folder to `label` and `order`. A page's name is its file name without the extension. In the content root, the key `index` addresses the root page. A `_meta.yaml` entry wins over frontmatter. The [frontmatter reference](../reference/frontmatter.md#_metayaml) lists the keys.
 
-This site's `site/docs/_meta.yaml` orders every top-level section:
+This site's `docs/content/_meta.yaml` orders every top-level section:
 
 ```yaml
 index: { order: 0 }
@@ -66,7 +66,7 @@ reference: { order: 13 }
 contributing: { order: 14 }
 ```
 
-`site/docs/content-types/_meta.yaml` labels the [proto example](./proto-example.proto) page, which has no frontmatter and would otherwise show its package name, `aid.example.v1`:
+`docs/content/content-types/_meta.yaml` labels the [proto example](./proto-example.proto) page, which has no frontmatter and would otherwise show its package name, `aid.example.v1`:
 
 ```yaml
 proto-example: { label: Proto example, order: 5 }

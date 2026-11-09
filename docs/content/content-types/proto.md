@@ -5,7 +5,7 @@ sidebar:
   order: 4
 ---
 
-aid turns every `.proto` file in the content folder into an API reference page. The build parses the file for its title, description, and search entries. The page itself is a shell. In the browser, a React component from `@aid/proto-ui` fetches the `.proto` file and renders the reference. The [proto example](./proto-example.proto) page of this site is built from `site/docs/content-types/proto-example.proto`.
+aid turns every `.proto` file in the content folder into an API reference page. The build parses the file for its title, description, and search entries. The page itself is a shell. In the browser, a React component from `@aid/proto-ui` fetches the `.proto` file and renders the reference. The [proto example](./proto-example.proto) page of this site is built from `docs/content/content-types/proto-example.proto`.
 
 ## Use it
 

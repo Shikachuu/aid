@@ -37,18 +37,18 @@ To add a dependency, run `bun add <pkg>` to update `package.json`, then `mise in
 | `bun run check` | The local merge gate. It runs `bun test`, `typecheck`, `lint`, every generator with `--check` (`gen-bunfig`, `gen-css-data`, `gen-docs`, `emit-schema`), `deps:binaries --offline`, and `docs:lint`, and stops at the first failure. Run it before you open a pull request. |
 | `bun run build` | `scripts/compile.ts`: emits the schema, bundles the browser runtime, and compiles the four release binaries into `dist/bin/`. |
 | `bun run emit-schema` | `scripts/emit-schema.ts`: writes `schemas/aid.schema.json` from the Zod schema in `src/core/config.ts`. |
-| `bun run gen-docs` | `scripts/gen-docs.ts`: regenerates `site/docs/reference/**` and `site/static/schemas/aid.schema.json`. Add `--check` to fail on drift instead of writing. |
+| `bun run gen-docs` | `scripts/gen-docs.ts`: regenerates `docs/content/reference/**` and `docs/static/schemas/aid.schema.json`. Add `--check` to fail on drift instead of writing. |
 | `bun run gen-css-data` | `scripts/gen-css-data.ts`: regenerates `src/lint/css-data.json`, the CSS names `aid lint` knows, from the `@webref/css` and `@webref/elements` dev dependencies. Run it after bumping either package. Add `--check` to fail on drift instead of writing. |
-| `bun run docs:build` | `bun src/cli/index.ts build site --clean`: builds this site into `site/dist`. |
-| `bun run docs:dev` | `bun src/cli/index.ts dev site`: serves this site with live reload. |
-| `bun run docs:lint` | `bun src/cli/index.ts lint site --filter md`: runs markdownlint over the site. |
+| `bun run docs:build` | `bun src/cli/index.ts build docs --clean`: builds this site into `docs/dist`. |
+| `bun run docs:dev` | `bun src/cli/index.ts dev docs`: serves this site with live reload. |
+| `bun run docs:lint` | `bun src/cli/index.ts lint docs --filter md`: runs markdownlint over the site. |
 | `bun run docs:affected` | `scripts/docs-affected.ts`: lists the docs pages that document the files changed since `--base` (default `origin/main`). |
 | `bun run deps:binaries` | `scripts/check-binaries.ts`: checks the platform packages, the staged lightningcss bindings, and the Bun version, then reports newer upstream versions. Add `--offline` to skip the upstream lookup. |
 | `bun test` | The Bun test runner over `tests/`. |
 | `bun run test:e2e` | The Playwright browser tests in `tests/e2e`, with screenshots in `tests/e2e/__screenshots__/`. `bun run check` does not run them. Run them after a change to the theme, the browser runtime, or a renderer. See [testing](./testing.md#browser-tests). |
 | `bun run typecheck` | `tsc --noEmit`. |
 | `bun run lint` | `bun lint` over `src`, `scripts`, `tests`, and `packages`, then `aid lint . --filter css` over every CSS file. |
-| `bun run fmt` | `bun fmt` over the JS, TS, JSON, and CSS files in `src`, `scripts`, `tests`, `packages`, and `site`, and the root `*.json` files. |
+| `bun run fmt` | `bun fmt` over the JS, TS, JSON, and CSS files in `src`, `scripts`, `tests`, `packages`, and `docs`, and the root `*.json` files. |
 | `bun run gen-bunfig` | `scripts/gen-bunfig.ts`: regenerates `bunfig.toml` (lint rules) and `.prettierrc.json` (format options) from the bundled defaults plus the repo settings. Add `--check` to fail on drift instead of writing. |
 
 [Docs site](./docs-site.md) covers the `docs:*` and `gen-docs` scripts in detail.
@@ -90,7 +90,7 @@ Without `--offline`, the script then looks up the latest version of each group o
 
 ```sh
 bun src/cli/index.ts build tests/fixtures/sample-site
-bun src/cli/index.ts dev site
+bun src/cli/index.ts dev docs
 ```
 
 From a source checkout, aid bundles the browser runtime with `Bun.build` on every build, so edits under `src/web` show up on the next build. The [CLI reference](../reference/cli.md) lists every command and flag.

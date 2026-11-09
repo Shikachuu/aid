@@ -7,3 +7,4 @@ base_path: /aid
 
 dir:
   templates: templates
+  content: content

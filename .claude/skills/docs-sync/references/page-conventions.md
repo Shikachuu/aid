@@ -1,4 +1,4 @@
-# Page conventions for site/docs
+# Page conventions for docs/content
 
 The site is built by aid itself (`bun run docs:build`), so every rule below is enforced by the build, by `bun run docs:lint`, or by the generated-reference check.
 
@@ -54,7 +54,7 @@ GitHub alert syntax, marker alone on its line:
 ## Images and files
 
 - Put images next to the page that uses them and link them relatively: `![aid logo](./logo.svg)`. aid copies them next to the rendered page.
-- Files outside `site/docs` cannot be linked relatively. Link to the repository on GitHub instead.
+- Files outside `docs/content` cannot be linked relatively. Link to the repository on GitHub instead.
 
 ## Accuracy
 

@@ -16,18 +16,18 @@ Claude Code loads a rule file without `paths:` frontmatter in every session. It 
 | --- | --- | --- |
 | `dependencies.md` | every session | Check Bun's built-ins (`Bun.serve`, `Bun.file`, `Bun.Glob`, `Bun.YAML`, `Bun.build`, and others) before adding an npm package. Propose every dependency change before making it. Install through `mise install`, never a bare `bun install`. Pin the resolved version with a caret range. Platform subpackages stay exact-pinned to match their parent. |
 | `css.md` | `**/*.css` | Write CSS only through Tailwind 4 directives: `@apply`, `@theme`, `@utility`, `@layer`, `@variant`, `@source`, `@config`, `@reference`, `@plugin`. Design tokens go in `@theme`, not in bare custom properties on `:root`. |
-| `generated.md` | `schemas/**`, `**/*.schema.json`, `site/docs/reference/**`, `site/static/schemas/**` | Never hand-edit generated files. `schemas/aid.schema.json` comes from `src/core/config.ts` through `bun run emit-schema`. The reference pages come from `bun run gen-docs`. Extend the Zod schema instead of adding validation next to it. |
+| `generated.md` | `schemas/**`, `**/*.schema.json`, `docs/content/reference/**`, `docs/static/schemas/**` | Never hand-edit generated files. `schemas/aid.schema.json` comes from `src/core/config.ts` through `bun run emit-schema`. The reference pages come from `bun run gen-docs`. Extend the Zod schema instead of adding validation next to it. |
 | `jsdoc.md` | `src/**/*.{ts,tsx}`, `scripts/**/*.ts` | Every exported function, const, class, and type alias gets a JSDoc block with at least a one-line summary. The JSDoc says why and when, not what the types already say. |
 | `tests.md` | `tests/**`, `src/**/*.test.ts` | `bun test` only. Fixtures go in `tests/fixtures/`. Prefer integration tests through public entry points. See [testing](./testing.md). |
 | `code-search.md` | every session | Find symbols and trace callers with the codebase-memory-mcp graph tools. Keep Grep and rg for literal strings, config keys, markdown, CSS, and generated files. Leave indexing to `mise install`. Check third-party APIs with Context7, and trust `bun-types` over Context7 for the Bun canary. See [MCP servers](./dev-setup.md#mcp-servers-for-claude-code). |
-| `docs-sync.md` | `src/**`, `scripts/**`, `packages/proto-ui/src/**`, `.github/workflows/**`, `mise.toml`, `site/**` | Run the `docs-sync` skill after a change that users or contributors can see. See [docs site](./docs-site.md). |
+| `docs-sync.md` | `src/**`, `scripts/**`, `packages/proto-ui/src/**`, `.github/workflows/**`, `mise.toml`, `docs/**` | Run the `docs-sync` skill after a change that users or contributors can see. See [docs site](./docs-site.md). |
 
 ## bun lint and bun fmt
 
 `bunfig.toml` configures `bun lint` for the repository, and `.prettierrc.json` configures `bun fmt`. `scripts/gen-bunfig.ts` generates both from the rules and options `aid lint` and `aid fmt` bundle for user projects (`src/lint/configs/bun.default.ts`), plus the repository rules below. Run `bun run gen-bunfig` after changing either, and `bun run gen-bunfig --check` to find drift.
 
 - `bun run lint` runs `bun lint` over `src/`, `scripts/`, `tests/`, and `packages/`, then aid's own CSS checks over every `.css` file.
-- `bun run fmt` runs `bun fmt` over the JS, TS, JSON, and CSS files in `src/`, `scripts/`, `tests/`, `packages/`, and `site/`, and the root `*.json` files. Markdown stays with aid's own formatter and markdownlint.
+- `bun run fmt` runs `bun fmt` over the JS, TS, JSON, and CSS files in `src/`, `scripts/`, `tests/`, `packages/`, and `docs/`, and the root `*.json` files. Markdown stays with aid's own formatter and markdownlint.
 - `.prettierignore` keeps `bun fmt` away from the generated files, `.prettierrc.json` among them, and from the invalid JSON fixture in `tests/fixtures/lint-fixtures/openapi-bad-json`.
 
 Formatter settings:
@@ -55,7 +55,7 @@ Rules on top of the bundled set:
 - `.ts`, `.tsx`, `.js`, `.jsx`, `.json`, `.jsonc`, and `.css` files go through `bun fmt`. JS and TS files then go through `bun lint --fix`.
 - `.md` files go through `formatMarkdown` from `src/fmt/markdown.ts`, which applies markdownlint's fixable rules with the same config resolution as `aid lint`.
 
-It skips files under `node_modules`, `dist`, and `.bun`, plus `.prettierrc.json` and the generated `schemas/aid.schema.json`, `site/docs/reference/**`, and `site/static/schemas/**`. When `bun fmt` or the markdown formatter fails, it prints the error to stderr and exits with code 2, so Claude Code shows the failure to Claude. `bun lint --fix` failures are ignored. Without Claude Code, run `bun run fmt` for code and `bun src/cli/index.ts fmt <dir> --filter md` for markdown.
+It skips files under `node_modules`, `dist`, and `.bun`, plus `.prettierrc.json` and the generated `schemas/aid.schema.json`, `docs/content/reference/**`, and `docs/static/schemas/**`. When `bun fmt` or the markdown formatter fails, it prints the error to stderr and exits with code 2, so Claude Code shows the failure to Claude. `bun lint --fix` failures are ignored. Without Claude Code, run `bun run fmt` for code and `bun src/cli/index.ts fmt <dir> --filter md` for markdown.
 
 ## Codebase-memory hooks
 
