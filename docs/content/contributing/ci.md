@@ -77,8 +77,8 @@ The release job turns off the mise and Bun caches. A cache that a pull request r
 The workflows need these settings in the GitHub repository and the Cloudflare account:
 
 1. Create the Pages project with `bun x wrangler pages project create shikachuu-aid --production-branch main`. If Cloudflare assigns a different `*.pages.dev` subdomain, update `PAGES_PROJECT` in `ci.yml` and `base_url` in `docs/aid.yaml`.
-2. Create a Cloudflare API token with the "Cloudflare Pages: Edit" permission.
-3. Add the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+2. Create an account API token under Manage Account, then API Tokens, so the token is not tied to a user. Give it only the "Cloudflare Pages: Edit" permission on this account, and set an expiry. Cloudflare cannot limit the permission to one Pages project.
+3. Add the token as the repository secret `CLOUDFLARE_API_TOKEN`. The account ID is not a credential, so `ci.yml` sets `CLOUDFLARE_ACCOUNT_ID` in its top-level `env`.
 4. Protect `main` and require the `check`, `e2e`, and `build` jobs.
 
 ## Action pins
