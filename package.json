@@ -16,8 +16,9 @@
     "test": "bun test",
     "test:e2e": "AID_E2E=1 bun test tests/e2e",
     "typecheck": "tsc --noEmit",
-    "lint": "bun lint --no-script src scripts tests packages && bun src/cli/index.ts lint . --filter css",
-    "fmt": "bun fmt --no-script \"{src,scripts,tests,packages,docs}/**/*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,css}\" \"*.json\"",
+    "lint": "bun lint --no-script src scripts tests packages .claude/hooks && bun src/cli/index.ts lint . --filter css && actionlint && git ls-files -z '*.sh' | xargs -0 -r shellcheck",
+    "fmt": "bun fmt --no-script \"{src,scripts,tests,packages,docs}/**/*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,css}\" \".claude/hooks/*.ts\" \"*.json\"",
+    "fmt:check": "bun fmt --no-script --check \"{src,scripts,tests,packages,docs}/**/*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,css}\" \".claude/hooks/*.ts\" \"*.json\"",
     "gen-docs": "bun run scripts/gen-docs.ts",
     "gen-css-data": "bun run scripts/gen-css-data.ts",
     "gen-bunfig": "bun run scripts/gen-bunfig.ts",
@@ -26,7 +27,7 @@
     "docs:lint": "bun src/cli/index.ts lint docs --filter md",
     "docs:affected": "bun run scripts/docs-affected.ts",
     "deps:binaries": "bun run scripts/check-binaries.ts",
-    "check": "bun test && bun run typecheck && bun run lint && bun run gen-bunfig --check && bun run gen-css-data --check && bun run gen-docs --check && bun run emit-schema --check && bun run deps:binaries --offline && bun run docs:lint"
+    "check": "bun test && bun run typecheck && bun run lint && bun run fmt:check && bun run gen-bunfig --check && bun run gen-css-data --check && bun run gen-docs --check && bun run emit-schema --check && bun run deps:binaries --offline && bun run docs:lint"
   },
   "engines": {
     "bun": ">=1.4.4-canary.20261103.1"

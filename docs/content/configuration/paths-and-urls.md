@@ -22,7 +22,7 @@ aid resolves every `dir` key and `stylesheet` against the project folder: the `d
 
 ## base_path
 
-`base_path` is the URL prefix for a site hosted under a sub-path. The default is `/`. This site sets `base_path: /aid` because GitHub Pages serves it at `https://shikachuu.github.io/aid/`.
+`base_path` is the URL prefix for a site hosted under a sub-path. The default is `/`. A GitHub Pages project site lives at `https://<owner>.github.io/<repo>/`, so it sets `base_path: /<repo>`.
 
 aid adds `base_path` to every URL it generates:
 

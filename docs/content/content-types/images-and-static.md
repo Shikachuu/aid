@@ -17,7 +17,7 @@ Put an image anywhere in the content folder and reference it with a relative pat
 
 ![aid logo](../logo.svg)
 
-aid resolves the path against the folder of the source file, copies the file into the page's output folder, and rewrites the reference to its public URL with `base_path`. For this page, `../logo.svg` becomes `/aid/content-types/images-and-static/logo.svg`.
+aid resolves the path against the folder of the source file, copies the file into the page's output folder, and rewrites the reference to its public URL with `base_path`. For this page, `../logo.svg` becomes `/content-types/images-and-static/logo.svg`.
 
 - In markdown, aid rewrites image syntax: `![alt](./x.png)` and reference-style images.
 - In HTML pages, aid rewrites the `src` attribute of `<img>`. It does not rewrite `srcset`, `<source>`, `<video>`, or CSS `url()`.
@@ -37,7 +37,7 @@ A relative link to a file that is not a page, such as `[the spec](./spec.pdf)` o
 
 aid mirrors the static folder into the output root without changes. The folder is `dir.static` in `aid.yaml`, relative to the project folder, and it defaults to `static`. A missing static folder is fine and copies nothing. aid follows symlinks inside the static folder. A symlink whose real path leaves the folder, or a folder symlink back at the static folder or one of its parents, stops the build.
 
-This site keeps the published JSON Schema at `docs/static/schemas/aid.schema.json`, so the build writes it to `dist/schemas/aid.schema.json`, served at `/aid/schemas/aid.schema.json`.
+This site keeps the published JSON Schema at `docs/static/schemas/aid.schema.json`, so the build writes it to `dist/schemas/aid.schema.json`, served at `/schemas/aid.schema.json`.
 
 aid does not rewrite absolute links, so a link to a static file must include `base_path` itself, or use a full URL. Use the static folder for files that other sites or tools fetch by a fixed URL, such as `favicon.ico`, `robots.txt`, or a schema. Use colocated files for anything a page shows.
 

@@ -156,6 +156,19 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
     pages: [`${DOCS}/contributing/docs-site.md`],
   },
   {
+    sources: ["docs/aid.yaml"],
+    pages: [
+      `${DOCS}/configuration/index.md`,
+      `${DOCS}/configuration/paths-and-urls.md`,
+      `${DOCS}/content-types/index.md`,
+      `${DOCS}/content-types/images-and-static.md`,
+    ],
+  },
+  {
+    sources: [".github/**", "cliff.toml", "mise.toml"],
+    pages: [`${DOCS}/contributing/ci.md`],
+  },
+  {
     sources: ["src/**", "scripts/**", "packages/proto-ui/src/**"],
     pages: [`${DOCS}/contributing/index.md`],
   },
@@ -164,7 +177,7 @@ export const DOCS_MAP: readonly DocsMapEntry[] = [
 /** Pages that are hubs and change only when the tree itself changes, not with any one source. */
 export const HUB_PAGES: readonly string[] = [`${DOCS}/index.md`, `${DOCS}/deployment/index.md`]
 
-const WATCHED_PREFIXES = ["src/", "scripts/", "packages/proto-ui/src/"]
+const WATCHED_PREFIXES = ["src/", "scripts/", "packages/proto-ui/src/", ".github/"]
 
 /** Result of {@link affectedPages}. `unmapped` lists changed sources that no entry covers, so the map can grow with them. */
 type Affected = {

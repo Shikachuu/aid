@@ -10,9 +10,11 @@ linux-x64 = { url = "https://registry.npmjs.org/@oven/bun-linux-x64/-/bun-linux-
 
 [tools]
 "github:DeusData/codebase-memory-mcp" = "0.12.1"
+actionlint = "1"
+shellcheck = "0.11"
 
 [settings]
 experimental = true
 
 [hooks]
-postinstall = "bun install --cpu='*' --os='*' && bun scripts/stage-natives.ts && bun run -F @aid/proto-ui build && codebase-memory-mcp cli --quiet index_repository --repo-path \"$MISE_PROJECT_ROOT\" >/dev/null"
+postinstall = "bun install --cpu='*' --os='*' ${CI:+--frozen-lockfile} && bun scripts/stage-natives.ts && bun run -F @aid/proto-ui build && { [ -n \"$CI\" ] || codebase-memory-mcp cli --quiet index_repository --repo-path \"$MISE_PROJECT_ROOT\" >/dev/null; }"

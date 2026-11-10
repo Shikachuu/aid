@@ -18,7 +18,7 @@ bun test
 
 ## Documentation
 
-The user and contributor documentation is an aid site in [`docs/`](docs/content/index.md), published at <https://shikachuu.github.io/aid/>. Preview it locally with `bun run docs:dev` and open <http://localhost:3000/aid/>.
+The user and contributor documentation is an aid site in [`docs/`](docs/content/index.md), deployed to <https://shikachuu-aid.pages.dev> from `main`. Every pull request gets a preview deployment. Preview it locally with `bun run docs:dev` and open <http://localhost:3000/>.
 
 ## License
 

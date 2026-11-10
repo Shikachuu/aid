@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-aid has no published release: the repository has no tags and no downloadable binaries. Install it from a checkout of the source.
+aid has no published release: the repository has no tags and no downloadable binaries. Install it from a checkout of the source. When a maintainer publishes a release, the release workflow attaches the four binaries and a `SHA256SUMS` file to it. See [CI and releases](../contributing/ci.md#releases).
 
 ## Requirements
 
@@ -25,7 +25,7 @@ mise install
 
 `mise trust` marks the repository's `mise.toml` as trusted. mise does not apply an untrusted config file and reports an error instead.
 
-Run `mise install`, not `bun install`. `mise install` installs the pinned Bun and codebase-memory-mcp, which Claude Code uses (see [development setup](../contributing/dev-setup.md#mcp-servers-for-claude-code)). It then runs the `postinstall` hook from `mise.toml`, which runs four commands:
+Run `mise install`, not `bun install`. `mise install` installs the pinned Bun, actionlint and shellcheck for `bun run lint`, and codebase-memory-mcp, which Claude Code uses (see [development setup](../contributing/dev-setup.md#mcp-servers-for-claude-code)). It then runs the `postinstall` hook from `mise.toml`, which runs four commands:
 
 1. `bun install --cpu='*' --os='*'` installs the dependencies for every platform. The flags pull in the native packages of `@tailwindcss/oxide` and `@bufbuild/buf` for every operating system and CPU, which the cross-compile step needs. A bare `bun install` skips the packages for other platforms without a warning.
 2. `bun scripts/stage-natives.ts` copies each platform's lightningcss `.node` binding to `vendor/natives/` with a `.bin` extension, so the compiled binary can embed it.

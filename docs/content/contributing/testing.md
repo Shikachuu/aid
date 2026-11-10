@@ -77,7 +77,7 @@ tests/fixtures/sample-site/
 bun run test:e2e
 ```
 
-The script sets `AID_E2E=1`. Without it, `bun test` marks every e2e test as skipped and prints one line that names the script. The tests need the Chromium build that matches the installed `playwright` package. `bunx playwright install chromium` downloads it.
+The script sets `AID_E2E=1`. Without it, `bun test` marks every e2e test as skipped and prints one line that names the script. The tests need the Chromium build that matches the installed `playwright` package. `bun x playwright install chromium` downloads it. The Bun that mise installs has no `bunx` binary.
 
 Each run copies `tests/fixtures/sample-site` to a temporary directory three times, with `base_path: /e2e` and `theme.dark_mode` set to `auto`, `manual`, or `off`. The `manual` copy appends explicit dark tokens to `main.css`. `tests/e2e/site.ts` builds each copy and serves it with `Bun.serve` on a free port.
 

@@ -33,6 +33,8 @@ aid is one Bun and TypeScript codebase that compiles to a single binary per plat
 | `tests/integration` | Tests that run `build()` on a temporary project. |
 | `tests/fixtures` | The `sample-site` project and the lint fixtures. |
 | `docs/` | This documentation site, built by aid. |
+| `.github/` | The CI and release workflows, the shared setup action, and the Dependabot config. See [CI and releases](./ci.md). |
+| `cliff.toml` | The git-cliff config that turns commit messages into release notes. |
 | `.claude/` | Claude Code setup: style rules in `rules/`, the format hook in `hooks/`, the `docs-sync` skill in `skills/`, and the hooks and tool permissions in `settings.json`. |
 | `.mcp.json` | The codebase-memory-mcp and Context7 MCP servers for Claude Code. See [development setup](./dev-setup.md#mcp-servers-for-claude-code). |
 
@@ -43,5 +45,6 @@ aid is one Bun and TypeScript codebase that compiles to a single binary per plat
 - [Build pipeline](./build-pipeline.md): every phase of `build()`, in order.
 - [Single binary](./single-binary.md): how `scripts/compile.ts` embeds the web runtime and native binaries.
 - [Testing](./testing.md): the test layout, helpers, and fixtures.
+- [CI and releases](./ci.md): the pull request checks, the docs previews, and the release workflow.
 - [Conventions](./conventions.md): code style, lint rules, the format hook, and commit style.
 - [Docs site](./docs-site.md): how this site is built, generated, and kept in sync.

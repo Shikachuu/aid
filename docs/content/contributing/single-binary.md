@@ -17,7 +17,7 @@ sidebar:
 3. `copySchema` copies the schema to `dist/schemas/aid.schema.json`.
 4. `bun scripts/bundle-web.ts` bundles the browser runtime into `.aid-build/_bundled.ts`, which git ignores.
 5. `checkStaged` from `scripts/check-binaries.ts` compares every `vendor/natives/<pkg>.bin` with its source in `node_modules`. A missing or stale copy stops the build and names the file, so no binary embeds an outdated lightningcss binding. Run `bun scripts/stage-natives.ts` to fix it.
-6. `compileTarget` compiles `src/cli/index.ts` once per target, in this order. `scripts/natives.ts` holds this table as `TARGETS`, which `stage-natives.ts` and `check-binaries.ts` also read:
+6. `compileTarget` compiles `src/cli/index.ts` once per target, in this order. `--target <outSuffix>`, such as `bun run build --target linux-x64`, compiles only that target, and an unknown value exits 1 before step 1. `scripts/natives.ts` holds this table as `TARGETS`, which `stage-natives.ts` and `check-binaries.ts` also read:
 
    | Output | Bun target | buf package | lightningcss package |
    | --- | --- | --- | --- |

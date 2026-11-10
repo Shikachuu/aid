@@ -16,8 +16,8 @@ This site's own `aid.yaml`:
 
 name: aid
 description: Single-binary documentation generator for markdown, HTML, OpenAPI, and Protobuf sources.
-base_url: https://shikachuu.github.io
-base_path: /aid
+base_url: https://shikachuu-aid.pages.dev
+base_path: /
 
 dir:
   templates: templates
@@ -47,12 +47,12 @@ When `aid.yaml` is missing but `aid.yml` sits next to it, the message says to pa
 aid publishes a JSON Schema for `aid.yaml`. Editors that use the YAML language server, such as VS Code with the Red Hat YAML extension, read a `# yaml-language-server: $schema=<url>` comment and then complete and check keys:
 
 ```yaml
-# yaml-language-server: $schema=https://shikachuu.github.io/aid/schemas/aid.schema.json
+# yaml-language-server: $schema=https://shikachuu-aid.pages.dev/schemas/aid.schema.json
 
 name: My Docs
 ```
 
-This site serves the schema at `schemas/aid.schema.json` under its base path, so the URL above works once the site is deployed to GitHub Pages. Inside the aid repository, point at the file with a relative path: `schemas/aid.schema.json` at the repository root. `bun run emit-schema` regenerates that file from the Zod schema, and `bun run check` fails when the two differ.
+This site serves the schema at `schemas/aid.schema.json` under its base path, so the URL above works once CI has deployed the site to Cloudflare Pages. Inside the aid repository, point at the file with a relative path: `schemas/aid.schema.json` at the repository root. `bun run emit-schema` regenerates that file from the Zod schema, and `bun run check` fails when the two differ.
 
 > [!NOTE]
 > The files in `assets/scaffold/` and `tests/fixtures/sample-site/` point at `https://aid.tools/schemas/v0/aid.schema.json`. Nothing in the aid repository publishes a file at that address.

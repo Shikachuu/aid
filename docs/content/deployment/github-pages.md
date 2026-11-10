@@ -98,4 +98,4 @@ The aid steps run inside `.aid-src`, where `mise.toml` selects Bun 1.4.4. The bu
 > [!NOTE]
 > This workflow has not been run from a separate repository.
 
-The workflow does not use a compiled aid binary, because the binaries do not run outside the aid repository yet. The [status page](../status.html) tracks the problem.
+The workflow does not use a compiled aid binary, because aid has no published release to download. The [status page](../status.html) tracks the binaries.
