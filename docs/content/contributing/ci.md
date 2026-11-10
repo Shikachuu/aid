@@ -6,7 +6,7 @@ sidebar:
   order: 6
 ---
 
-Two workflows live in `.github/workflows/`. `ci.yml` runs on every pull request and on every push to `main`. `release.yml` runs when someone publishes a GitHub release.
+Three workflows live in `.github/workflows/`. `ci.yml` runs on every pull request and on every push to `main`. `docs-preview-cleanup.yml` runs when a pull request closes. `release.yml` runs when someone publishes a GitHub release.
 
 ## Setup action
 
@@ -45,6 +45,17 @@ Every preview keeps `base_url: https://shikachuu-aid.pages.dev` from `docs/aid.y
 
 `deploy-docs` skips pull requests from forks and from Dependabot, because GitHub does not pass repository secrets to them.
 
+### Preview cleanup
+
+`docs-preview-cleanup.yml` deletes a pull request's preview when the pull request is merged or closed without a merge. It skips the same fork and Dependabot pull requests as `deploy-docs`. Its job runs two steps:
+
+1. It pages through the preview deployments of the Pages project through the Cloudflare API and deletes every deployment on the `pr-<n>` branch with `force=true`, so the `pr-<n>` alias goes too.
+2. It sets every GitHub deployment in the `docs (pr-<n>)` environment to `inactive`, which removes the "View deployment" button from the pull request. This step runs even when the first step fails.
+
+The job shares the `docs-deploy-<ref>` concurrency group with `deploy-docs`, so it waits for a running preview deploy to finish. `deploy-docs` reads the pull request state first and skips every step when the pull request is closed. A deploy whose checks finish after the cleanup therefore does not publish `pr-<n>` again. The workflow sets its own `CLOUDFLARE_ACCOUNT_ID` and `PAGES_PROJECT`, so a change to either in `ci.yml` needs the same change here.
+
+The `docs (pr-<n>)` environments stay in the repository settings. Deleting an environment needs a token with repository administration rights, which `GITHUB_TOKEN` cannot get.
+
 ## Releases
 
 To release, create a tag and publish a GitHub release for it:
@@ -76,9 +87,9 @@ The release job turns off the mise and Bun caches. A cache that a pull request r
 
 The workflows need these settings in the GitHub repository and the Cloudflare account:
 
-1. Create the Pages project with `bun x wrangler pages project create shikachuu-aid --production-branch main`. If Cloudflare assigns a different `*.pages.dev` subdomain, update `PAGES_PROJECT` in `ci.yml` and `base_url` in `docs/aid.yaml`.
+1. Create the Pages project with `bun x wrangler pages project create shikachuu-aid --production-branch main`. If Cloudflare assigns a different `*.pages.dev` subdomain, update `PAGES_PROJECT` in `ci.yml` and `docs-preview-cleanup.yml` and `base_url` in `docs/aid.yaml`.
 2. Create an account API token under Manage Account, then API Tokens, so the token is not tied to a user. Give it only the "Cloudflare Pages: Edit" permission on this account, and set an expiry. Cloudflare cannot limit the permission to one Pages project.
-3. Add the token as the repository secret `CLOUDFLARE_API_TOKEN`. The account ID is not a credential, so `ci.yml` sets `CLOUDFLARE_ACCOUNT_ID` in its top-level `env`.
+3. Add the token as the repository secret `CLOUDFLARE_API_TOKEN`. The account ID is not a credential, so `ci.yml` and `docs-preview-cleanup.yml` set `CLOUDFLARE_ACCOUNT_ID` in their top-level `env`.
 4. Protect `main` and require the `check`, `e2e`, and `build` jobs.
 
 ## Action pins
